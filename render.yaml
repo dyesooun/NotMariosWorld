@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: not-marios-world
+    runtime: node
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health

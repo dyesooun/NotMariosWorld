@@ -1,0 +1,9 @@
+{
+  "name": "not-marios-world",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node server/index.js", "dev": "node --watch server/index.js", "test": "node --test" },
+  "dependencies": { "ws": "^8.18.0" }
+}
