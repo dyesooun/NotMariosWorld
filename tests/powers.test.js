@@ -67,17 +67,19 @@ test('all powers last five seconds and direct activation cannot overlap an activ
   assert.equal(room.activePower.endsAt,10100);
 });
 
-test('reservations reject duplicate and stale requests while preserving current-level inventory',()=>{
+test('one reservation blocks new-world pickup until the original item is consumed',()=>{
   const caster=player('caster'),target=player('target'),room={status:'running',players:new Map([[caster.id,caster],[target.id,target]])};
   collectPower(caster,1,()=>0);
   const reservation=reservePower(room,caster,{now:0});assert.equal(reservation.ok,true);
   assert.equal(reservePower(room,caster,{now:1}).ok,false);
   assert.equal(activatePower(room,caster,{now:2,force:true,reservation:{...reservation,id:'stale'}}).ok,false);
-  caster.state.level=2;collectPower(caster,2,()=>.99);
+  caster.state.level=2;assert.equal(collectPower(caster,2,()=>.99),null);
   caster.state.deadUntil=100;
   assert.equal(activatePower(room,caster,{now:3,force:true,reservation}).ok,true);
-  assert.equal(caster.power.level,2);assert.equal(caster.power.power.type,'fog');assert.equal(caster.power.used,false);
+  assert.equal(caster.power.level,1);assert.equal(caster.power.used,true);
   assert.equal(caster.powerSlots[1].used,true);
+  caster.state.deadUntil=0;assert.ok(collectPower(caster,2,()=>.99));
+  assert.equal(caster.power.level,2);assert.equal(caster.power.power.type,'fog');assert.equal(caster.power.used,false);
   const held=player('held');collectPower(held,1,()=>0);const heldRoom={status:'running',players:new Map([[held.id,held],[target.id,target]])};
   const unused=reservePower(heldRoom,held);releasePowerReservation(unused);
   assert.equal(held.powerSlots[1].used,false);assert.equal(held.powerSlots[1].reserved,null);

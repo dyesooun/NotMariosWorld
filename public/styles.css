@@ -18,6 +18,12 @@ dialog{border:1px solid #56624c;border-radius:12px;background:#1c2325;color:#f1f
 .power-controls{position:absolute;inset:0;z-index:4;pointer-events:none;line-height:normal}
 .power-controls button{position:absolute;padding:0;border:0;border-radius:0;background:transparent;color:transparent;pointer-events:auto}
 .power-controls button:focus-visible{outline:3px solid #fff8c4;outline-offset:2px}
+.power-chest-controls{position:absolute;inset:0;z-index:8;pointer-events:none;line-height:normal}
+.power-chest-panel{position:absolute;transform-origin:top left;pointer-events:auto;border:2px solid #8ce4ee;background:#132d2bfa;box-shadow:5px 5px 0 #071c1b99;padding:17px 21px;color:#eaf5dc;font:12px/1.4 monospace}
+.power-chest-panel h2{margin:0 0 7px;color:#8ce4ee;font:bold 13px/17px monospace;letter-spacing:1px}
+.power-chest-panel p{margin:0;font:12px/19px monospace}.power-chest-held{color:#c8d8bb}.power-chest-next{color:#b7ef51}
+.power-chest-actions{display:flex;gap:10px;margin:10px 0 8px}.power-chest-actions button{border-radius:0;min-height:0;height:34px;padding:0 13px;font:11px monospace}
+.power-chest-panel .power-chest-note{color:#9ebcae;font:10px/13px monospace}
 .power-quiz-controls{position:absolute;inset:0;z-index:10;pointer-events:none;line-height:normal}
 .power-quiz-shade{position:absolute;inset:0;background:#10272366;pointer-events:none}
 .power-quiz-panel{pointer-events:auto;border:2px solid #b7ef51;background:#172e2bfc;box-shadow:6px 6px 0 #08151299;color:#eaf5dc;font:12px/1.4 monospace}

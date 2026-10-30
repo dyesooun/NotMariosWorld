@@ -27,7 +27,7 @@ test('real power chest survives deaths, is spent once, and refresh resets the in
   const clients=[];for(const name of ['Caster','Opponent']){const ws=await socket(url);ws.send(JSON.stringify({type:'join',code:made.code,name}));const joined=await receive(ws,m=>m.type==='joined');ws.send(JSON.stringify({type:'spawn'}));clients.push({ws,id:joined.id});}
   const room=server.rooms.get(made.code);await waitFor(()=>[...room.players.values()].every(p=>p.spawned));
   host.send(JSON.stringify({type:'start'}));await receive(host,m=>m.type==='state'&&m.room.status==='running');
-  const caster=room.players.get(clients[0].id),target=room.players.get(clients[1].id),chest=LEVELS[1].powerChest;
+  const caster=room.players.get(clients[0].id),target=room.players.get(clients[1].id),chest=LEVELS[1].powerChests[0];
   const advance=async()=>{const elapsed=caster.state.elapsed;time+=150;await waitFor(()=>caster.state.elapsed>elapsed);};
   Object.assign(caster.state,{x:chest.x+15,y:chest.y});await advance();
   const found=await receive(clients[0].ws,m=>m.type==='state'&&m.room.players.find(p=>p.id===caster.id)?.power?.claimed);
@@ -55,7 +55,7 @@ test('real power chest survives deaths, is spent once, and refresh resets the in
   assert.equal((await receive(clients[0].ws,m=>m.type==='error')).code,'POWER_UNAVAILABLE');
   Object.assign(caster.state,{x:LEVELS[1].endX,y:450,grounded:false,_standingPlatform:null});await advance();
   assert.equal(caster.state.level,2);assert.equal(caster.power,null);
-  const chest2=LEVELS[2].powerChest;Object.assign(caster.state,{x:chest2.x+15,y:chest2.y});await advance();assert.equal(caster.power.level,2);assert.equal(caster.power.used,false);
+  const chest2=LEVELS[2].powerChests[0];Object.assign(caster.state,{x:chest2.x+15,y:chest2.y});await advance();assert.equal(caster.power.level,2);assert.equal(caster.power.used,false);
   clients[0].ws.close();await waitFor(()=>!caster.connected);
   const rejoined=await socket(url);rejoined.send(JSON.stringify({type:'join',code:made.code,name:'Caster'}));await receive(rejoined,m=>m.type==='joined');
   assert.equal(caster.state.level,1);assert.equal(caster.power,null);assert.deepEqual(caster.powerSlots,{});assert.deepEqual(caster.effects,{});
@@ -295,3 +295,4 @@ test('joining at the exact deadline freezes before same-name reconnect reset', a
   const reconnect = await socket(url); reconnect.send(JSON.stringify({ type: 'join', code: made.code, name: 'Deadline', avatar: 'robot' })); const rejoined = await receive(reconnect, m => m.type === 'joined'); const ended = await receive(host, m => m.type === 'state' && m.room.status === 'ended');
   assert.equal(rejoined.id, joined.id); assert.equal(room.status, 'ended'); assert.equal(runner.score, 57); assert.equal(ended.room.results[0].id, joined.id); assert.equal(runner.state.banked, 55); reconnect.close(); host.close();
 });
+

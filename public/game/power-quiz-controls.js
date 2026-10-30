@@ -210,7 +210,8 @@ export function createPowerQuizControls(viewport, { onSubmit, onOpen, onClose } 
     setText(timer, model.answered ? 'ANSWER LOCKED' : `${Math.max(0, model.remaining ?? 0)}s LEFT`);
     setText(prompt, model.prompt || '');
     setText(hint, model.hint || '');
-    progressFill.style.width = `${Math.max(0, Math.min(100, (Number(model.remaining) || 0) * 10))}%`;
+    const progress = model.progress ?? (Number(model.remaining) || 0) / ((Number(model.durationMs) || 10000) / 1000);
+    progressFill.style.width = `${Math.max(0, Math.min(100, progress * 100))}%`;
     geometry(model, currentCanvas);
     updateState(model);
     if ((isNew || focus) && model.canAnswer) input.focus({ preventScroll: true });

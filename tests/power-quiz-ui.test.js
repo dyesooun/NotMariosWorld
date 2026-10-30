@@ -16,3 +16,12 @@ test('private attack and defense prompts fit inside the game viewport',()=>{
   }
   assert.equal(powerQuizModel({}),null);
 });
+
+test('quiz progress uses each configured phase duration rather than ten seconds',()=>{
+  for(const durationMs of [1000,7000,30000,60000]){
+    const player={powerQuiz:{role:'attack',prompt:'Question',endsAt:durationMs,durationMs,answered:false}};
+    const q=powerQuizModel(player,{now:durationMs/2});
+    assert.equal(q.progress,.5);assert.equal(q.durationMs,durationMs);
+    assert.equal(q.remaining,Math.ceil(durationMs/2000));
+  }
+});

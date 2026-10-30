@@ -3,7 +3,8 @@ export function powerQuizModel(player,{now=Date.now(),isHost=false}={}){
   const quiz=player?.powerQuiz;if(!quiz||quiz.answered&&!isHost)return null;
   const promptLines=wrap(quiz.prompt),h=186+promptLines.length*22,panel={x:180,y:Math.round((540-h)/2),w:600,h};
   const inputY=panel.y+76+promptLines.length*22;
-  return {...quiz,promptLines,panel,remaining:Math.max(0,Math.ceil((quiz.endsAt-now)/1000)),
+  const durationMs=Number(quiz.durationMs)>0?Number(quiz.durationMs):10000;
+  return {...quiz,promptLines,panel,durationMs,progress:Math.max(0,Math.min(1,(quiz.endsAt-now)/durationMs)),remaining:Math.max(0,Math.ceil((quiz.endsAt-now)/1000)),
     canAnswer:!isHost&&!quiz.answered&&now<quiz.endsAt,
     input:{x:panel.x+24,y:inputY,w:424,h:42},submit:{x:panel.x+464,y:inputY,w:112,h:42},
     title:quiz.role==='attack'?'ANSWER TO ATTACK':'ANSWER TO DEFEND',
@@ -20,7 +21,7 @@ export function renderPowerQuiz(canvas,player,options={}){
   text(model.title,r.x+24,r.y+27,12,'#b7ef51');
   const countdown=model.answered?'ANSWER LOCKED':`${model.remaining}s LEFT`;
   ctx.textAlign='right';text(countdown,r.x+r.w-24,r.y+27,12,'#8ce4ee');ctx.textAlign='left';
-  rect('#38544a',r.x+24,r.y+39,r.w-48,3);rect('#b7ef51',r.x+24,r.y+39,(r.w-48)*Math.min(1,model.remaining/10),3);
+  rect('#38544a',r.x+24,r.y+39,r.w-48,3);rect('#b7ef51',r.x+24,r.y+39,(r.w-48)*model.progress,3);
   model.promptLines.forEach((line,i)=>text(line,r.x+24,r.y+70+i*22,16));
   if(!model.canAnswer){
     const message=model.answered?(model.result==='correct'?(model.role==='attack'?'Correct! Preparing the defense questions.':'BLOCKED! This attack cannot affect you.'):'Answer recorded. Waiting for the result.'):options.isHost?'PLAYER IS ANSWERING…':'TIME’S UP / WAITING FOR THE RESULT';

@@ -55,6 +55,14 @@ test('preserves typed text for the same challenge and resets for a new transacti
   controls.update(f.model({ transactionId: 'turn-2' })); assert.equal(input.value, '');
 });
 
+test('the DOM timer bar follows the configured quiz window',()=>{
+  const f=fixture(),controls=createPowerQuizControls(f.viewport);
+  controls.update(f.model({remaining:15,durationMs:30000,progress:.5}));
+  assert.equal(controls.root.querySelector('.power-quiz-progress-fill').style.width,'50%');
+  controls.update(f.model({remaining:1,durationMs:1000,progress:.25}));
+  assert.equal(controls.root.querySelector('.power-quiz-progress-fill').style.width,'25%');
+});
+
 test('preserves text and does not refocus on a same-key resume unless requested', () => {
   const f = fixture(); let focusCount = 0;
   const originalFocus = f.canvas.focus;

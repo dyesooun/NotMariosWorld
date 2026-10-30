@@ -122,7 +122,7 @@ function fireball(ctx,shot,time){
   rect(ctx,'#ffca54',flicker?4:-6,-17+flicker*2,2,2);
   ctx.restore();
 }
-export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstructions=false,powerChestClaimed=false}={}){
+export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstructions=false,powerChestClaims=[]}={}){
   if(!canvasOrContext||!state)return;
   const ctx=canvasOrContext.canvas?canvasOrContext:canvasOrContext.getContext('2d'),canvas=ctx.canvas,level=LEVELS[state.level]||LEVELS[0],theme=level.theme,p=palette[theme]||palette.forest,camera=Math.round(Math.max(0,Math.min(Math.max(0,level.width-W),state.x-330))),worldTime=state._levelTime??time;
   ctx.save();ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);ctx.imageSmoothingEnabled=false;background(ctx,p,theme,camera,time);ctx.save();ctx.translate(-camera,0);
@@ -135,7 +135,8 @@ export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstr
   const enemies=Array.isArray(state.enemies)&&state.enemies.length?state.enemies:level.enemies.map(base=>{const p=platformAt(level.platforms[base.platformIndex],worldTime),min=p.x+8,max=p.x+p.w-base.w-8;return {...base,x:Math.max(min,Math.min(max,base.x)),y:p.visible?p.y-base.h:1000,facing:1};});
   for(const e of enemies){if(e.x+e.w<camera-20||e.x>camera+W+20||e.y>700)continue;drawSprite(ctx,e.kind,e.x,e.y,e.w,e.h,{flip:e.facing<0});if(e.shooter&&e.cooldown<.35)rect(ctx,'#ffd166',e.x+e.w/2-2,e.y-6,4,4);}
   for(const shot of (state.projectiles||[])){if(shot.x<camera-20||shot.x>camera+W+20)continue;fireball(ctx,shot,time);}
-  if(level.powerChest&&!powerChestClaimed&&level.powerChest.x>camera-60&&level.powerChest.x<camera+W+60){const chest=level.powerChest;drawSprite(ctx,'chest',chest.x,chest.y-chest.h,chest.w,chest.h);rect(ctx,'#b7f5ff',chest.x+chest.w/2-2,chest.y-chest.h-8,4,4);rect(ctx,'#e8fbff',chest.x+chest.w/2-1,chest.y-chest.h-12,2,3);}
+  const claimed = new Set(powerChestClaims);
+  for (const chest of (level.powerChests || [])) if(!claimed.has(chest.id)&&chest.x>camera-60&&chest.x<camera+W+60){drawSprite(ctx,'chest',chest.x,chest.y-chest.h,chest.w,chest.h);rect(ctx,'#b7f5ff',chest.x+chest.w/2-2,chest.y-chest.h-8,4,4);rect(ctx,'#e8fbff',chest.x+chest.w/2-1,chest.y-chest.h-12,2,3);}
   for(const checkpoint of level.checkpoints||[])if(checkpoint.x>camera-70&&checkpoint.x<camera+W+70)checkpointFlag(ctx,checkpoint,!!state.checkpoint&&state.checkpoint.x>=checkpoint.x,time,Math.round(checkpoint.x/level.endX*100));
   if(state.level>0&&level.endX<camera+W+100){rect(ctx,'#172f2855',level.endX-12,495,65,5);rect(ctx,'#e9e7b9',level.endX+17,320,5,180);drawSprite(ctx,'flag',level.endX+14,321,70,95);rect(ctx,'#20362b',level.endX-28,460,95,24);ctx.fillStyle='#d1f59b';ctx.font='bold 10px monospace';ctx.fillText('ESCAPE →',level.endX-18,476);}
   if(showInstructions&&state.level===0){sign(ctx,160,309,'A LITTLE PRACTICE',['A / D or arrows: move','Space / W / Up: jump']);sign(ctx,695,208,'THE IMPORTANT BITS',['Clear world: bank points','Every 25%: checkpoint']);sign(ctx,1110,309,'WAITING FOR YOUR HOST',['Same levels. Separate runs.','Collect coins. Keep moving!']);}

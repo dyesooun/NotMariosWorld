@@ -231,8 +231,8 @@ test('power movement effects change speed, direction, and braking', () => {
 
 test('biome variations keep power chests on safe ground and primary gaps reachable', () => {
   for (const level of LEVELS.slice(1)) {
-    assert.ok(level.powerChest);
-    const chest = level.powerChest;
+    assert.ok(level.powerChests?.length >= 3);
+    const chest = level.powerChests[0];
     const support = level.platforms.find(p => p.kind === 'ground' && chest.x >= p.x && chest.x + chest.w <= p.x + p.w);
     assert.ok(support, `${level.id} power chest needs ground support`);
     assert.equal(level.hazards.some(h => h.x < chest.x + chest.w + 90 && h.x + h.w > chest.x - 90), false);

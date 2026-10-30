@@ -73,14 +73,14 @@ test('level broadcasts share FIFO ordering without shortening power effects or s
   assert.equal(f.room.announcement.endsAt,f.now()+5000);
 });
 
-test('queued use survives death and level changes without replacing a new-level held power',async t=>{
+test('queued use survives death and level changes, blocking new pickup until consumed',async t=>{
   const f=await fixture(t),b=f.players[1];await f.use(0);await f.use(1);
-  b.state.level=2;collectPower(b,2,()=>.99);
+  b.state.level=2;assert.equal(collectPower(b,2,()=>.99),null);
   b.state.deadUntil=b.state.elapsed+100;b.state.respawnRemaining=100;
   await f.advance(5000);
   assert.equal(f.room.activePower.casterId,b.id);assert.equal(f.room.activePower.level,1);
-  assert.equal(b.powerSlots[1].used,true);assert.equal(b.power.level,2);assert.equal(b.power.used,false);assert.equal(b.power.power.type,'fog');
-  b.state.deadUntil=0;b.state.respawnRemaining=0;await f.use(1);
+  assert.equal(b.powerSlots[1].used,true);assert.equal(b.power.level,1);assert.equal(b.power.used,true);
+  b.state.deadUntil=0;b.state.respawnRemaining=0;assert.ok(collectPower(b,2,()=>.99));assert.equal(b.power.level,2);assert.equal(b.power.power.type,'fog');await f.use(1);
   b.state.deadUntil=b.state.elapsed+100;b.state.respawnRemaining=100;
   await f.advance(5000);
   assert.equal(f.room.activePower.level,2);assert.equal(b.powerSlots[2].used,true);
