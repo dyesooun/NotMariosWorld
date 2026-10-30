@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { choosePowerQuestion, isCorrectPowerAnswer } from './power-questions.js';
+import { powerStrength } from '../public/game/powers.js';
 
 const eligible = (room, caster) => [...room.players.values()].filter(p => p !== caster && p.connected && p.spawned && !p.state.finished);
 const currentParticipant = (room, player, runId) => room.players.get(player.id) === player && player.connected && player.spawned && player.runId === runId && !player.state.finished;
@@ -19,7 +20,7 @@ export function beginPowerDuel(room, entry, { now = Date.now(), random = Math.ra
   const attackMs = Math.max(1000, Number(room.settings?.attackWindowSeconds ?? 10) * 1000);
   const defendMs = Math.max(1000, Number(room.settings?.defendWindowSeconds ?? 10) * 1000);
   const durationMs = Math.max(1000, Number(room.settings?.powerDurationSeconds ?? (entry.power.durationMs / 1000)) * 1000);
-  entry.power = { ...entry.power, target: 'all', durationMs };
+  entry.power = { ...entry.power, target: 'all', durationMs, strength: powerStrength(room.settings, entry.power.type) };
   const duel = { id:randomUUID(),entry,caster,casterRunId:caster.runId,random,attackMs,defendMs,phase:'attack',startedAt:now,endsAt:now+attackMs,attackQuestion:choosePowerQuestion({random}),attackAnswered:null,defenses:new Map(),targets:[],outcome:null,affectedIds:[] };
   room.powerDuel = duel;
   return { ok:true,duel };

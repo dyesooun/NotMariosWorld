@@ -1,9 +1,22 @@
 /* Dependency-free original Web Audio soundtrack and effects. */
-const NOTE = { C: 261.63, D: 293.66, E: 329.63, F: 349.23, G: 392, A: 440, B: 493.88 };
+const NOTE = { C: 261.63, D: 293.66, E: 329.63, F: 349.23, Fs: 369.99, G: 392, A: 440, B: 493.88 };
 const n = (name, beats, octave = 4) => ({ frequency: NOTE[name] * 2 ** (octave - 4), beats });
+// Original woodland theme: a lilting bell/flute lead over plucked arpeggios.
+const forestMelody=[
+  n('G',.5),n('A',.5),n('B',.5),n('D',.5,5),n('E',1,5),n('D',1,5),
+  n('B',.5),n('A',.5),n('G',1),n('E',.5),n('G',.5),n('A',1),
+  n('C',.5,5),n('E',.5,5),n('G',.5,5),n('E',.5,5),n('D',1,5),n('B',1),
+  n('A',.5),n('B',.5),n('D',1,5),n('B',.5),n('A',.5),n('G',1),
+  n('E',.5,5),n('Fs',.5,5),n('G',1,5),n('D',.5,5),n('B',.5),n('A',1),
+  n('C',.5,5),n('B',.5),n('A',.5),n('G',.5),n('E',1),n('G',1),
+  n('A',.5),n('C',.5,5),n('B',.5),n('D',.5,5),n('E',.5,5),n('D',.5,5),n('B',1),
+  n('A',.5),n('G',.5),n('D',.5),n('Fs',.5),n('G',2)
+];
+const forestChords=[['G','B','D'],['E','G','B'],['C','E','G'],['D','Fs','A'],['E','G','B'],['C','E','G'],['D','Fs','A'],['G','B','D']];
+const forestHarmony=forestChords.flatMap(([root,third,fifth])=>[n(root,.5,3),n(third,.5,3),n(fifth,.5,4),n(third,.5,3),n(root,.5,3),n(third,.5,3),n(fifth,.5,4),n(third,.5,3)]);
 export const MUSIC_TRACKS = Object.freeze({
   lobby: Object.freeze({ id: 'lobby', tempo: 112, waveform: 'square', melody: [n('C', .5), n('E', .5), n('G', 1), n('E', 1), n('A', .5), n('G', .5), n('E', 1), n('D', 1), n('G', 2), n('F', 1), n('A', .5), n('C', .5, 5), n('B', .5), n('A', .5), n('G', 1), n('E', 1), n('D', 1), n('C', 2)], bass: [n('C', 4, 3), n('F', 4, 3), n('G', 4, 3), n('C', 4, 3)] }),
-  forest: Object.freeze({ id: 'forest', tempo: 124, waveform: 'triangle', melody: [n('G', .5), n('B', .5), n('D', .5, 5), n('B', .5), n('A', 1), n('G', 1), n('E', 1), n('G', 1), n('A', 2), n('C', .5, 5), n('B', .5), n('A', 1), n('G', 1), n('B', .5), n('A', .5), n('G', 1), n('D', 1), n('G', 2)], bass: [n('G', 4, 3), n('E', 4, 3), n('C', 4, 3), n('D', 4, 3)] }),
+  forest: Object.freeze({ id:'forest',title:'Mosslight Mountain',tempo:112,waveform:'triangle',articulation:.68,bellOvertone:true,melody:forestMelody,harmony:forestHarmony,bass:forestChords.flatMap(([root,,fifth])=>[n(root,2,2),n(fifth,2,3)]) }),
   ocean: Object.freeze({ id: 'ocean', tempo: 92, waveform: 'sine', melody: [n('E', 1), n('G', 1), n('A', 2), n('G', 1), n('E', 1), n('D', 2), n('C', 1), n('E', 1), n('G', 2), n('B', 1), n('A', 1), n('G', 2)], bass: [n('C', 4, 3), n('A', 4, 3), n('F', 4, 3), n('G', 4, 3)] }),
   hell: Object.freeze({ id: 'hell', tempo: 146, waveform: 'sawtooth', melody: [n('E', .5), n('F', .5), n('E', 1), n('B', 1, 3), n('E', 1), n('G', 1), n('F', 1), n('E', 2), n('D', 1), n('C', .5), n('B', .5, 3), n('E', 1), n('F', 1), n('G', 1), n('F', 1), n('E', 2)], bass: [n('E', 4, 3), n('C', 4, 3), n('F', 4, 3), n('B', 4, 2)] }),
   results: Object.freeze({ id: 'results', tempo: 118, waveform: 'square', melody: [n('C', .5), n('E', .5), n('G', 1), n('C', 2, 5), n('B', 1), n('A', 1), n('G', 2), n('E', 1), n('G', 1), n('A', 1), n('G', 1), n('F', .5), n('E', .5), n('D', 1), n('C', 2)], bass: [n('C', 4, 3), n('G', 4, 3), n('F', 4, 3), n('C', 4, 3)] })
@@ -44,8 +57,8 @@ export class GameAudio {
     this._timer = null;
     this._musicVoices = new Set();
     this._fxVoices = new Set();
-    this._nextMelodyTime = this._nextBassTime = 0;
-    this._noteIndex = this._bassIndex = 0;
+    this._nextMelodyTime = this._nextBassTime = this._nextHarmonyTime = 0;
+    this._noteIndex = this._bassIndex = this._harmonyIndex = 0;
     this._disposed = false;
   }
   async unlock() {
@@ -81,8 +94,8 @@ export class GameAudio {
     if (this.scene === scene) return true;
     this.scene = scene;
     this._cancelMusic();
-    this._noteIndex = this._bassIndex = 0;
-    this._nextMelodyTime = this._nextBassTime = this.context?.currentTime || 0;
+    this._noteIndex = this._bassIndex = this._harmonyIndex = 0;
+    this._nextMelodyTime = this._nextBassTime = this._nextHarmonyTime = this.context?.currentTime || 0;
     if (this._canSchedule()) { this._schedule(); this._startScheduler(); }
     return true;
   }
@@ -105,24 +118,31 @@ export class GameAudio {
   }
   dispose() { this._disposed = true; this._stopScheduler(); this._cancelAllVoices(); try { this._master?.disconnect(); this._musicGain?.disconnect(); this._fxGain?.disconnect(); } catch (_) {} try { Promise.resolve(this.context?.close?.()).catch(() => {}); } catch (_) {} this.context = null; }
   _canSchedule() { return Boolean(this.context && this.enabled && !this.hidden && (!this.context.state || this.context.state === 'running')); }
-  _startScheduler() { if (!this._canSchedule() || this._timer !== null) return; const now = this.context.currentTime || 0; this._nextMelodyTime = Math.max(this._nextMelodyTime, now); this._nextBassTime = Math.max(this._nextBassTime, now); this._schedule(); this._timer = this._setInterval(() => this._schedule(), 25); }
+  _startScheduler() { if (!this._canSchedule() || this._timer !== null) return; const now = this.context.currentTime || 0; this._nextMelodyTime = Math.max(this._nextMelodyTime, now); this._nextBassTime = Math.max(this._nextBassTime, now); this._nextHarmonyTime=Math.max(this._nextHarmonyTime,now);this._schedule(); this._timer = this._setInterval(() => this._schedule(), 25); }
   _stopScheduler() { if (this._timer !== null) { try { this._clearInterval(this._timer); } catch (_) {} this._timer = null; } }
   _schedule() {
     if (!this._canSchedule()) return;
     const now = this.context.currentTime || 0;
     if (this._nextMelodyTime < now) this._nextMelodyTime = now;
     if (this._nextBassTime < now) this._nextBassTime = now;
+    if (this._nextHarmonyTime < now) this._nextHarmonyTime = now;
     const track = MUSIC_TRACKS[this.scene], beat = 60 / track.tempo;
     let guard = 0;
     while (this._nextMelodyTime < now + .15 && guard++ < 32) {
       const note = track.melody[this._noteIndex++ % track.melody.length];
-      this._tone(note.frequency, this._nextMelodyTime, Math.min(note.beats * beat * .88, 1.2), track.waveform, track.waveform === 'sawtooth' ? .045 : .065);
+      this._tone(note.frequency, this._nextMelodyTime, Math.min(note.beats * beat * (track.articulation??.88), 1.2), track.waveform, track.waveform === 'sawtooth' ? .045 : .065);
+      if(track.bellOvertone)this._tone(note.frequency*2,this._nextMelodyTime+.012,.16,'sine',.012);
       this._nextMelodyTime += note.beats * beat;
     }
     while (this._nextBassTime < now + .15 && guard++ < 48) {
       const note = track.bass[this._bassIndex++ % track.bass.length];
-      this._tone(note.frequency, this._nextBassTime, Math.min(note.beats * beat * .86, 1.5), 'triangle', .035);
+      this._tone(note.frequency, this._nextBassTime, Math.min(note.beats * beat * .86, track.harmony?.length ? .34 : 1.5), 'triangle', .035);
       this._nextBassTime += note.beats * beat;
+    }
+    while(track.harmony?.length&&this._nextHarmonyTime<now+.15&&guard++<80){
+      const note=track.harmony[this._harmonyIndex++%track.harmony.length];
+      this._tone(note.frequency,this._nextHarmonyTime,note.beats*beat*.55,'square',.013);
+      this._nextHarmonyTime+=note.beats*beat;
     }
   }
   _tone(frequency, when, duration, type, volume, bus = 'music', options = {}) { try { const oscillator = this.context.createOscillator(); const gain = this.context.createGain(); oscillator.type = type; oscillator.frequency.setValueAtTime?.(frequency, when); oscillator.frequency.value = frequency; if (options.frequencyEnd != null) oscillator.frequency.linearRampToValueAtTime?.(options.frequencyEnd, when + duration * .8); gain.gain.setValueAtTime?.(0, when); gain.gain.linearRampToValueAtTime?.(volume, when + .008); gain.gain.exponentialRampToValueAtTime?.(.0001, when + duration); oscillator.connect(gain); gain.connect(bus === 'fx' ? (this._fxGain || this._master) : (this._musicGain || this._master)); const voices = bus === 'fx' ? this._fxVoices : this._musicVoices; const voice = { oscillator, gain }; voices.add(voice); oscillator.onended = () => { voices.delete(voice); try { oscillator.disconnect(); gain.disconnect(); } catch (_) {} }; oscillator.start(when); oscillator.stop(when + duration + .01); } catch (_) {} }

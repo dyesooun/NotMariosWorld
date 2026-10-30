@@ -29,6 +29,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Host settings are editable in the lobby. Round duration defaults to **10 minutes** and is configurable from **1–60 minutes**.
 - Scoring settings default to **10 points per coin** and **1 point per 32-pixel distance tile**; the current supported range for each weight is 0–1000.
 - The host can separately configure **power duration**, **attack-answer window**, and **defense-answer window** in the lobby, each from **1–60 seconds**. Defaults are **5**, **10**, and **10 seconds**, respectively. The server owns these deadlines; quiz progress and result broadcasts must use the configured values.
+- The host can also configure every power's strength: Sticky Boots speed (10–90% of normal, default 55%), Wrong Way speed while reversed (50–200%, default 100%), Ice Skates speed (110–250%, default 170%), Ice Skates braking grip (2–50% of normal, default 12%), and Ink Cloud darkness (0–95%, default 75%). Lower ice grip preserves more momentum. Latch strength when the turn begins and use it consistently in server physics, client prediction, and rendering.
 - Late arrivals are allowed during a running round. They start World 1 and have only the room's remaining time, with no personal timer extension.
 - Refreshing/rejoining a player during an unfinished round resets their run: location, score, banked points, checkpoints, inventory, and collected coins. It is not a saved-game recovery feature.
 - A disconnected player must stop moving. Rejoining the same disconnected name replaces that entry; players should use distinct names.
@@ -65,9 +66,22 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Use crisp, original pixel sprites. The existing transparent atlas includes avatars, enemies, bombs, coins, spikes, a mushroom/spring, chests, birds, fish, a skull, and a flag. Canvas draws terrain, scenery, and additional effects.
 - Preserve asset provenance in `docs/ASSETS.md`. Do not replace the original art with copyrighted game assets.
 
+### Level 1 forest identity
+
+- The forest uses its own authored course and platform arrangement, separate from the ocean/inferno generator. Keep all players on the same deterministic forest course. This redesign is scoped to Level 1; preserve the other worlds until requested otherwise.
+- Forest platforms have moss-covered soil, hanging roots, varied spans, and optional moving/vanishing root ledges. Keep clear, reachable ground routes and solid checkpoint/reward havens.
+- Align forest terrain by its authored grass-shelf anchor, not the first opaque leaf or sprite bounding box. Critter feet and the visible shelf must meet the same collision height. Use uniformly scaled ground strips with clipped partial tiles; bury plain earth backing below the opaque soil and do not draw the old grass/platform strips over the forest artwork.
+- Use the supplemental transparent raster atlas `public/assets/forest-sprites.png`, with crop rectangles in `public/game/forest-sprites.js`. It supplies two vine shapes, four flower varieties, red/glowing mushrooms, a living-wood treasure chest, glow moth, mushling, acorn beetle, totem, tiki, hanging wooden mask, and root platform.
+- Preserve the forest artwork's approved colors. Render it through a coarse nearest-neighbor pixel grid (2 logical pixels for small sprites, 3 for large scenery), so the high-resolution source does not look out of place. Split terrain sampling at the grass shelf to preserve foot/collision alignment. Do not introduce smoothing or palette changes when adjusting apparent resolution.
+- Place vines as canopy-attached scenery, flowers and mushrooms on supported ground, and carved decorations behind gameplay actors. Vines are decorative; no climbing mechanic has been requested.
+- Add harmless animated glow moths alongside birds. Forest enemies include mushlings and acorn beetles alongside slimes; all retain platform-bound patrol/chase, instant-kill collision, and existing shooter behavior where configured.
+- Forest reward and decoy chest artwork uses the living-wood chest. Reward chests retain the cyan marker, per-chest claims, and normal Attack / Replace rules.
+- Forest music is the original 32-beat **Mosslight Mountain** arrangement: lilting retro bell/flute lead, plucked arpeggios, and short bass notes. Preserve default-on audio, biome effects, and mute/visibility behavior.
+
 ## Death, checkpoints, and scoring
 
 - Enemies, projectiles, spikes, bomb/spike decoys, and falls kill instantly. There is no agreed health/damage system.
+- In every race level, visible and disguised spikes use a centered collision box at **85% of their visual width and height** (7.5% inset on each edge). Preserve the full-sized artwork and original trap coordinates for death reveals. Bombs, enemies, projectiles, and pits keep their existing collision rules.
 - Respawns are unlimited and occur after **3 seconds**.
 - Each race level has checkpoints at **25%, 50%, and 75%**. The exit at 100% completes/banks the level rather than acting as another checkpoint.
 - Each new checkpoint saves **respawn location, current points, coin count, collected coin IDs, farthest distance, and progress**.
@@ -99,7 +113,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 ## Chests and powers
 
 - Not every chest is a decoy. Each race level has **three real power chests** per player; other chests can hide lethal surprises.
-- The real chests are at **x = 3880, 7380, and 10880**, just after the three checkpoints, with cyan sparkles. Keep rewards distinguishable from decoys, with stable IDs, solid support, and clear access.
+- Forest reward chests are at **x = 3940, 7460, and 10940**; ocean/inferno reward chests remain at **3880, 7380, and 10880**. All sit after the three checkpoints, with cyan sparkles. Keep rewards distinguishable from decoys, with stable IDs, solid support, and clear access.
 - Each chest grants one random power, allowing **up to three uses per level**. Players can hold or reserve **only one power at a time across levels**, without stacking inventory.
 - Reaching another chest while holding a power shows an **in-world Attack / Replace choice**. Attack queues the current item and leaves the new chest unopened until the slot is free. Replace discards the current item and claims the new chest; replacement does not grant an extra inventory slot.
 - Cache an unopened chest's offered reward for that run so walking away and returning cannot reroll it. Validate each choice against the actual nearby chest, offer, held-item identity, current run, liveness, and round deadline. A queued item cannot be replaced.
@@ -110,11 +124,11 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 | --- | --- | --- |
 | Sticky Boots | Slower movement | Host setting; default 5 seconds |
 | Wrong Way | Reversed movement controls | Host setting; default 5 seconds |
-| Ice Skates | Slippery movement | Host setting; default 5 seconds |
+| Ice Skates | Faster slippery movement (default 170% speed, 12% braking grip) | Host setting; default 5 seconds |
 | Ink Cloud | Dark fog over the affected player's view | Host setting; default 5 seconds |
 
 - Successful attacks **always challenge every eligible opponent**, excluding the caster. Correct defenders block individually; wrong or unanswered defenses are affected. Attack-quiz failure is the explicit exception that applies the effect to the caster alone. Random-single-opponent scope is no longer used.
-- Ink Cloud is **75% darker than its previous fog appearance**: reduce the fog scene's remaining brightness by 75% before drawing readable HUDs, broadcasts, and quiz controls.
+- Ink Cloud defaults to **75% darker than its original fog appearance**, with host-configurable darkness. Apply the additional darkening before drawing readable HUDs, broadcasts, and quiz controls.
 - Opponents can be in different levels. Eligible targets are connected, spawned players who have not finished the course; the host is never a target.
 - If no opponent is available, keep the held power rather than silently spending it.
 - Place the inventory/use widget in the **upper left of the game viewport**. It must not cover the main play area, quiz controls, broadcasts, or final countdown.
@@ -212,6 +226,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 | `public/game/engine.js` | Shared movement, collisions, deaths, checkpoint state, scoring, enemy simulation |
 | `public/game/levels.js` | Deterministic layouts, checkpoints, platforms, hazards, critter placement, power chest |
 | `public/game/renderer.js` | Pixel scene, sprite atlas, wildlife, animation, effects |
+| `public/game/forest-sprites.js` | Supplemental woodland atlas, crop/alpha trim, sprite drawing |
 | `public/game/projectiles.js` | Shared flame speed, size, lifetime, firing interval |
 | `public/game/powers.js` | Inventory, definitions, reservations, effect metadata |
 | `public/game/power-ui.js` | Upper-left power inventory/effect HUD |
@@ -238,6 +253,8 @@ This file records the agreed requirements for the company's Game Day Thursday ga
   - Attack correctness/failure/timeout, individual defenses, mixed results, no-inventory defenders, committed queued attackers, one-attempt authentication, run refresh isolation, and private answer keys.
   - Quiz question and input appearing together when animation is paused, with tab/fullscreen recovery, preserved typing, correct focus, and rejected-submit recovery.
   - Platform-bound patrol/chase, supported critter positions, flame size/collision, speed, and reduced firing frequency.
+  - Distinct authored forest geometry, safe reward/checkpoint havens, complete forest sprite crops, grounded scenery, two new enemy species, and ambient moths.
+  - Configured power strengths, increased slippery speed/coasting, latched effect values shared by server/client, and custom fog darkness.
   - Final 10 seconds remaining playable, current points included at zero, frozen ranks, all podium positions, and reconnect/spectator stability.
   - Optional/default icebreakers, named live votes, 15-second closure, manual skip, and in-world presentation.
   - Default-on music/effects, biome variation, mute, hidden-tab behavior, and no duplicated playback.

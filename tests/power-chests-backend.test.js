@@ -11,7 +11,7 @@ const player = (id, level = 1) => ({ id, runId: `${id}-run`, connected: true, sp
 
 test('each race level exposes three stable, clear power chests', () => {
   for (const level of LEVELS.slice(1)) {
-    assert.deepEqual(level.powerChests.map(chest => chest.x), [3880, 7380, 10880]);
+    assert.deepEqual(level.powerChests.map(chest => chest.x), level.theme==='forest'?[3940,7460,10940]:[3880,7380,10880]);
     assert.equal(new Set(level.powerChests.map(chest => chest.id)).size, 3);
     for (const chest of level.powerChests) assert.equal(level.hazards.some(h => h.x < chest.x + 150 && h.x + h.w > chest.x - 150), false);
   }
@@ -91,7 +91,7 @@ test('WebSocket replace consumes the offered chest and preserves configured duel
 test('WebSocket configured deadlines resolve mixed defenses and keep the full effect banner', async t => {
   let clock = 12000000;
   const server = createGameServer({ port: 0, host: '127.0.0.1', tickMs: 2, now: () => clock }); await server.listen(); t.after(() => server.close());
-  const url = `ws://127.0.0.1:${server.httpServer.address().port}`, host = await ws(url); host.send(JSON.stringify({ type: 'create', settings: { powerDurationSeconds: 6, attackWindowSeconds: 2, defendWindowSeconds: 3, coinPoints: 9999 } }));
+  const url = `ws://127.0.0.1:${server.httpServer.address().port}`, host = await ws(url); host.send(JSON.stringify({ type: 'create', settings: { powerDurationSeconds: 6, attackWindowSeconds: 2, defendWindowSeconds: 3, slowSpeedPercent:35, coinPoints: 9999 } }));
   const created = await message(host, m => m.type === 'created'), sockets = [], ids = [];
   for (const name of ['Attacker', 'Blocked', 'Hit']) { const client = await ws(url); client.send(JSON.stringify({ type: 'join', code: created.code, name })); const joined = await message(client, m => m.type === 'joined'); client.send(JSON.stringify({ type: 'spawn' })); sockets.push(client); ids.push(joined.id); }
   host.send(JSON.stringify({ type: 'start' })); await message(host, m => m.type === 'state' && m.room.status === 'running');
@@ -106,6 +106,9 @@ test('WebSocket configured deadlines resolve mixed defenses and keep the full ef
   await message(sockets[1],m=>m.type==='powerAnswerResult');
   clock += 3000; await new Promise(resolve => setTimeout(resolve, 20)); await message(sockets[2], m => m.type === 'state' && m.room.powerDuel?.phase === 'effect');
   assert.equal(duel.outcome, 'success'); assert.deepEqual(duel.affectedIds, [ids[2]]); assert.equal(room.announcement.durationMs, 6000); assert.equal(room.announcement.endsAt, clock + 6000);
+  assert.deepEqual(room.players.get(ids[2]).effects.slow.strength,{speedPercent:35});
+  const applied=await message(sockets[0],m=>m.type==='state'&&m.room.powerDuel?.phase==='effect');
+  assert.equal(applied.room.players.find(p=>p.id===ids[2]).effects.slow.strength.speedPercent,35);
   for (const client of sockets) client.close(); host.close();
 });
 
@@ -114,9 +117,10 @@ test('WebSocket room settings default and clamp power windows to one through six
   const url = `ws://127.0.0.1:${server.httpServer.address().port}`;
   const defaults = await ws(url); defaults.send(JSON.stringify({ type: 'create' })); const made = await message(defaults, m => m.type === 'created');
   assert.deepEqual(Object.fromEntries(['powerDurationSeconds', 'attackWindowSeconds', 'defendWindowSeconds'].map(key => [key, server.rooms.get(made.code).settings[key]])), { powerDurationSeconds: 5, attackWindowSeconds: 10, defendWindowSeconds: 10 });
-  defaults.send(JSON.stringify({ type: 'settings', settings: { powerDurationSeconds: 0, attackWindowSeconds: 100, defendWindowSeconds: 'bad' } }));
+  defaults.send(JSON.stringify({ type: 'settings', settings: { powerDurationSeconds: 0, attackWindowSeconds: 100, defendWindowSeconds: 'bad', slowSpeedPercent:0,reverseSpeedPercent:400,slipperySpeedPercent:400,slipperyGripPercent:0,inkDarknessPercent:100 } }));
   await message(defaults, m => m.type === 'state' && m.room.settings.powerDurationSeconds === 1);
   assert.equal(server.rooms.get(made.code).settings.powerDurationSeconds, 1); assert.equal(server.rooms.get(made.code).settings.attackWindowSeconds, 60); assert.equal(server.rooms.get(made.code).settings.defendWindowSeconds, 1);
+  const strengths=server.rooms.get(made.code).settings;assert.equal(strengths.slowSpeedPercent,10);assert.equal(strengths.reverseSpeedPercent,200);assert.equal(strengths.slipperySpeedPercent,250);assert.equal(strengths.slipperyGripPercent,2);assert.equal(strengths.inkDarknessPercent,95);
   defaults.close();
 });
 

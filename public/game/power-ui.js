@@ -12,7 +12,8 @@ export function powerUIModel(player, { now = Date.now(), running = true, isHost 
   const visible = !!(running && player?.spawned && state?.level > 0 && !state.finished);
   const queued = !!slot?.queued, testing=!!slot?.testing, held = slot?.claimed && (!slot.used || queued || testing);
   const canUse = !!(visible && held && !queued && !testing && (!player.powerQuiz||player.powerQuiz.answered) && !state.respawnRemaining && player.connected && !isHost);
-  return { visible, held, queued, testing, queuePosition:slot?.queuePosition??null, canUse, fog: !!activePowerEffects(player, now).fog,
+  const active = activePowerEffects(player, now), darkness = Math.max(0, Math.min(.95, Number(active.fog?.strength?.darknessPercent ?? 75) / 100));
+  return { visible, held, queued, testing, queuePosition:slot?.queuePosition??null, canUse, fog: !!active.fog, darkness,
     heading: testing ? 'POWER QUIZ' : queued ? `${slot.power.name} / QUEUED` : held ? slot.power.name : slot?.used ? 'POWER USED / FIND ANOTHER' : 'FIND A POWER CHEST',
     detail: testing ? 'Answer in the world / one attempt' : queued ? `Waiting / #${slot.queuePosition??'?'} in room queue` : held ? 'Everyone else / quiz to attack' : `Chests opened: ${player?.powerChestClaims?.length||0}/3 / one slot`,
     button: { x: 232, y: 38, w: 74, h: 34 },
@@ -30,7 +31,7 @@ export function renderPowerUI(canvas, player, options = {}) {
       ctx.fillStyle = i % 2 ? '#c1c2df2e' : '#667dba47'; ctx.fillRect(x, y, 150, 48);
     }
     // Reduce the existing ink scene's remaining brightness by 75%, keeping HUDs readable.
-    ctx.fillStyle = `rgba(0,0,0,${INK_EXTRA_DARKNESS})`; ctx.fillRect(0, 0, 960, 540);
+    ctx.fillStyle = `rgba(0,0,0,${model.darkness})`; ctx.fillRect(0, 0, 960, 540);
   }
   const text = (value, x, y, size = 11, color = '#e9f4d5') => { ctx.fillStyle = color; ctx.font = `${size}px monospace`; ctx.fillText(value, x, y); };
   const r = POWER_HUD_RECT;

@@ -1,12 +1,13 @@
 import { LEVELS, platformAt, enemyAt } from './levels.js';
 import { PROJECTILE_RULES } from './projectiles.js';
+import { FOREST_SPRITES, drawForestSprite, drawForestPlatform, loadForestAtlas } from './forest-sprites.js';
 
 const W=960,H=540;
 const rect=(c,color,x,y,w,h)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
 const mod=(n,m)=>((n%m)+m)%m;
 const palette={
   lobby:{sky:['#95d9d8','#a6e2d8','#bdebd5'],sun:'#f8edb5',far:'#73b7ad',mid:'#579e87',leaf:'#397d5a',leaf2:'#4b9660',bright:'#72ad63',trunk:'#715b43',earth:'#735139',earth2:'#8d6443',top:'#83b74b',edge:'#4f813b'},
-  forest:{sky:['#99d6d9','#b0e0d7','#c7ead0'],sun:'#f5edb3',far:'#7bb5a5',mid:'#549984',leaf:'#397b59',leaf2:'#50935e',bright:'#82b25e',trunk:'#715b43',earth:'#735139',earth2:'#8d6443',top:'#83b74b',edge:'#4f813b'},
+  forest:{sky:['#9ecbd7','#b3dcd8','#d0e8cf'],sun:'#f5edb3',far:'#76aaa8',mid:'#4d8f87',leaf:'#285c54',leaf2:'#408758',bright:'#6fa95a',trunk:'#69513d',earth:'#5e4937',earth2:'#806142',top:'#8acb58',edge:'#4b863e'},
   ocean:{sky:['#82c7df','#a3e0e3','#d0eee0'],sun:'#fff1bd',far:'#64a8bd',mid:'#3d8d9e',leaf:'#3c9a8c',leaf2:'#68bca2',bright:'#a2d1a4',trunk:'#b39768',earth:'#a28a68',earth2:'#b9a276',top:'#e3cc91',edge:'#c2a773'},
   hell:{sky:['#28203c','#3b2947','#623848'],sun:'#e97567',far:'#5c3b59',mid:'#643c4c',leaf:'#3b2d45',leaf2:'#483047',bright:'#8a474f',trunk:'#543848',earth:'#453448',earth2:'#594052',top:'#9a5752',edge:'#6e3e48'},
 };
@@ -37,6 +38,7 @@ function tinted(name,color){
   cache.set(key,c);return c;
 }
 export function drawSprite(ctx,name,x,y,width=32,height=width,{color=null,flip=false,alpha=1}={}){
+  if (Object.hasOwn(FOREST_SPRITES,name)) return drawForestSprite(ctx,name,x,y,width,height,{flip,alpha});
   loadAtlas();if(!cells?.[name])return false;
   const s=cells[name],source=color?tinted(name,color):atlas,scale=Math.min(width/s.w,height/s.h),dw=Math.round(s.w*scale),dh=Math.round(s.h*scale),dx=Math.round(x+(width-dw)/2),dy=Math.round(y+height-dh);
   ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha=alpha;
@@ -78,19 +80,39 @@ function background(ctx,p,theme,camera,time){
     for(let i=0;i<6;i++){ctx.fillStyle='#f4f5bf0b';ctx.beginPath();const x=i*210-mod(camera*.35,210);ctx.moveTo(x,20);ctx.lineTo(x+25,20);ctx.lineTo(x+160,500);ctx.lineTo(x+90,500);ctx.fill();}
   }
   for(let i=0;i<4;i++){const x=mod(i*289-camera*.08+time*(17+i*2),1180)-100,y=125+(i%3)*44+Math.sin(time*2+i)*8;drawSprite(ctx,'bird',x,y,26,20);if(Math.sin(time*8+i)>.3)rect(ctx,'#d4e6da',x+7,y+7,10,2);}
+  if(theme==='forest'){
+    for(let i=-1;i<8;i++){const x=i*158-mod(camera*.21,158);rect(ctx,'#285c54',x,-18,152,48);rect(ctx,'#34764f',x+22,20,108,16);rect(ctx,'#408758',x+45,31,48,10);}
+    for(let i=0;i<6;i++){const x=mod(i*211-camera*.18+time*(11+i),1180)-100,y=166+i%3*37+Math.sin(time*1.8+i)*18;const wing=22+Math.round(Math.sin(time*7+i)*4);drawSprite(ctx,'glow_moth',x,y,wing,23,{alpha:.9,flip:i%2===0});}
+  }
 }
 function platform(ctx,p,theme,pal,time){
+  if(theme==='forest'){
+    ctx.save();if(p.kind==='vanish')ctx.globalAlpha*=.55+Math.sin(time*10)*.3;
+    if(!drawForestPlatform(ctx,p,{earth:pal.earth})){rect(ctx,pal.earth,p.x,p.y,p.w,p.kind==='ground'?Math.max(p.h,90):p.h);}
+    if(p.kind==='moving'||p.kind==='vanish')for(let i=0;i<3;i++)rect(ctx,p.kind==='moving'?'#a1edce':'#d6bdff',p.x+p.w*(i+1)/4,p.y+9,3,3);
+    ctx.restore();return;
+  }
   if(p.kind==='ground'){
     rect(ctx,pal.earth,p.x,p.y,p.w,Math.max(p.h,90));rect(ctx,pal.earth2,p.x,p.y+10,p.w,12);rect(ctx,pal.edge,p.x,p.y+6,p.w,7);rect(ctx,pal.top,p.x,p.y,p.w,7);
     for(let x=Math.ceil(p.x/32)*32;x<p.x+p.w;x+=32){const n=mod(x*7,11);rect(ctx,pal.edge,x+mod(n,7),p.y+5,8,9);rect(ctx,'#2a252d30',x+10,p.y+30+mod(n,18),8,4);rect(ctx,'#efdaab18',x+22,p.y+25+mod(n*3,35),4,4);if(theme!=='hell'){rect(ctx,pal.top,x+8,p.y-4,3,6);rect(ctx,pal.top,x+11,p.y-7,2,6);if(mod(x,96)===0){rect(ctx,theme==='ocean'?'#fff4b4':'#e6d79b',x+18,p.y-8,4,4);rect(ctx,'#69974c',x+19,p.y-4,2,5);}}}
     return;
   }
   const vanish=p.kind==='vanish',moving=p.kind==='moving';ctx.save();if(vanish)ctx.globalAlpha=.55+Math.sin(time*10)*.3;
-  const top=moving?'#93d4b1':vanish?'#c1afe8':theme==='hell'?'#b27068':theme==='ocean'?'#e9d6a7':'#c7a274',base=moving?'#407c76':vanish?'#766493':theme==='hell'?'#624150':theme==='ocean'?'#a28b69':'#876247';
+  const top=moving?'#93d4b1':vanish?'#c1afe8':theme==='hell'?'#b27068':theme==='ocean'?'#e9d6a7':'#8eaa68',base=moving?'#407c76':vanish?'#766493':theme==='hell'?'#624150':theme==='ocean'?'#a28b69':'#614a35';
   rect(ctx,'#152c2e55',p.x+3,p.y+4,p.w,p.h);rect(ctx,base,p.x,p.y,p.w,p.h);rect(ctx,top,p.x,p.y,p.w,5);rect(ctx,'#f9efd83b',p.x+2,p.y+2,p.w-4,2);
   for(let x=p.x+18;x<p.x+p.w;x+=30){rect(ctx,'#23333255',x,p.y+6,2,p.h-6);rect(ctx,top,x-6,p.y+9,2,2);}
   if(moving){rect(ctx,'#b1edd5',p.x+5,p.y+8,4,4);rect(ctx,'#b1edd5',p.x+p.w-9,p.y+8,4,4);}
   if(vanish){ctx.font='bold 10px monospace';ctx.fillStyle='#ede8ff';ctx.fillText('· · ·',p.x+p.w/2-15,p.y+14);}ctx.restore();
+}
+function forestDecor(ctx,camera,time,level){
+  if(level.theme!=='forest')return;
+  loadForestAtlas();
+  const visible=item=>item.x+item.w>camera-20&&item.x<camera+W+20;
+  for(const vine of level.decorations.vines.filter(visible))drawSprite(ctx,vine.kind,vine.x+Math.sin(time*.7+vine.x)*2,vine.y,vine.w,vine.h,{alpha:.82});
+  for(const item of [...level.decorations.flora,...level.decorations.carvings].filter(visible)){
+    if(item.kind==='wood_mask'){const height=item.y-item.h+16,width=height*.6;drawSprite(ctx,'vine_hanging',item.x+item.w/2-width/2,0,width,height,{alpha:.8});}
+    drawSprite(ctx,item.kind,item.x,item.y-item.h,item.w,item.h);
+  }
 }
 function sign(ctx,x,y,title,lines){rect(ctx,'#66513d',x+47,y+62,9,40);rect(ctx,'#594631',x-3,y-3,212,72);rect(ctx,'#f0dfad',x,y,206,66);rect(ctx,'#e3cb91',x+4,y+59,198,3);ctx.fillStyle='#465842';ctx.font='bold 12px monospace';ctx.fillText(title,x+14,y+20);ctx.font='10px monospace';lines.forEach((line,i)=>ctx.fillText(line,x+14,y+38+i*13));}
 function checkpointFlag(ctx,checkpoint,active,time,percentage){
@@ -127,8 +149,9 @@ export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstr
   const ctx=canvasOrContext.canvas?canvasOrContext:canvasOrContext.getContext('2d'),canvas=ctx.canvas,level=LEVELS[state.level]||LEVELS[0],theme=level.theme,p=palette[theme]||palette.forest,camera=Math.round(Math.max(0,Math.min(Math.max(0,level.width-W),state.x-330))),worldTime=state._levelTime??time;
   ctx.save();ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);ctx.imageSmoothingEnabled=false;background(ctx,p,theme,camera,time);ctx.save();ctx.translate(-camera,0);
   for(const base of level.platforms){const plat=platformAt(base,worldTime);if(plat.x+plat.w<camera-30||plat.x>camera+W+30||!plat.visible)continue;platform(ctx,plat,theme,p,worldTime);}
+  forestDecor(ctx,camera,time,level);
   for(const h of level.hazards){if(h.x+h.w<camera-20||h.x>camera+W+20||h.kind==='pit')continue;const revealed=state.reveal&&state.respawnRemaining>0&&Math.abs(state.reveal.x-h.x)<5;
-    if(h.kind==='decoy'&&!revealed){drawSprite(ctx,h.disguise||'chest',h.x,h.y-9,h.w,35);if(Math.sin(time*2)>0)rect(ctx,'#fff2a6',h.x+h.w/2,h.y-19,3,3);}
+    if(h.kind==='decoy'&&!revealed){drawSprite(ctx,theme==='forest'&&h.disguise==='chest'?'forest_chest':(h.disguise||'chest'),h.x,h.y-9,h.w,35);if(Math.sin(time*2)>0)rect(ctx,'#fff2a6',h.x+h.w/2,h.y-19,3,3);}
     else{const actual=revealed?(state.reveal.actualKind||'spikes'):'spikes';if(actual==='bomb')drawSprite(ctx,'bomb',h.x,h.y-8,h.w,36);else drawSprite(ctx,'spikes',h.x,h.y,h.w,h.h);}
   }
   for(const c of level.coins){if(c.x<camera-20||c.x>camera+W+20||state.collected?.includes(c.id))continue;const bob=Math.sin(time*3+c.x)*3;drawSprite(ctx,'coin',c.x-9,c.y-9+bob,18,18);if(Math.sin(time*3+c.x)>.85)rect(ctx,'#fff8c6',c.x+10,c.y-9+bob,2,2);}
@@ -136,7 +159,7 @@ export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstr
   for(const e of enemies){if(e.x+e.w<camera-20||e.x>camera+W+20||e.y>700)continue;drawSprite(ctx,e.kind,e.x,e.y,e.w,e.h,{flip:e.facing<0});if(e.shooter&&e.cooldown<.35)rect(ctx,'#ffd166',e.x+e.w/2-2,e.y-6,4,4);}
   for(const shot of (state.projectiles||[])){if(shot.x<camera-20||shot.x>camera+W+20)continue;fireball(ctx,shot,time);}
   const claimed = new Set(powerChestClaims);
-  for (const chest of (level.powerChests || [])) if(!claimed.has(chest.id)&&chest.x>camera-60&&chest.x<camera+W+60){drawSprite(ctx,'chest',chest.x,chest.y-chest.h,chest.w,chest.h);rect(ctx,'#b7f5ff',chest.x+chest.w/2-2,chest.y-chest.h-8,4,4);rect(ctx,'#e8fbff',chest.x+chest.w/2-1,chest.y-chest.h-12,2,3);}
+  for (const chest of (level.powerChests || [])) if(!claimed.has(chest.id)&&chest.x>camera-60&&chest.x<camera+W+60){drawSprite(ctx,theme==='forest'?'forest_chest':'chest',chest.x,chest.y-chest.h,chest.w,chest.h);rect(ctx,'#b7f5ff',chest.x+chest.w/2-2,chest.y-chest.h-8,4,4);rect(ctx,'#e8fbff',chest.x+chest.w/2-1,chest.y-chest.h-12,2,3);}
   for(const checkpoint of level.checkpoints||[])if(checkpoint.x>camera-70&&checkpoint.x<camera+W+70)checkpointFlag(ctx,checkpoint,!!state.checkpoint&&state.checkpoint.x>=checkpoint.x,time,Math.round(checkpoint.x/level.endX*100));
   if(state.level>0&&level.endX<camera+W+100){rect(ctx,'#172f2855',level.endX-12,495,65,5);rect(ctx,'#e9e7b9',level.endX+17,320,5,180);drawSprite(ctx,'flag',level.endX+14,321,70,95);rect(ctx,'#20362b',level.endX-28,460,95,24);ctx.fillStyle='#d1f59b';ctx.font='bold 10px monospace';ctx.fillText('ESCAPE →',level.endX-18,476);}
   if(showInstructions&&state.level===0){sign(ctx,160,309,'A LITTLE PRACTICE',['A / D or arrows: move','Space / W / Up: jump']);sign(ctx,695,208,'THE IMPORTANT BITS',['Clear world: bank points','Every 25%: checkpoint']);sign(ctx,1110,309,'WAITING FOR YOUR HOST',['Same levels. Separate runs.','Collect coins. Keep moving!']);}

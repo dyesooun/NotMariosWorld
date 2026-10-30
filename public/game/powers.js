@@ -6,6 +6,15 @@ export const POWER_DEFINITIONS = Object.freeze([
   Object.freeze({ type: 'slippery', name: 'Ice Skates', durationMs: 5000 }),
   Object.freeze({ type: 'fog', name: 'Ink Cloud', durationMs: 5000 })
 ]);
+export const POWER_STRENGTH_DEFAULTS = Object.freeze({ slowSpeedPercent: 55, reverseSpeedPercent: 100, slipperySpeedPercent: 170, slipperyGripPercent: 12, inkDarknessPercent: 75 });
+export function powerStrength(settings = {}, type) {
+  const value = (name, fallback, min, max) => Math.max(min, Math.min(max, Number.isFinite(Number(settings[name])) ? Number(settings[name]) : fallback));
+  if (type === 'slow') return { speedPercent: value('slowSpeedPercent', 55, 10, 90) };
+  if (type === 'reverse') return { speedPercent: value('reverseSpeedPercent', 100, 50, 200) };
+  if (type === 'slippery') return { speedPercent: value('slipperySpeedPercent', 170, 110, 250), gripPercent: value('slipperyGripPercent', 12, 2, 50) };
+  if (type === 'fog') return { darknessPercent: value('inkDarknessPercent', 75, 0, 95) };
+  return {};
+}
 
 const slotFor = (player, level) => {
   player.powerSlots ||= {};
@@ -85,16 +94,17 @@ export function activatePower(room, caster, { now = Date.now(), random = Math.ra
   const others = eligibleTargets(room, caster);
   if (!others.length) return { ok: false, code: 'NO_TARGET' };
   const targets = others;
+  const power={...slot.power,target:'all',durationMs:room.settings?.powerDurationSeconds!=null?room.settings.powerDurationSeconds*1000:slot.power.durationMs,strength:powerStrength(room.settings,slot.power.type)};
   caster.effects ||= {};
   for (const target of targets) {
     target.effects ||= {};
-    target.effects[slot.power.type] = { type: slot.power.type, by: caster.id, endsAt: now + slot.power.durationMs, id: `${caster.id}-${slot.power.type}-${now}` };
+    target.effects[power.type] = { type: power.type, strength:{...power.strength}, by: caster.id, endsAt: now + power.durationMs, id: `${caster.id}-${power.type}-${now}` };
   }
   slot.used = true;
   slot.reserved = null;
   if (caster.power?.itemId === slot.itemId) caster.power = { ...caster.power, level, claimed: true, used: true, queued: false, queuePosition: null, power: { ...slot.power } };
-  room.activePower ||= { id: reservation?.id || `${caster.id}-${now}`, casterId: caster.id, casterName: caster.name, level, power: { ...slot.power }, startedAt: now, endsAt: now + slot.power.durationMs };
-  return { ok: true, power: { ...slot.power }, targets };
+  room.activePower ||= { id: reservation?.id || `${caster.id}-${now}`, casterId: caster.id, casterName: caster.name, level, power, startedAt: now, endsAt: now + power.durationMs };
+  return { ok: true, power, targets };
 }
 
 export function releasePowerReservation(entry) {

@@ -52,9 +52,63 @@ function makeLevel(theme, seed, accent, flavor) {
   const powerChests = chestXs.map((x, index) => ({ id: `${theme}-power-chest-${index + 1}`, x, y: 500, w: 40, h: 34, index }));
   return { id: theme, seed, theme, accent, flavor, width: 14200, height: 600, endX: 14000, platforms, coins, hazards: safeHazards, enemies: safeEnemies, checkpoints, powerChests };
 }
+// Level 1 is authored separately so its forest landmarks, route rhythm, and
+// critter roster stay distinct from the ocean/inferno procedural courses.
+function makeForestLevel() {
+  const theme='forest', platforms=[], hazards=[], enemies=[], coins=[];
+  // A hand-authored route: groves, root terraces, and uninterrupted havens.
+  // Ocean/inferno continue to use their existing generator above.
+  const ground=[
+    [0,680],[760,380],[1240,460],[1800,360],[2260,490],[2870,330],[3300,900],
+    [4300,360],[4760,440],[5320,360],[5780,460],[6340,360],[6800,900],
+    [7800,380],[8280,470],[8870,340],[9310,420],[9830,370],[10300,900],
+    [11300,430],[11830,350],[12300,460],[12860,380],[13340,400],[13820,380]
+  ];
+  for(const [x,w] of ground)platforms.push(platform(x,500,w,100,'ground'));
+  const ledges=[
+    [830,410,180],[1310,415,210],[1840,400,185],[2390,410,240],[2920,405,160],
+    [4420,420,180],[4850,400,200],[5410,410,190],[5880,400,225],[6450,420,170],
+    [7870,415,180],[8370,400,210],[8920,420,185],[9440,405,190],[9920,420,175],
+    [11410,400,220],[11900,420,180],[12410,410,210],[13000,400,180],[13400,410,220]
+  ];
+  for(const [x,y,w] of ledges)platforms.push(platform(x,y,w,18,'wood'));
+  platforms.push(platform(5060,330,150,18,'moving',{axis:'x',distance:55,speed:1.1,phase:1.2}));
+  platforms.push(platform(9600,335,145,18,'vanish',{cycle:3.4,phase:.7}));
+  platforms.push(platform(12600,335,160,18,'moving',{axis:'y',distance:32,speed:1.3,phase:2}));
+  const checkpoints=[3500,7000,10500].map((x,i)=>({id:theme+'-checkpoint-'+(i+1),x,y:500,label:((i+1)*25)+'% haven'}));
+  const powerChests=[3940,7460,10940].map((x,index)=>({id:theme+'-power-chest-'+(index+1),x,y:500,w:40,h:34,index}));
+  const protectedXs=[...checkpoints,...powerChests].map(item=>item.x);
+  const hazardSites=[[1040,'spikes'],[1550,'decoy','chest'],[2020,'decoy','spring'],[2530,'spikes'],[4530,'decoy','spring'],[5030,'spikes'],[5540,'decoy','chest'],[6070,'spikes'],[8010,'spikes'],[8530,'decoy','spring'],[9070,'decoy','chest'],[9550,'spikes'],[10000,'decoy','spring'],[11540,'spikes'],[12030,'decoy','chest'],[12550,'spikes'],[13070,'decoy','spring'],[13500,'spikes']];
+  for(const [i,[x,kind,disguise]] of hazardSites.entries()){
+    if(protectedXs.some(s=>x<s+150&&x+58>s-150))continue;
+    const actualKind=disguise==='chest'?'bomb':'spikes';
+    hazards.push({id:theme+'-hazard-'+i,x,y:474,w:58,h:26,kind,disguise,actualKind,label:kind==='decoy'?(actualKind==='bomb'?'That mossy chest was hiding a bomb!':'That cheerful mushroom was hiding spikes!'):'The forest had a point to make.'});
+  }
+  const roster=[[830,'mushling'],[1240,'acorn_beetle'],[2390,'slime'],[2870,'mushling'],[4300,'acorn_beetle',true],[5410,'mushling'],[5780,'slime'],[7870,'acorn_beetle',true],[8870,'mushling'],[9440,'slime'],[11300,'acorn_beetle',true],[12410,'mushling'],[12860,'slime'],[13400,'acorn_beetle']];
+  for(const [i,[platformX,kind,shooter=false]] of roster.entries()){
+    const platformIndex=platforms.findIndex(p=>p.x===platformX),p=platforms[platformIndex];
+    enemies.push({id:theme+'-enemy-'+i,x:p.x+Math.min(70,p.w-48),y:p.y,w:32,h:kind==='mushling'?30:26,kind,speed:38+i%3*7,min:p.x+8,max:p.x+p.w-40,platformIndex,shooter});
+  }
+  let coinId=0;
+  for(const p of platforms.filter(p=>p.kind!=='ground'))for(const offset of [p.w*.25,p.w*.75])coins.push(coin(theme+'-coin-'+coinId++,p.x+offset,p.y-32));
+  for(const [x,w] of ground)coins.push(coin(theme+'-coin-'+coinId++,x+w/2,468));
+  const flowerKinds=['flower_pink','flower_bluebell','flower_gold','flower_daisy'];
+  const flora=[];
+  ground.forEach(([x,w],i)=>{
+    for(const [offset,kind] of [[24,flowerKinds[i%4]],[w-62,flowerKinds[(i+2)%4]],[w*.65,i%2?'mushrooms_red':'mushrooms_glow']]){
+      const px=x+offset;
+      if(hazards.some(h=>px<h.x+h.w+22&&px+36>h.x-22)||protectedXs.some(s=>Math.abs(s-px)<60))continue;
+      flora.push({kind,x:px,y:500,w:34,h:kind.startsWith('mushrooms')?34:38});
+    }
+  });
+  const carvings=[{kind:'tiki',x:390,y:500,w:54,h:76},{kind:'forest_totem',x:3050,y:500,w:58,h:124},{kind:'wood_mask',x:4450,y:225,w:42,h:70},{kind:'tiki',x:6410,y:500,w:54,h:76},{kind:'forest_totem',x:9010,y:500,w:58,h:124},{kind:'wood_mask',x:9950,y:230,w:42,h:70},{kind:'tiki',x:12910,y:500,w:54,h:76},{kind:'forest_totem',x:13910,y:500,w:58,h:124}];
+  const vines=Array.from({length:24},(_,i)=>{const hanging=i%4!==0,h=hanging?220+i%4*27:135;return {kind:hanging?'vine_hanging':'vine_climbing',x:230+i*590+(i%3)*47,y:-14,w:Math.round(h*(hanging ? .6 : 1)),h};});
+  return {id:theme,seed:19417,theme,accent:'#69b84f',flavor:'Flower groves, ancient carvings, and mischievous woodland critters.',width:14200,height:600,endX:14000,platforms,coins,hazards,enemies,checkpoints,powerChests,decorations:{landmarks:['broad-grove','clear-haven','root-terraces','tall-grove','final-mixed-woodland'],flora,carvings,vines,ambientCreature:'glow_moth'}};
+}
+
 export const LEVELS = [
   { id: 'L0', theme: 'lobby', width: 1400, height: 600, endX: 999999, platforms: [platform(0, 500, 1400, 100, 'ground'), platform(320, 410, 180), platform(650, 350, 180), platform(980, 410, 180)], coins: [], hazards: [], enemies: [], checkpoints: [], sign: 'WELCOME, EXPLORER!  A/D or arrows move · Space jumps · Press START RUN' },
-  makeLevel('forest', 19417, '#69b84f', 'A leafy path with suspiciously friendly grass.'),
+  makeForestLevel(),
   makeLevel('ocean', 19417, '#48b8d1', 'A tidepool trail where crabs have strong opinions.'),
   makeLevel('hell', 19417, '#e35b53', 'A warm little lava walk. Nothing to worry about. Probably.')
 ];

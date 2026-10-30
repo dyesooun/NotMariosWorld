@@ -65,6 +65,17 @@ test('each theme has a different melody and both parts loop on the same bar', ()
   }
 });
 
+test('the forest arrangement loops its melody, plucked harmony, and bass together',async()=>{
+  const track=MUSIC_TRACKS.forest,total=part=>part.reduce((sum,note)=>sum+note.beats,0);
+  assert.equal(total(track.melody),32);assert.equal(total(track.harmony),32);assert.equal(total(track.bass),32);
+  assert.ok(track.bellOvertone);assert.ok([...track.melody,...track.harmony,...track.bass].every(note=>Number.isFinite(note.frequency)&&note.frequency>0));
+  const timer=timers(),audio=new GameAudio({AudioContext:FakeContext,setInterval:timer.setInterval,clearInterval:timer.clearInterval});
+  await audio.unlock();audio.setScene('forest');
+  for(let i=1;i<=1600;i++){audio.context.advanceTo(i*.025);timer.tick();}
+  assert.ok(audio._harmonyIndex>track.harmony.length);assert.ok(audio._noteIndex>track.melody.length);
+  audio.setHidden(true);assert.equal(timer.size,0);assert.equal(audio._musicVoices.size,0);audio.dispose();
+});
+
 test('biome palettes contain every core cue and differ in musical character', () => {
   const biomes = ['forest', 'ocean', 'hell'];
   const events = ['coin', 'death', 'clear', 'start', 'jump', 'finish', 'respawn', 'checkpoint', 'broadcast', 'countdown', 'teleport'];

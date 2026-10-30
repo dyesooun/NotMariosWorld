@@ -1,5 +1,6 @@
 import { LEVELS, platformAt, enemyAt } from './levels.js';
 import { PROJECTILE_RULES } from './projectiles.js';
+import { powerStrength } from './powers.js';
 export { LEVELS };
 export const AVATARS = ['explorer', 'cat', 'robot', 'wizard'];
 export const COLORS = ['#b7ef51', '#ffb4df', '#7edcff', '#c6a1ff', '#ffd166', '#ff8c69'];
@@ -7,6 +8,11 @@ const DEFAULT = { gravity: 1700, runSpeed: 270, accel: 1900, airControl: .78, ju
 const clone = v => JSON.parse(JSON.stringify(v));
 const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 const avatarBox = s => ({ x: s.x - 14, y: s.y - 36, w: 28, h: 36 });
+const hazardBox = h => {
+  if(h.kind!=='spikes'&&h.actualKind!=='spikes')return h;
+  // Reduce each dimension by 15%, centered within the visible spike artwork.
+  return {x:h.x+h.w*.075,y:h.y+h.h*.075,w:h.w*.85,h:h.h*.85};
+};
 
 export function createState({ avatar = 'explorer', color = '#b7ef51', name = '', level = 0 } = {}) {
   return { avatar, color, name, level, x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
@@ -100,9 +106,13 @@ export function step(s, input = {}, dt = 1 / 60, config = {}) {
     const riderPlatform = platformAt(level.platforms[s._standingPlatform], s._levelTime);
     if (riderPlatform.visible) { s.x += riderPlatform.x - s._platformX; s.y += riderPlatform.y - s._platformY; }
   }
-  const effects = config.powerEffects || {}, reverse = !!effects.reverse, slow = !!effects.slow, slippery = !!effects.slippery;
-  const left = reverse ? !!input.right : !!input.left, right = reverse ? !!input.left : !!input.right, dir = (right ? 1 : 0) - (left ? 1 : 0), target = dir * cfg.runSpeed * (slow ? .55 : 1);
-  const control = s.grounded ? 1 : cfg.airControl; const accel = cfg.accel * (slow ? .72 : 1) * (slippery ? .72 : 1); if (dir) s.vx += Math.sign(target - s.vx) * Math.min(Math.abs(target - s.vx), accel * control * dt); else s.vx *= Math.max(0, 1 - (slippery ? 2.2 : 8) * dt);
+  const effects = config.powerEffects || {}, reverseEffect = effects.reverse, slowEffect = effects.slow, slipperyEffect = effects.slippery;
+  const reverse = !!reverseEffect, slow = !!slowEffect, slippery = !!slipperyEffect;
+  const strength = (effect, type) => effect ? (effect.strength || powerStrength(config, type)) : null;
+  const speedPercent = strength(slipperyEffect, 'slippery')?.speedPercent ?? (strength(slowEffect, 'slow')?.speedPercent ?? strength(reverseEffect, 'reverse')?.speedPercent ?? 100);
+  const gripPercent = strength(slipperyEffect, 'slippery')?.gripPercent ?? 100;
+  const left = reverse ? !!input.right : !!input.left, right = reverse ? !!input.left : !!input.right, dir = (right ? 1 : 0) - (left ? 1 : 0), target = dir * cfg.runSpeed * speedPercent / 100;
+  const control = s.grounded ? 1 : cfg.airControl; const accel = cfg.accel * (slow ? .72 : 1) * (slippery ? Math.max(.65, gripPercent / 100) : 1); if (dir) s.vx += Math.sign(target - s.vx) * Math.min(Math.abs(target - s.vx), accel * control * dt); else s.vx *= Math.max(0, 1 - (slippery ? 8 * gripPercent / 100 : 8) * dt);
   s.coyote = s.grounded ? cfg.coyote : Math.max(0, s.coyote - dt);
   const jumpPressed = !!input.jump && !s._jumpHeld; s._jumpHeld = !!input.jump; if (jumpPressed) s.jumpBuffer = cfg.jumpBuffer; else s.jumpBuffer = Math.max(0, s.jumpBuffer - dt);
   if (s.jumpBuffer > 0 && (s.grounded || s.coyote > 0)) { s.vy = -cfg.jumpSpeed; s.grounded = false; s.coyote = 0; s.jumpBuffer = 0; }
@@ -114,9 +124,9 @@ export function step(s, input = {}, dt = 1 / 60, config = {}) {
   s.distanceMax = Math.max(s.distanceMax, Math.max(0, s.x - 90)); s.progress = Math.max(s.progress, Math.min(1, s.x / level.endX));
   updateEnemies(s, level, dt);
   const b = avatarBox(s); let dead = false;
-  for (const h of level.hazards) if ((h.kind === 'pit' && s.y > 590 && s.x > h.x && s.x < h.x + h.w) || (h.kind !== 'pit' && hit(b, h))) { const e = die(s, h, s.elapsed, cfg); if (e) events.push(e); dead = true; break; }
+  for (const h of level.hazards) if ((h.kind === 'pit' && s.y > 590 && s.x > h.x && s.x < h.x + h.w) || (h.kind !== 'pit' && hit(b, hazardBox(h)))) { const e = die(s, h, s.elapsed, cfg); if (e) events.push(e); dead = true; break; }
   if (!dead && s.y > 590) { const e = die(s, { x: s.x, y: 500, kind: 'pit', actualKind: 'pit', label: level.theme === 'ocean' ? 'Took the scenic route into the sea.' : level.theme === 'hell' ? 'The lava was warmer than expected.' : 'Found a shortcut. It went straight down.' }, s.elapsed, cfg); if (e) events.push(e); dead = true; }
-  if (!dead) { for (const e of s.enemies) if (e.y < 700 && hit(b, e)) { const d = die(s, { ...e, kind: 'enemy', label: `Bonked by a ${e.kind}` }, s.elapsed, cfg); if (d) events.push(d); dead = true; break; } }
+  if (!dead) { for (const e of s.enemies) if (e.y < 700 && hit(b, e)) { const name=e.kind.replaceAll('_',' ');const d = die(s, { ...e, kind: 'enemy', label: `Bonked by ${/^[aeiou]/i.test(name)?'an':'a'} ${name}` }, s.elapsed, cfg); if (d) events.push(d); dead = true; break; } }
   if (!dead) for (const p of s.projectiles) if (hit(b, { x: p.x - (p.w || PROJECTILE_RULES.width) / 2, y: p.y - (p.h || PROJECTILE_RULES.height) / 2, w: p.w || PROJECTILE_RULES.width, h: p.h || PROJECTILE_RULES.height })) { const d = die(s, { x: p.x, y: p.y, kind: 'projectile', label: 'A projectile found its mark.' }, s.elapsed, cfg); if (d) events.push(d); dead = true; break; }
   if (!dead) for (const c of level.coins) if (!s.collected.includes(c.id) && Math.hypot(s.x - c.x, s.y - c.y) < 34) { s.collected.push(c.id); s.coins += 1; s.current += cfg.coinPoints; }
   if (!dead && !s.finished && Array.isArray(level.checkpoints)) for (const cp of level.checkpoints) {

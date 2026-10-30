@@ -1,5 +1,26 @@
 # Original game assets
 
+## Whimsical Woods expansion
+
+`public/assets/forest-sprites.png` is an additional original transparent PNG atlas generated with the built-in imagegen tool on 2026-10-30. It is 1254×1254 pixels. `public/game/forest-sprites.js` defines explicit crop regions and trims transparent margins; the generated rows are not perfectly uniform, so do not replace these regions with a generic grid calculation.
+
+Terrain uses a separate grass-shelf anchor at cell-local y=103. Decorative leaves above it are not the collision surface. Raised platforms map that shelf to the physics height; ground repeats the opaque interior at a fixed scale and clips partial tiles. Plain earth backing starts within the opaque soil, below the shelf. Critters remain bottom-aligned to that same physics height.
+
+The original colors are retained. At runtime, small forest sprites are sampled onto a two-logical-pixel grid and larger scenery onto a three-pixel grid, then enlarged without smoothing. Terrain foliage and soil are sampled separately at the shelf anchor so the lower apparent resolution does not change platform or foot alignment. The source PNG is preserved.
+
+The row-major sprite order is:
+
+1. Hanging vine, climbing vine, pink bells, purple-blue bluebells.
+2. Golden star flowers, white daisies, red mushrooms, glowing cyan mushrooms.
+3. Living-wood chest, glow moth, mushling enemy, acorn beetle enemy.
+4. Forest totem, fern-crowned tiki, hanging wooden mask, mossy root platform.
+
+The generation brief requested an isolated 4×4 production sprite atlas, true transparency, crisp chunky 16-bit pixels, dark outlines, emerald/teal moss, golden wood, coral/violet flowers, and no text or franchise characters. It specified leafy vines, four flower varieties, two mushroom clusters, a moss-roofed wooden chest with a cyan crystal latch, turquoise/lilac moth, walking coral mushroom, acorn-armored green beetle, original carved woodland faces, and a flat-topped grass/soil platform with hanging roots.
+
+The forest music, **Mosslight Mountain**, is an original score synthesized in `public/game/audio.js`: a 32-beat melody, plucked square-wave arpeggios, triangle bass, and quiet bell overtones. No sampled soundtrack is required.
+
+## Shared avatar and creature atlas
+
 `public/assets/sprites.png` was created with the built-in imagegen tool, using a transparent background. No external game art or Nintendo assets are used. The final asset is copied into this repository and does not depend on the generation output folder.
 
 The atlas contains 16 sprites. Left to right, top to bottom:
