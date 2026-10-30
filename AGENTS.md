@@ -27,10 +27,12 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - The host creates a room, configures it, and **starts the race manually**. Joining or spawning must not start the round.
 - Room states are lobby, running, and ended. Host actions are authenticated separately from player access; a room code must not grant host control.
 - Host settings are editable in the lobby. Round duration defaults to **10 minutes** and is configurable from **1–60 minutes**.
+- The host can select **any of the six world orders** in Game settings, including putting ocean or inferno first for testing. Every sequence includes all three worlds exactly once; the default is forest → ocean → inferno. The selected order is room-specific and fixed when a run starts. Late joins and refreshed runs begin at the first world in that selected order, with the shared remaining time.
+- Keep biome identity separate from race position. Stage numbers, progress indicators, and host previews follow the selected sequence; artwork, music, chests, checkpoint IDs, and escape broadcasts follow the actual biome. Finish only after the last world in the selected sequence, even if it is the forest or ocean. Do not reorder the global `LEVELS` array to implement this setting.
 - Scoring settings default to **10 points per coin** and **1 point per 32-pixel distance tile**; the current supported range for each weight is 0–1000.
 - The host can separately configure **power duration**, **attack-answer window**, and **defense-answer window** in the lobby, each from **1–60 seconds**. Defaults are **5**, **10**, and **10 seconds**, respectively. The server owns these deadlines; quiz progress and result broadcasts must use the configured values.
 - The host can also configure every power's strength: Sticky Boots speed (10–90% of normal, default 55%), Wrong Way speed while reversed (50–200%, default 100%), Ice Skates speed (110–250%, default 170%), Ice Skates braking grip (2–50% of normal, default 12%), and Ink Cloud darkness (0–95%, default 75%). Lower ice grip preserves more momentum. Latch strength when the turn begins and use it consistently in server physics, client prediction, and rendering.
-- Late arrivals are allowed during a running round. They start World 1 and have only the room's remaining time, with no personal timer extension.
+- Late arrivals are allowed during a running round. They start the first world in the selected sequence and have only the room's remaining time, with no personal timer extension.
 - Refreshing/rejoining a player during an unfinished round resets their run: location, score, banked points, checkpoints, inventory, and collected coins. It is not a saved-game recovery feature.
 - A disconnected player must stop moving. Rejoining the same disconnected name replaces that entry; players should use distinct names.
 - The host can resume their host session after refresh using the credential in that tab's session storage. This is separate from player-run reset behavior.
@@ -50,7 +52,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 ## Race worlds and presentation
 
-| Level | World | Required theme |
+| World ID | World | Required theme |
 | --- | --- | --- |
 | 0 | Lobby / The Waiting Woods | Safe practice and instructions |
 | 1 | Whimsical Woods | Whimsical forest |
@@ -66,9 +68,9 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Use crisp, original pixel sprites. The existing transparent atlas includes avatars, enemies, bombs, coins, spikes, a mushroom/spring, chests, birds, fish, a skull, and a flag. Canvas draws terrain, scenery, and additional effects.
 - Preserve asset provenance in `docs/ASSETS.md`. Do not replace the original art with copyrighted game assets.
 
-### Level 1 forest identity
+### Forest identity (world ID 1)
 
-- The forest uses its own authored course and platform arrangement, separate from the ocean/inferno generator. Keep all players on the same deterministic forest course. This redesign is scoped to Level 1; preserve the other worlds until requested otherwise.
+- The forest uses its own authored course and platform arrangement, separate from the ocean/inferno generator. Keep all players on the same deterministic forest course. This redesign applies to the forest biome regardless of its selected race position; preserve the other biomes until requested otherwise.
 - Forest platforms have moss-covered soil, hanging roots, varied spans, and optional moving/vanishing root ledges. Keep clear, reachable ground routes and solid checkpoint/reward havens.
 - Align forest terrain by its authored grass-shelf anchor, not the first opaque leaf or sprite bounding box. Critter feet and the visible shelf must meet the same collision height. Use uniformly scaled ground strips with clipped partial tiles; bury plain earth backing below the opaque soil and do not draw the old grass/platform strips over the forest artwork.
 - Use the supplemental transparent raster atlas `public/assets/forest-sprites.png`, with crop rectangles in `public/game/forest-sprites.js`. It supplies two vine shapes, four flower varieties, red/glowing mushrooms, a living-wood treasure chest, glow moth, mushling, acorn beetle, totem, tiki, hanging wooden mask, and root platform.
@@ -95,7 +97,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Current total score is `banked + current coin points + floor(farthest current-level distance / 32) * distancePoints`.
 - Distance uses the farthest point reached, so walking backward and forward cannot farm points.
 - Completing a level banks its full current score **once**, including checkpoint-protected points, then starts the next level with a fresh checkpoint state. Death in a later level never removes earlier banked points.
-- Completing World 3 banks the final level and waits for the shared room timer and ceremony; it does not immediately end the round for everyone.
+- Completing the third world in the selected sequence banks the final level and waits for the shared room timer and ceremony; it does not immediately end the round for everyone.
 - At time expiry, include **banked points plus current unbanked points** in the final result.
 - Highest score wins. Ties favor earlier full-course completion measured from the **room's start**, then join order for remaining ties. An unfinished player has no completion time.
 - Freeze final scores and ranks at round end. Disconnects, refreshes, reconnects, and new spectators must not change podium placements.
@@ -225,6 +227,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 | `public/styles.css` | Browser layout, viewport overlays, quiz card styling |
 | `public/game/engine.js` | Shared movement, collisions, deaths, checkpoint state, scoring, enemy simulation |
 | `public/game/levels.js` | Deterministic layouts, checkpoints, platforms, hazards, critter placement, power chest |
+| `public/game/world-order.js` | Validated per-room world sequences and race-position lookup |
 | `public/game/renderer.js` | Pixel scene, sprite atlas, wildlife, animation, effects |
 | `public/game/forest-sprites.js` | Supplemental woodland atlas, crop/alpha trim, sprite drawing |
 | `public/game/projectiles.js` | Shared flame speed, size, lifetime, firing interval |
@@ -255,6 +258,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
   - Platform-bound patrol/chase, supported critter positions, flame size/collision, speed, and reduced firing frequency.
   - Distinct authored forest geometry, safe reward/checkpoint havens, complete forest sprite crops, grounded scenery, two new enemy species, and ambient moths.
   - Configured power strengths, increased slippery speed/coasting, latched effect values shared by server/client, and custom fog darkness.
+  - All six world orders, distinct biome identity/race position, final completion on the last selected world, independent rooms, late/refresh starts, bank/checkpoint/death persistence, and correct progress indicators.
   - Final 10 seconds remaining playable, current points included at zero, frozen ranks, all podium positions, and reconnect/spectator stability.
   - Optional/default icebreakers, named live votes, 15-second closure, manual skip, and in-world presentation.
   - Default-on music/effects, biome variation, mute, hidden-tab behavior, and no duplicated playback.

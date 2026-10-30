@@ -4,7 +4,8 @@ import { GameAudio } from './game/audio.js';
 import { renderWorldUI, worldUIModel, countdownSeconds } from './game/world-ui.js';
 import { renderPodium } from './game/podium.js';
 import { DEFAULT_QUESTIONS } from './game/default-questions.js';
-import { checkpointRenderState, runtimeMismatch } from './game/client-state.js';
+import { checkpointRenderState, runtimeMismatch, worldProgressModel } from './game/client-state.js';
+import { DEFAULT_WORLD_ORDER, normalizeWorldOrder, worldOrdinal } from './game/world-order.js';
 import { activePowerEffects, renderPowerUI } from './game/power-ui.js';
 import { powerQuizModel, renderPowerQuiz } from './game/power-quiz-ui.js';
 import { createPowerQuizControls } from './game/power-quiz-controls.js';
@@ -17,6 +18,9 @@ const number = n => Math.round(Number(n) || 0).toLocaleString();
 const clock = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60).toString().padStart(2,'0')}:${(s % 60).toString().padStart(2,'0')}`; };
 const elapsed = seconds => seconds == null ? '—' : clock(seconds * 1000);
 const levelNames = ['The waiting woods', 'Whimsical woods', 'Troubled tides', 'Inferno express'];
+const worldOrders=[[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]];
+const routeLabel=order=>normalizeWorldOrder(order).map(id=>levelNames[id]).join(' → ');
+const racePosition=(level,state)=>worldOrdinal(level,state?.worldOrder??room?.settings.worldOrder);
 const paths = {
  arrow:'M4 12h16m-6-6 6 6-6 6', diagonal:'M6 18 18 6M6 6h12v12', copy:'M9 9h11v12H9zM15 9V3H3v12h6',
  users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m11 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
@@ -28,7 +32,7 @@ const paths = {
 };
 const icon = name => `<svg aria-hidden="true" viewBox="0 0 24 24"><path d="${paths[name] || paths.arrow}"/></svg>`;
 const brand = () => `<a href="/" class="brand" aria-label="Not Mario's World home"><img src="/assets/icon.svg" alt=""><span>NOT MARIO’S WORLD<small>GAME DAY THURSDAY</small></span></a>`;
-const DEFAULTS = { durationMinutes:10, coinPoints:10, distancePoints:1, powerDurationSeconds:5, attackWindowSeconds:10, defendWindowSeconds:10, slowSpeedPercent:55, reverseSpeedPercent:100, slipperySpeedPercent:170, slipperyGripPercent:12, inkDarknessPercent:75, questions:DEFAULT_QUESTIONS };
+const DEFAULTS = { durationMinutes:10, worldOrder:[...DEFAULT_WORLD_ORDER], coinPoints:10, distancePoints:1, powerDurationSeconds:5, attackWindowSeconds:10, defendWindowSeconds:10, slowSpeedPercent:55, reverseSpeedPercent:100, slipperySpeedPercent:170, slipperyGripPercent:12, inkDarknessPercent:75, questions:DEFAULT_QUESTIONS };
 let profile;
 try { profile = JSON.parse(localStorage.getItem('nmw-profile') || '{}'); } catch { profile = {}; }
 profile = { name:String(profile.name || '').slice(0,24), avatar:AVATARS.includes(profile.avatar) ? profile.avatar : AVATARS[0], color:COLORS.includes(profile.color) ? profile.color : COLORS[0] };
@@ -114,7 +118,7 @@ function onMessage(msg) {
     const s = me.state;
     if (lastAuthoritative && s.deaths > lastAuthoritative.deaths) playTone('death',sceneForLevel(s.level));
     else if (lastAuthoritative && s.finished && !lastAuthoritative.finished) playTone('finish',sceneForLevel(s.level));
-    else if (lastAuthoritative && s.level > lastAuthoritative.level && s.level > 1) playTone('clear',sceneForLevel(lastAuthoritative.level));
+    else if (lastAuthoritative && (s.completedWorlds?.length||0) > (lastAuthoritative.completedWorlds?.length||0)) playTone('clear',sceneForLevel(lastAuthoritative.level));
     else if (lastAuthoritative && s.checkpoint && s.checkpoint.id!==lastAuthoritative.checkpoint?.id) {playTone('checkpoint',sceneForLevel(s.level));toast('Checkpoint saved! Your score and collected coins are protected.');}
     else if (lastAuthoritative?.respawnRemaining > 0 && !s.respawnRemaining) playTone('respawn',sceneForLevel(s.level));
     else if (lastAuthoritative && s.coins > lastAuthoritative.coins) playTone('coin',sceneForLevel(s.level));
@@ -124,7 +128,7 @@ function onMessage(msg) {
     predicted=next; lastAuthoritative=s;
   }
   renderRoom();
-  if (previous?.status === 'lobby' && room.status === 'running') { closeModal(); toast('The race is on. Good luck out there!'); playTone('start','forest'); }
+  if (previous?.status === 'lobby' && room.status === 'running') { closeModal(); toast('The race is on. Good luck out there!'); playTone('start',sceneForLevel(normalizeWorldOrder(room.settings.worldOrder)[0])); }
   if (previous?.status === 'running' && room.status === 'ended') playTone('teleport','results');
 }
 function header(content = '') {
@@ -292,7 +296,7 @@ function updateHost() {
   for(const p of players) {
     setHTML(`[data-feed-name="${p.id}"]`,`<i class="player-color" style="background:${esc(p.color)}"></i>${esc(p.name)}`);
     setText(`[data-feed-score="${p.id}"]`,`${number(p.score)} PTS`);
-    setText(`[data-feed-level="${p.id}"]`,p.state?.finished?'ALL WORLDS CLEARED':p.state?.level?`0${p.state.level} / ${levelNames[p.state.level]}`:'LOBBY');
+    setText(`[data-feed-level="${p.id}"]`,p.state?.finished?'ALL WORLDS CLEARED':p.state?.level?`0${racePosition(p.state.level,p.state)} / ${levelNames[p.state.level]}`:'LOBBY');
     setText(`[data-feed-status="${p.id}"]`,!p.connected?'Disconnected':!p.spawned?'Choosing character':p.state?.respawnRemaining>0?(p.state.checkpoint?'Respawning at checkpoint…':'Respawning…'):p.state?.finished?'Taking a well-earned break':room.status==='lobby'?'Exploring the lobby':p.state?.checkpoint?'Checkpoint saved · on the move':'On the move');
     setText(`[data-feed-deaths="${p.id}"]`,`${p.state?.deaths||0} DEATHS`);
   }
@@ -308,7 +312,7 @@ function updatePlayer() {
   const me=room.players.find(p=>p.id===you); if(!me) return;
   const s=me.state;
   if(!s)return;
-  setText('#level-label',!me.spawned?'LOBBY / CHOOSE YOUR CHARACTER':s.level?`0${s.level} / ${levelNames[s.level].toUpperCase()}`:'LOBBY / THE WAITING WOODS');
+  setText('#level-label',!me.spawned?'LOBBY / CHOOSE YOUR CHARACTER':s.level?`0${racePosition(s.level,s)} / ${levelNames[s.level].toUpperCase()}`:'LOBBY / THE WAITING WOODS');
   const spawnButton=$('#profile-section [data-action="spawn"]');
   if(spawnButton&&room.status==='running')spawnButton.innerHTML=`${icon('play')} Enter the race`;
   setText('#my-score',number(me.score)); setText('#my-banked',number(s.banked)); setText('#my-current',number(Math.max(0,me.score-s.banked)));
@@ -317,11 +321,12 @@ function updatePlayer() {
   const finish=$('#finish-overlay'); if(finish)finish.hidden=!s.finished||broadcastVisible;
     if (me.spawned && !$('.running-profile')) renderProfile();
   const progress=$('#my-progress'); if(progress)progress.style.width=`${Math.min(100,(s.progress||0)*100)}%`;
-  setText('#my-progress-label',`WORLD ${s.level} · ${Math.floor((s.progress||0)*100)}%`); setText('#my-deaths',`${s.deaths} RESPAWNS`);
+  setText('#my-progress-label',`WORLD ${racePosition(s.level,s)} · ${Math.floor((s.progress||0)*100)}%`); setText('#my-deaths',`${s.deaths} RESPAWNS`);
   setText('#checkpoint-status',room.status==='lobby'?'Checkpoints every 25% save your score and coins during the race.':s.checkpoint?`Checkpoint saved at ${Math.round(s.checkpoint.x/LEVELS[s.level].endX*100)}% · ${s.checkpoint.coins} coins and your score protected.`:'Checkpoint ahead · find blue flags at 25%, 50%, and 75%.');
   $('#checkpoint-status')?.classList.toggle('saved',!!s.checkpoint);
-  setText('#game-note',room.status==='lobby'?'The lobby is a safe place to practice.':s.finished?'Your score is banked. Waiting for the final results.':`${s.coins} COINS · ${s.checkpoint?'CHECKPOINT SAVED':'CHECKPOINT AHEAD'} · Reach the exit to bank this world.`);
-  const dots=$$('#world-dots i'); dots.forEach((el,i)=>el.classList.toggle('done',s.finished||s.level>i+1));
+  setText('#game-note',room.status==='lobby'?`Race order: ${routeLabel(room.settings.worldOrder)}`:s.finished?'Your score is banked. Waiting for the final results.':`${s.coins} COINS · ${s.checkpoint?'CHECKPOINT SAVED':'CHECKPOINT AHEAD'} · Reach the exit to bank this world.`);
+  const dots=$$('#world-dots i'),progressModel=worldProgressModel(s,room.settings.worldOrder);
+  dots.forEach((el,i)=>{el.classList.toggle('done',progressModel.done[i]);el.title=`${i+1}. ${levelNames[progressModel.order[i]]}${progressModel.done[i]?' / cleared':''}`;el.setAttribute('aria-label',el.title);});
   updateLeaderboard();
 }
 function updateLeaderboard() {
@@ -331,7 +336,7 @@ function updateLeaderboard() {
   setText('#leader-count',`${room.players.length} PLAYERS`);
   node.innerHTML=room.players.length?room.players.map((p,i)=>{
     const level=p.state?.level??p.summary?.level;
-    const status=!p.connected?'DISCONNECTED':room.status==='lobby'?(p.spawned?'IN THE LOBBY':'PICKING A CHARACTER'):p.finishTime!=null?`CLEARED IN ${elapsed(p.finishTime)}`:level?`WORLD ${level}`:'RACING';
+    const status=!p.connected?'DISCONNECTED':room.status==='lobby'?(p.spawned?'IN THE LOBBY':'PICKING A CHARACTER'):p.finishTime!=null?`CLEARED IN ${elapsed(p.finishTime)}`:level?`WORLD ${racePosition(level,p.state)}`:'RACING';
     return `<div class="leader-row ${p.id===you?'me':''}"><span class="rank ${i<3?'top':''}">${String(i+1).padStart(2,'0')}</span><div class="leader-person"><strong><i class="player-color" style="background:${esc(p.color)}"></i>${esc(p.name)}${p.id===you?' · you':''}</strong><small>${status}</small></div><span class="leader-score">${room.status==='lobby'?'—':number(p.score)}</span></div>`;
   }).join(''):'<p class="leader-empty">No players yet.<br>The calm before the respawns.</p>';
 }
@@ -385,10 +390,14 @@ function showHelp() {
     <div class="help-block"><h3>03 / TRUST YOUR INSTINCTS. MAYBE.</h3><p>Moving platforms move. Vanishing platforms vanish. Enemies, spikes, and some very innocent-looking objects are lethal. Watch what’s revealed when you die. Critters chase only when you stand on their platform; some shoot. Each world has three real power chests, just after the checkpoints; other chests can be decoys. Hold one power at a time. At another chest, choose Attack with your current power or Replace it with the new one. You can use up to three chest powers per world.</p><p>Press <kbd>F</kbd> or USE to answer a general-knowledge question and attack everyone else. You have ${room?.settings.attackWindowSeconds??10} seconds and one attempt; a wrong or unanswered attack hits you. After a correct attack, everyone else gets ${room?.settings.defendWindowSeconds??10} seconds and one attempt to defend. Correct defenders block; wrong or missing answers are affected. Answers ignore case. The slow, reverse, slippery, or dark ink effect and its broadcast last ${room?.settings.powerDurationSeconds??5} seconds after defenses resolve. Unused powers survive death; opened chests stay spent. Power turns run one at a time across the room in request order. Every player gets the same layout and their own run.</p></div>
     <div class="help-block"><h3>04 / EARN THE BRAGGING RIGHTS</h3><p>The highest score wins, with the fastest full completion breaking ties. When the timer ends, banked points and your current points count. Late arrivals use the remaining room time. Refreshing resets your game, including checkpoints; rejoin with the same name to replace your disconnected entry.</p></div>`);
 }
+function worldOrderSettings(settings){
+  const selected=normalizeWorldOrder(settings.worldOrder).join(',');
+  return `<div class="settings-section-heading"><span>World order</span></div><label class="field"><span class="field-label">RACE SEQUENCE</span><select name="worldOrder" class="world-order-select" aria-label="World order">${worldOrders.map(order=>`<option value="${order.join(',')}" ${order.join(',')===selected?'selected':''}>${esc(routeLabel(order))}</option>`).join('')}</select></label><p class="settings-help">Choose a world to play first for testing. Everyone follows this sequence, with all three worlds included.</p>`;
+}
 function showSettings() {
   if(role!=='host'||room.status!=='lobby')return;
   const s=room.settings; const strengthMarkup=`<div class="settings-section-heading"><span>Power strength</span></div><div class="settings-fields"><label class="field"><span class="field-label">STICKY SPEED / % NORMAL</span><input name="slowSpeedPercent" type="number" min="10" max="90" step="1" value="${s.slowSpeedPercent??55}" required></label><label class="field"><span class="field-label">WRONG WAY SPEED / % NORMAL</span><input name="reverseSpeedPercent" type="number" min="50" max="200" step="1" value="${s.reverseSpeedPercent??100}" required></label><label class="field"><span class="field-label">ICE SPEED / % NORMAL</span><input name="slipperySpeedPercent" type="number" min="110" max="250" step="1" value="${s.slipperySpeedPercent??170}" required></label><label class="field"><span class="field-label">ICE GRIP / % NORMAL BRAKING</span><input name="slipperyGripPercent" type="number" min="2" max="50" step="1" value="${s.slipperyGripPercent??12}" required></label><label class="field"><span class="field-label">INK DARKNESS / %</span><input name="inkDarknessPercent" type="number" min="0" max="95" step="1" value="${s.inkDarknessPercent??75}" required></label></div><p class="settings-help">Speed is relative to normal movement. Ice Skates are faster and have reduced grip, so momentum carries farther. Ink Darkness is the fog darkening percentage.</p>`;
-  openModal('A little order before the chaos.',`<form id="settings-form"><div class="settings-fields"><label class="field"><span class="field-label">ROUND MINUTES</span><input name="durationMinutes" type="number" min="1" max="60" step="1" value="${s.durationMinutes}" required></label><label class="field"><span class="field-label">POINTS / COIN</span><input name="coinPoints" type="number" min="0" max="1000" step="1" value="${s.coinPoints}" required></label><label class="field"><span class="field-label">POINTS / TILE</span><input name="distancePoints" type="number" min="0" max="1000" step="1" value="${s.distancePoints}" required></label></div><p class="settings-help">Distance uses the farthest point reached in the current attempt, in 32-pixel tiles. Completing a world banks its coins and distance. A 10-minute round is a good starting point; you can set 1–60 minutes.</p><div class="settings-section-heading"><span>Power challenges</span></div><div class="settings-fields"><label class="field"><span class="field-label">POWER DURATION / SEC</span><input name="powerDurationSeconds" type="number" min="1" max="60" step="1" value="${s.powerDurationSeconds??5}" required></label><label class="field"><span class="field-label">ATTACK WINDOW / SEC</span><input name="attackWindowSeconds" type="number" min="1" max="60" step="1" value="${s.attackWindowSeconds??10}" required></label><label class="field"><span class="field-label">DEFEND WINDOW / SEC</span><input name="defendWindowSeconds" type="number" min="1" max="60" step="1" value="${s.defendWindowSeconds??10}" required></label></div><p class="settings-help">Each setting accepts 1–60 seconds. A correct attack challenges everyone else. Correct defenders block the power; wrong or missing answers are affected. The effect and its broadcast last for the configured power duration after defenses resolve.</p>${strengthMarkup}<div class="settings-section-heading"><span>Lobby icebreakers</span><button type="button" class="button small ghost" data-action="add-question">${icon('plus')} Add question</button></div><div id="question-editors">${s.questions.map((q,i)=>questionEditor(q,i)).join('')}</div><p class="settings-help">Up to 5 questions, with 2 choices each. Launch them manually from your dashboard. Named votes are visible live and close automatically after 15 seconds.</p></form>`,`<button class="button ghost" data-action="close-modal">Cancel</button><button class="button primary" type="submit" form="settings-form">Save settings ${icon('check')}</button>`);
+  openModal('A little order before the chaos.',`<form id="settings-form">${worldOrderSettings(s)}<div class="settings-fields"><label class="field"><span class="field-label">ROUND MINUTES</span><input name="durationMinutes" type="number" min="1" max="60" step="1" value="${s.durationMinutes}" required></label><label class="field"><span class="field-label">POINTS / COIN</span><input name="coinPoints" type="number" min="0" max="1000" step="1" value="${s.coinPoints}" required></label><label class="field"><span class="field-label">POINTS / TILE</span><input name="distancePoints" type="number" min="0" max="1000" step="1" value="${s.distancePoints}" required></label></div><p class="settings-help">Distance uses the farthest point reached in the current attempt, in 32-pixel tiles. Completing a world banks its coins and distance. A 10-minute round is a good starting point; you can set 1–60 minutes.</p><div class="settings-section-heading"><span>Power challenges</span></div><div class="settings-fields"><label class="field"><span class="field-label">POWER DURATION / SEC</span><input name="powerDurationSeconds" type="number" min="1" max="60" step="1" value="${s.powerDurationSeconds??5}" required></label><label class="field"><span class="field-label">ATTACK WINDOW / SEC</span><input name="attackWindowSeconds" type="number" min="1" max="60" step="1" value="${s.attackWindowSeconds??10}" required></label><label class="field"><span class="field-label">DEFEND WINDOW / SEC</span><input name="defendWindowSeconds" type="number" min="1" max="60" step="1" value="${s.defendWindowSeconds??10}" required></label></div><p class="settings-help">Each setting accepts 1–60 seconds. A correct attack challenges everyone else. Correct defenders block the power; wrong or missing answers are affected. The effect and its broadcast last for the configured power duration after defenses resolve.</p>${strengthMarkup}<div class="settings-section-heading"><span>Lobby icebreakers</span><button type="button" class="button small ghost" data-action="add-question">${icon('plus')} Add question</button></div><div id="question-editors">${s.questions.map((q,i)=>questionEditor(q,i)).join('')}</div><p class="settings-help">Up to 5 questions, with 2 choices each. Launch them manually from your dashboard. Named votes are visible live and close automatically after 15 seconds.</p></form>`,`<button class="button ghost" data-action="close-modal">Cancel</button><button class="button primary" type="submit" form="settings-form">Save settings ${icon('check')}</button>`);
 }
 function questionEditor(q={prompt:'',choices:['','']},i=0) { return `<div class="question-editor"><div class="question-editor-top"><span>QUESTION <span class="question-index">${i+1}</span></span><button class="link-button" type="button" data-action="remove-question" aria-label="Remove question">${icon('trash')}</button></div><label class="field"><span class="sr-only">Question</span><input data-q-prompt maxlength="240" placeholder="Pineapple on pizza?" value="${esc(q.prompt)}" required></label><div class="field-row"><label class="field"><span class="sr-only">Choice A</span><input data-q-a maxlength="100" placeholder="Absolutely" value="${esc(q.choices[0])}" required></label><label class="field"><span class="sr-only">Choice B</span><input data-q-b maxlength="100" placeholder="Absolutely not" value="${esc(q.choices[1])}" required></label></div></div>`; }
 function watch(id) { const p=room.players.find(p=>p.id===id); if(!p)return;openModal(`${esc(p.name)}’s adventure.`,`<canvas id="watch-canvas" width="960" height="540" aria-label="Live gameplay view"></canvas>`,`<span class="muted" style="font-size:12px" id="watch-score"></span><button class="button ghost small" data-action="close-modal">Back to all players</button>`,'watch-dialog');watchedPlayer=id;wrapWorldCanvas($('#watch-canvas'));updateQuestion();updateMusicScene(); }
@@ -428,7 +437,7 @@ document.addEventListener('submit',async e=>{
   }
   if(e.target.id==='settings-form'){
     e.preventDefault();const f=e.target;
-    const settings={durationMinutes:Number(f.elements.durationMinutes.value),coinPoints:Number(f.elements.coinPoints.value),distancePoints:Number(f.elements.distancePoints.value),powerDurationSeconds:Number(f.elements.powerDurationSeconds.value),attackWindowSeconds:Number(f.elements.attackWindowSeconds.value),defendWindowSeconds:Number(f.elements.defendWindowSeconds.value),slowSpeedPercent:Number(f.elements.slowSpeedPercent.value),reverseSpeedPercent:Number(f.elements.reverseSpeedPercent.value),slipperySpeedPercent:Number(f.elements.slipperySpeedPercent.value),slipperyGripPercent:Number(f.elements.slipperyGripPercent.value),inkDarknessPercent:Number(f.elements.inkDarknessPercent.value),questions:$$('.question-editor',f).map(el=>({prompt:$('[data-q-prompt]',el).value.trim(),choices:[$('[data-q-a]',el).value.trim(),$('[data-q-b]',el).value.trim()]}))};
+    const settings={worldOrder:f.elements.worldOrder.value.split(',').map(Number),durationMinutes:Number(f.elements.durationMinutes.value),coinPoints:Number(f.elements.coinPoints.value),distancePoints:Number(f.elements.distancePoints.value),powerDurationSeconds:Number(f.elements.powerDurationSeconds.value),attackWindowSeconds:Number(f.elements.attackWindowSeconds.value),defendWindowSeconds:Number(f.elements.defendWindowSeconds.value),slowSpeedPercent:Number(f.elements.slowSpeedPercent.value),reverseSpeedPercent:Number(f.elements.reverseSpeedPercent.value),slipperySpeedPercent:Number(f.elements.slipperySpeedPercent.value),slipperyGripPercent:Number(f.elements.slipperyGripPercent.value),inkDarknessPercent:Number(f.elements.inkDarknessPercent.value),questions:$$('.question-editor',f).map(el=>({prompt:$('[data-q-prompt]',el).value.trim(),choices:[$('[data-q-a]',el).value.trim(),$('[data-q-b]',el).value.trim()]}))};
     send('settings',{settings});closeModal();toast('Game settings saved.');
   }
 });

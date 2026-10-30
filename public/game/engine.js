@@ -1,7 +1,9 @@
 import { LEVELS, platformAt, enemyAt } from './levels.js';
 import { PROJECTILE_RULES } from './projectiles.js';
 import { powerStrength } from './powers.js';
+import { DEFAULT_WORLD_ORDER, normalizeWorldOrder, worldOrdinal } from './world-order.js';
 export { LEVELS };
+export { DEFAULT_WORLD_ORDER, normalizeWorldOrder, worldOrdinal };
 export const AVATARS = ['explorer', 'cat', 'robot', 'wizard'];
 export const COLORS = ['#b7ef51', '#ffb4df', '#7edcff', '#c6a1ff', '#ffd166', '#ff8c69'];
 const DEFAULT = { gravity: 1700, runSpeed: 270, accel: 1900, airControl: .78, jumpSpeed: 650, coyote: .11, jumpBuffer: .12, deathDelay: 3, coinPoints: 10, distancePoints: 1 };
@@ -14,19 +16,20 @@ const hazardBox = h => {
   return {x:h.x+h.w*.075,y:h.y+h.h*.075,w:h.w*.85,h:h.h*.85};
 };
 
-export function createState({ avatar = 'explorer', color = '#b7ef51', name = '', level = 0 } = {}) {
-  return { avatar, color, name, level, x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
+export function createState({ avatar = 'explorer', color = '#b7ef51', name = '', level = 0, worldOrder = DEFAULT_WORLD_ORDER, completedWorlds = [] } = {}) {
+  return { avatar, color, name, level, worldOrder: normalizeWorldOrder(worldOrder), completedWorlds: [...new Set(completedWorlds.filter(v => Number.isInteger(v) && v >= 1 && v <= 3))], x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
 }
-export function startRun(s) {
+export function startRun(s, config = {}) {
   const profile = s.profile;
-  Object.assign(s, createState({ name: s.name, avatar: s.avatar, color: s.color, level: 1 }), { started: true });
+  const worldOrder = normalizeWorldOrder(config.worldOrder ?? DEFAULT_WORLD_ORDER);
+  Object.assign(s, createState({ name: s.name, avatar: s.avatar, color: s.color, level: worldOrder[0], worldOrder }), { started: true });
   if (profile !== undefined) s.profile = clone(profile);
   initializeEnemies(s, LEVELS[s.level] || LEVELS[0]);
   return s;
 }
 function levelStart(s) {
-  const { banked, deaths, elapsed, level, started, name, avatar, color, profile } = s;
-  Object.assign(s, createState({ name, avatar, color, level }), { banked, deaths, elapsed, started });
+  const { banked, deaths, elapsed, level, started, name, avatar, color, profile, worldOrder, completedWorlds } = s;
+  Object.assign(s, createState({ name, avatar, color, level, worldOrder, completedWorlds }), { banked, deaths, elapsed, started });
   if (profile !== undefined) s.profile = clone(profile);
   initializeEnemies(s, LEVELS[s.level] || LEVELS[0]);
 }
@@ -137,7 +140,18 @@ export function step(s, input = {}, dt = 1 / 60, config = {}) {
       break;
     }
   }
-  if (!dead && s.x >= level.endX) { const clearScore = s.current + Math.floor(s.distanceMax / 32) * cfg.distancePoints; s.banked += clearScore; events.push({ type: 'levelComplete', level: s.level, score: clearScore }); if (s.level >= LEVELS.length - 1) { s.current = 0; s.distanceMax = 0; s.finished = true; events.push({ type: 'finished', score: score(s, cfg) }); } else { s.level += 1; levelStart(s); } }
+  if (!dead && s.x >= level.endX) {
+    const completedLevel = s.level;
+    const clearScore = s.current + Math.floor(s.distanceMax / 32) * cfg.distancePoints;
+    s.banked += clearScore;
+    if (!s.completedWorlds.includes(completedLevel)) s.completedWorlds.push(completedLevel);
+    events.push({ type: 'levelComplete', level: completedLevel, score: clearScore });
+    const order = normalizeWorldOrder(s.worldOrder);
+    const position = order.indexOf(completedLevel);
+    const isLast = position < 0 || position >= order.length - 1;
+    if (isLast) { s.current = 0; s.distanceMax = 0; s.finished = true; events.push({ type: 'finished', score: score(s, cfg) }); }
+    else { s.level = order[position + 1]; levelStart(s); }
+  }
   return events;
 }
 export function score(s, config = {}) { const c = { ...DEFAULT, ...config }; return s.banked + s.current + Math.floor(s.distanceMax / 32) * c.distancePoints; }

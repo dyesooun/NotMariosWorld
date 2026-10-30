@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkpointRenderState, runtimeMismatch } from '../public/game/client-state.js';
+import { checkpointRenderState, runtimeMismatch, worldProgressModel } from '../public/game/client-state.js';
 import { DEFAULT_QUESTIONS } from '../public/game/default-questions.js';
 import { powerUIModel, activePowerEffects, renderPowerUI } from '../public/game/power-ui.js';
 import { powerChestOfferModel } from '../public/game/power-chest-ui.js';
@@ -18,6 +18,15 @@ test('runtime guard catches legacy servers and changed simulation files', () => 
   assert.match(runtimeMismatch({runtimeVersion:'a',diskVersion:'b'}),/Restart/);
   assert.equal(runtimeMismatch({runtimeVersion:'a',diskVersion:'a',needsRestart:false}),null);
   assert.match(runtimeMismatch({runtimeVersion:'new',diskVersion:'new'},'old'),/Refresh this page/);
+});
+
+test('progress indicators follow the selected route rather than increasing world identity',()=>{
+  assert.deepEqual(worldProgressModel({level:0,worldOrder:[1,2,3]},[3,1,2]).order,[3,1,2]);
+  const state={worldOrder:[3,1,2],level:3,completedWorlds:[]};
+  assert.deepEqual(worldProgressModel(state),{order:[3,1,2],ordinal:1,done:[false,false,false]});
+  state.level=1;state.completedWorlds=[3];assert.equal(worldProgressModel(state).ordinal,2);assert.deepEqual(worldProgressModel(state).done,[true,false,false]);
+  state.level=2;state.completedWorlds=[3,1];assert.equal(worldProgressModel(state).ordinal,3);assert.deepEqual(worldProgressModel(state).done,[true,true,false]);
+  state.finished=true;assert.deepEqual(worldProgressModel(state).done,[true,true,true]);
 });
 test('five editable default icebreakers contain both supplied choices', () => {
   assert.equal(DEFAULT_QUESTIONS.length,5);

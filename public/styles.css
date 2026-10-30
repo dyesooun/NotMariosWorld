@@ -15,6 +15,8 @@ dialog{border:1px solid #56624c;border-radius:12px;background:#1c2325;color:#f1f
 .running-profile .checkpoint-status.saved{color:var(--yellow)}
 .world-screen{position:relative;width:100%;line-height:0}
 .runtime-warning{position:sticky;top:0;z-index:110;padding:14px 24px;background:#4a2c26;border-bottom:1px solid #d79867;color:#ffe4bd;font-size:13px;text-align:center;line-height:1.5}
+.world-order-select{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:#182824;color:#e6f2d6;font-family:inherit;font-size:12px;line-height:1.4;color-scheme:dark}
+.world-order-select:focus{outline:2px solid #b7ef51;outline-offset:2px}
 .power-controls{position:absolute;inset:0;z-index:4;pointer-events:none;line-height:normal}
 .power-controls button{position:absolute;padding:0;border:0;border-radius:0;background:transparent;color:transparent;pointer-events:auto}
 .power-controls button:focus-visible{outline:3px solid #fff8c4;outline-offset:2px}

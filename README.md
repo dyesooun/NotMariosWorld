@@ -19,10 +19,10 @@ For local editing, use `npm run dev` so Node restarts when shared game rules cha
 
 1. Choose **Host a room → Create a game room**.
 2. Copy the room code or invite link and send it to the team. The host is separate from the 25 player slots.
-3. Open **Game settings**. Set a 1–60 minute round, scoring weights, separate power/attack/defense durations (1–60 seconds each), and power strengths. Defaults are 10 minutes, 10 points per coin, and 1 point per 32-pixel tile reached.
+3. Open **Game settings**. Choose a **World order** (all six sequences are available), then set a 1–60 minute round, scoring weights, separate power/attack/defense durations (1–60 seconds each), and power strengths. Defaults are 10 minutes, 10 points per coin, and 1 point per 32-pixel tile reached.
 4. Five default icebreakers are included, including the executive dashboard and pillows/blankets questions. Edit or remove any in settings; at most five are allowed, each with exactly two choices. **Launch** each question manually. It appears as a pixel broadcast inside every player's game viewport and the host's world broadcast stage. Players click a choice or press **1 / 2**. Everyone sees named votes live; voting closes after 15 seconds. Use the in-world **Skip question** or **Dismiss question** control to clear it. Questions run in the lobby.
 5. Players choose a name, one of four avatars, and a color, then **Spawn into the lobby**. They can practice movement and jumps around the instruction signs.
-6. Choose **Start the race**. Players already in the lobby enter World 1 together. Players still choosing their character can spawn later. New arrivals get only the remaining room time.
+6. Choose **Start the race**. Players already in the lobby enter the first world in your selected sequence together. Players still choosing their character can spawn later. New arrivals get only the remaining room time.
 7. Watch each player’s live gameplay preview, score, level, and death count. Click a preview to enlarge it. These are views rendered from authoritative simulation snapshots, rather than camera or screen capture streams; no screen-sharing permission is needed.
 8. A visible, audible countdown runs during the **final 10 seconds of play**. Players can still move, collect coins, and score. At zero, scores freeze and everyone teleports into **World 04: the podium**, with the top three on the main podium and every remaining player on a ranked stand. Your own avatar and rank are highlighted. Review full rankings, download a CSV, or return everyone to the lobby for another round. The host's manual **End round** action still ends immediately.
 
@@ -31,6 +31,8 @@ The host can refresh and resume using the host credential kept in that tab’s s
 ## Whimsical Woods
 
 World 1 has a separate authored course with broad groves, root terraces, moving/vanishing moss platforms, and clear checkpoint havens. Original raster sprites add canopy vines, four flower varieties, red/glowing mushrooms, totems, tikis, hanging masks, leafy treasure chests, glow moths, mushlings, and acorn beetles. The two new enemy species use the existing platform-bound patrol/chase rules; some beetles shoot. Forest music is the original 32-beat **Mosslight Mountain** theme, with bell/flute-like lead, plucked arpeggios, and short bass notes. Forest sprites render with coarse, crisp pixels while retaining their existing colors and aligned platform surfaces. The ocean and inferno retain their existing courses and artwork.
+
+To test a particular world first, open **Game settings → World order**, select a sequence beginning with that world, save, and start the race. Every player uses the same order. All three worlds are still included; stage labels and progress follow the sequence, and score banking, checkpoints, powers, music, and escape broadcasts follow the actual world. New arrivals and refreshed runs begin at the first selected world with the room’s remaining time.
 
 ## Controls and scoring
 
@@ -50,8 +52,8 @@ World 1 has a separate authored course with broad groves, root terraces, moving/
 - Each attempt earns coin points plus points for the farthest distance reached. Walking backward and collecting a coin twice cannot increase the score.
 - Completing a world banks its full score once, including the checkpoint-protected points, then clears that checkpoint for the next world. Banked points survive all deaths. Before reaching a checkpoint, death removes all current world points.
 - When time expires, the final total includes banked points and current attempt points. Highest score wins; equal scores favor the earlier full completion, measured from the room’s start. Remaining equal scores keep join order. Final rankings are frozen: leaving, reconnecting, or joining after time expires cannot change anyone’s podium place. New arrivals after the round watch as unranked spectators when the room has capacity.
-- Clearing a world queues a broadcast inside everyone's game viewport. Broadcasts display one at a time, for two seconds each. Clearing the third world banks the final score and waits for the shared timer, countdown, and podium teleport.
-- **Refreshing resets a player’s run, including checkpoints.** Rejoining with the same name replaces a disconnected entry and starts from World 1 with only the time left. Use distinct player names. A disconnected player cannot continue moving.
+- Clearing a world queues a broadcast inside everyone's game viewport. Broadcasts display one at a time, for two seconds each. Clearing the third world in the selected sequence banks the final score and waits for the shared timer, countdown, and podium teleport.
+- **Refreshing resets a player’s run, including checkpoints.** Rejoining with the same name replaces a disconnected entry and starts from the first selected world with only the time left. Use distinct player names. A disconnected player cannot continue moving.
 
 ## Deploy on Render
 
@@ -81,6 +83,7 @@ public/
   index.html, styles.css, app.js    Browser UI, controls, local visual prediction
   game/engine.js                  Shared pure simulation and scoring
   game/levels.js                  Deterministic world layouts and trajectories
+  game/world-order.js             Validated room-specific world sequences
   game/renderer.js                Pixel worlds, animation, atlas drawing
   game/forest-sprites.js          Forest expansion atlas and alpha-trimmed sprite crops
   game/audio.js                   Original music, effects, and audio lifecycle

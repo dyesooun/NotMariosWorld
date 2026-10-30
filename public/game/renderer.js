@@ -1,6 +1,7 @@
 import { LEVELS, platformAt, enemyAt } from './levels.js';
 import { PROJECTILE_RULES } from './projectiles.js';
 import { FOREST_SPRITES, drawForestSprite, drawForestPlatform, loadForestAtlas } from './forest-sprites.js';
+import { worldOrdinal } from './world-order.js';
 
 const W=960,H=540;
 const rect=(c,color,x,y,w,h)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
@@ -166,6 +167,6 @@ export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstr
   if(state.respawnRemaining>0){const age=3-state.respawnRemaining;ctx.globalAlpha=Math.max(.1,1-age/2.3);for(const [i,particle] of (state._particles||[]).entries())rect(ctx,i%4===0?'#f8ebc8':i%3===0?'#4b354b':state.color||'#b7ef51',particle.x,particle.y,4+i%3,4+i%2);ctx.globalAlpha=1;if(state.reveal){const kind=state.reveal.actualKind||state.reveal.kind,sx=state.reveal.x,sy=Math.min(470,state.reveal.y);if(kind==='bomb')drawSprite(ctx,'bomb',sx-8,sy-35,42,42);rect(ctx,'#ffac7d',sx-4,sy-42,3,8);rect(ctx,'#ffac7d',sx-4,sy-31,3,3);}}
   else{const bob=state.grounded&&Math.abs(state.vx)>20?Math.sin(time*20)*1.5:0;drawSprite(ctx,state.avatar||'explorer',state.x-17,state.y-40+bob,34,40,{color:state.color,flip:state.vx<-.1});rect(ctx,state.color||'#b7ef51',state.x-3,state.y-48+bob,6,3);}
   ctx.restore();
-  if(!compact){rect(ctx,'#18322ad9',14,14,200,46);ctx.fillStyle='#f2f0d8';ctx.font='12px monospace';ctx.fillText(state.name||'Explorer',26,33);ctx.font='10px monospace';ctx.fillStyle='#bcdb99';ctx.fillText(`WORLD ${state.level}   COINS ${state.coins}`,26,49);}
+  if(!compact){rect(ctx,'#18322ad9',14,14,200,46);ctx.fillStyle='#f2f0d8';ctx.font='12px monospace';ctx.fillText(state.name||'Explorer',26,33);ctx.font='10px monospace';ctx.fillStyle='#bcdb99';ctx.fillText(`WORLD ${worldOrdinal(state.level,state.worldOrder)}   COINS ${state.coins}`,26,49);}
   rect(ctx,'#1223210a',0,0,5,H);rect(ctx,'#1223210a',W-5,0,5,H);ctx.restore();
 }

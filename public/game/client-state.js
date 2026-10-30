@@ -1,4 +1,9 @@
+import { normalizeWorldOrder, worldOrdinal } from './world-order.js';
 // Predictions make movement responsive. Persistent saves are authoritative.
+export function worldProgressModel(state={},order){
+  const route=normalizeWorldOrder(state.level===0?(order??state.worldOrder):(state.worldOrder??order));
+  return {order:route,ordinal:worldOrdinal(state.level??0,route),done:route.map(id=>!!state.finished||!!state.completedWorlds?.includes(id))};
+}
 export function checkpointRenderState(predicted,authoritative){
   if(!predicted)return authoritative;
   return {...predicted,checkpoint:authoritative?.checkpoint??null};
