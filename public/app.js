@@ -4,7 +4,7 @@ import { GameAudio } from './game/audio.js';
 import { renderWorldUI, worldUIModel, countdownSeconds } from './game/world-ui.js';
 import { renderPodium } from './game/podium.js';
 import { DEFAULT_QUESTIONS } from './game/default-questions.js';
-import { checkpointRenderState, runtimeMismatch, worldProgressModel } from './game/client-state.js';
+import { checkpointRenderState, runtimeMismatch, worldProgressModel, isDuelFrozen } from './game/client-state.js';
 import { DEFAULT_WORLD_ORDER, normalizeWorldOrder, worldOrdinal } from './game/world-order.js';
 import { activePowerEffects, renderPowerUI } from './game/power-ui.js';
 import { powerQuizModel, renderPowerQuiz } from './game/power-quiz-ui.js';
@@ -117,6 +117,7 @@ function onMessage(msg) {
   if (me?.state) {
     const s = me.state;
     if (lastAuthoritative && s.deaths > lastAuthoritative.deaths) playTone('death',sceneForLevel(s.level));
+    else if (lastAuthoritative && (s.enemyKills||0) > (lastAuthoritative.enemyKills||0)) playTone('stomp',sceneForLevel(s.level));
     else if (lastAuthoritative && s.finished && !lastAuthoritative.finished) playTone('finish',sceneForLevel(s.level));
     else if (lastAuthoritative && (s.completedWorlds?.length||0) > (lastAuthoritative.completedWorlds?.length||0)) playTone('clear',sceneForLevel(lastAuthoritative.level));
     else if (lastAuthoritative && s.checkpoint && s.checkpoint.id!==lastAuthoritative.checkpoint?.id) {playTone('checkpoint',sceneForLevel(s.level));toast('Checkpoint saved! Your score and collected coins are protected.');}
@@ -535,7 +536,7 @@ function frame(time){
   }
   if(role==='player'&&room?.status!=='ended'){
     const me=room?.players.find(p=>p.id===you),canvas=$('#game-canvas');
-    if(predicted&&me?.spawned&&connected&&!modal.open&&!runtimeError&&(room.status!=='running'||now<room.endsAt))step(predicted,input,dt,{...room.settings,powerEffects:activePowerEffects(me,now)});
+    if(predicted&&me?.spawned&&connected&&!modal.open&&!runtimeError&&(room.status!=='running'||now<room.endsAt)){const frozen=isDuelFrozen(room?.powerDuel,you);if(frozen)predicted.vx=0;step(predicted,frozen?{}:input,dt,{...room.settings,powerEffects:activePowerEffects(me,now)});}
     if(canvas){const visual=me?.spawned?checkpointRenderState(predicted,me.state):createState(profile);renderGame(canvas,visual,{time:t,compact:true,powerChestClaims:me?.powerChestClaims||[],showInstructions:room.status==='lobby'||!me?.spawned});drawPlayerPowers(canvas,me,{now,time:t});drawWorldBroadcasts(canvas,{now});drawPlayerQuiz(canvas,me,{now});}
     const state=lastAuthoritative,death=$('#death-caption');
     if(death&&state){const remain=state.respawnRemaining||0;death.hidden=remain<=0||!!me?.powerQuiz;if(remain>0)death.innerHTML=`<strong>WELL, THAT HAPPENED.</strong><p>${esc(state.deathCause?.label||'A surprise encounter with danger.')}</p><small>RESPAWNING IN ${Math.max(1,Math.ceil(remain))}s · ${state.checkpoint?'BACK TO YOUR CHECKPOINT · SAVED SCORE & COINS RESTORED':'BACK TO THE WORLD START · LEVELS BANKED ARE SAFE'}</small>`;}

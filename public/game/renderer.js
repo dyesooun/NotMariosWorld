@@ -145,6 +145,15 @@ function fireball(ctx,shot,time){
   rect(ctx,'#ffca54',flicker?4:-6,-17+flicker*2,2,2);
   ctx.restore();
 }
+const ENEMY_DEATH_DURATION=.5;
+function enemyPoof(ctx,e){
+  const age=ENEMY_DEATH_DURATION-Math.max(0,e.deathTimer||0),t=Math.min(1,age/ENEMY_DEATH_DURATION);
+  const cx=e.x+e.w/2,cy=e.y+e.h*(.4+t*.6),squash=1-t*.75;
+  ctx.save();ctx.globalAlpha=Math.max(0,1-t);
+  drawSprite(ctx,e.kind,cx-e.w/2,cy-e.h*squash,e.w,e.h*squash,{flip:e.facing<0});
+  for(let i=0;i<6;i++){const ang=i*1.05,spread=t*18;rect(ctx,'#2a1f1f',cx+Math.cos(ang)*spread-2,cy-6+Math.sin(ang)*spread*.6-2,4,4);}
+  ctx.restore();
+}
 export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstructions=false,powerChestClaims=[]}={}){
   if(!canvasOrContext||!state)return;
   const ctx=canvasOrContext.canvas?canvasOrContext:canvasOrContext.getContext('2d'),canvas=ctx.canvas,level=LEVELS[state.level]||LEVELS[0],theme=level.theme,p=palette[theme]||palette.forest,camera=Math.round(Math.max(0,Math.min(Math.max(0,level.width-W),state.x-330))),worldTime=state._levelTime??time;
@@ -157,7 +166,7 @@ export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstr
   }
   for(const c of level.coins){if(c.x<camera-20||c.x>camera+W+20||state.collected?.includes(c.id))continue;const bob=Math.sin(time*3+c.x)*3;drawSprite(ctx,'coin',c.x-9,c.y-9+bob,18,18);if(Math.sin(time*3+c.x)>.85)rect(ctx,'#fff8c6',c.x+10,c.y-9+bob,2,2);}
   const enemies=Array.isArray(state.enemies)&&state.enemies.length?state.enemies:level.enemies.map(base=>{const p=platformAt(level.platforms[base.platformIndex],worldTime),min=p.x+8,max=p.x+p.w-base.w-8;return {...base,x:Math.max(min,Math.min(max,base.x)),y:p.visible?p.y-base.h:1000,facing:1};});
-  for(const e of enemies){if(e.x+e.w<camera-20||e.x>camera+W+20||e.y>700)continue;drawSprite(ctx,e.kind,e.x,e.y,e.w,e.h,{flip:e.facing<0});if(e.shooter&&e.cooldown<.35)rect(ctx,'#ffd166',e.x+e.w/2-2,e.y-6,4,4);}
+  for(const e of enemies){if(e.x+e.w<camera-20||e.x>camera+W+20||e.y>700)continue;if(e.dead){if(e.deathTimer>0)enemyPoof(ctx,e);continue;}drawSprite(ctx,e.kind,e.x,e.y,e.w,e.h,{flip:e.facing<0});if(e.shooter&&e.cooldown<.35)rect(ctx,'#ffd166',e.x+e.w/2-2,e.y-6,4,4);}
   for(const shot of (state.projectiles||[])){if(shot.x<camera-20||shot.x>camera+W+20)continue;fireball(ctx,shot,time);}
   const claimed = new Set(powerChestClaims);
   for (const chest of (level.powerChests || [])) if(!claimed.has(chest.id)&&chest.x>camera-60&&chest.x<camera+W+60){drawSprite(ctx,theme==='forest'?'forest_chest':'chest',chest.x,chest.y-chest.h,chest.w,chest.h);rect(ctx,'#b7f5ff',chest.x+chest.w/2-2,chest.y-chest.h-8,4,4);rect(ctx,'#e8fbff',chest.x+chest.w/2-1,chest.y-chest.h-12,2,3);}

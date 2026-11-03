@@ -151,7 +151,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 ## Attack and defense quizzes
 
-- Activating a power requires a random **general-knowledge** question from a server-owned pool. This pool is separate from configurable lobby icebreakers; it currently contains 52 questions.
+- Activating a power requires a random **general-knowledge** question from a server-owned pool. This pool is separate from configurable lobby icebreakers; it currently contains 102 questions, with 50% drawn from Philippines trivia.
 - Attacker: the configured attack window (**10 seconds by default**), **one attempt**. Wrong or unanswered means the power applies to the attacker for the configured power duration, without a defender quiz.
 - Correct attack: every eligible opponent receives a private defense question with the configured defense window (**10 seconds by default**) and **one attempt**.
 - Defense happens **before the effect starts**. Correct defense blocks that player's effect; incorrect/unanswered defense leaves that player affected. One player's success must not protect others automatically.

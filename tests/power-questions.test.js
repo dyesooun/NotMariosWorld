@@ -8,6 +8,10 @@ test('question bank supports a full room with unique prompts and a ten-second de
   const selected=[];
   for(let i=0;i<26;i++){const q=choosePowerQuestion({random:()=>0,excludedIds:selected});assert.ok(!selected.includes(q.id));selected.push(q.id);}
 });
+test('half the question pool is Philippines trivia',()=>{
+  const philippinesRelated=POWER_QUESTIONS.filter(q=>q.id.startsWith('ph-')||q.id==='capital-philippines');
+  assert.equal(philippinesRelated.length,POWER_QUESTIONS.length/2);
+});
 test('answers ignore case, outer spaces, and repeated spaces while rejecting wrong answers',()=>{
   const paris=POWER_QUESTIONS.find(q=>q.id==='capital-france'),mona=POWER_QUESTIONS.find(q=>q.id==='mona-lisa');
   assert.ok(isCorrectPowerAnswer(paris,' pArIs '));assert.ok(isCorrectPowerAnswer(mona,' LEONARDO   DA VINCI '));

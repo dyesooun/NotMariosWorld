@@ -17,7 +17,7 @@ const hazardBox = h => {
 };
 
 export function createState({ avatar = 'explorer', color = '#b7ef51', name = '', level = 0, worldOrder = DEFAULT_WORLD_ORDER, completedWorlds = [] } = {}) {
-  return { avatar, color, name, level, worldOrder: normalizeWorldOrder(worldOrder), completedWorlds: [...new Set(completedWorlds.filter(v => Number.isInteger(v) && v >= 1 && v <= 3))], x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
+  return { avatar, color, name, level, worldOrder: normalizeWorldOrder(worldOrder), completedWorlds: [...new Set(completedWorlds.filter(v => Number.isInteger(v) && v >= 1 && v <= 3))], x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], enemyKills: 0, _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
 }
 export function startRun(s, config = {}) {
   const profile = s.profile;
@@ -28,8 +28,8 @@ export function startRun(s, config = {}) {
   return s;
 }
 function levelStart(s) {
-  const { banked, deaths, elapsed, level, started, name, avatar, color, profile, worldOrder, completedWorlds } = s;
-  Object.assign(s, createState({ name, avatar, color, level, worldOrder, completedWorlds }), { banked, deaths, elapsed, started });
+  const { banked, deaths, elapsed, enemyKills, level, started, name, avatar, color, profile, worldOrder, completedWorlds } = s;
+  Object.assign(s, createState({ name, avatar, color, level, worldOrder, completedWorlds }), { banked, deaths, elapsed, enemyKills, started });
   if (profile !== undefined) s.profile = clone(profile);
   initializeEnemies(s, LEVELS[s.level] || LEVELS[0]);
 }
@@ -60,7 +60,7 @@ function initializeEnemies(s, level) {
     let pi = Number.isInteger(base.platformIndex) ? base.platformIndex : level.platforms.findIndex(p => Math.abs(p.x - base.min) < 100);
     if (pi < 0) pi = 0;
     const p = platformAt(level.platforms[pi], s._levelTime);
-    return { id: base.id || `${level.theme}-enemy-${i}`, x: base.x, y: p.y - base.h, w: base.w, h: base.h, kind: base.kind, platformIndex: pi, facing: 1, patrolDirection: 1, cooldown: 2 + i * .5, shooter: !!base.shooter, speed: base.speed || 42, _baseX: base.x };
+    return { id: base.id || `${level.theme}-enemy-${i}`, x: base.x, y: p.y - base.h, w: base.w, h: base.h, kind: base.kind, platformIndex: pi, facing: 1, patrolDirection: 1, cooldown: 2 + i * .5, shooter: !!base.shooter, speed: base.speed || 42, _baseX: base.x, dead: false, deathTimer: 0 };
   });
   s._enemyLevel = s.level;
 }
@@ -69,8 +69,9 @@ function updateEnemies(s, level, dt) {
   for (const e of s.enemies) {
     const p = platformAt(level.platforms[e.platformIndex], s._levelTime);
     if (!p || !p.visible) { e.y = 1000; e.cooldown = Math.max(0, e.cooldown - dt); continue; }
-    const minX = p.x + 8, maxX = p.x + p.w - e.w - 8;
     e.y = p.y - e.h;
+    if (e.dead) { e.deathTimer = Math.max(0, (e.deathTimer || 0) - dt); continue; }
+    const minX = p.x + 8, maxX = p.x + p.w - e.w - 8;
     const sameBand = Math.abs((s.y - 36) - e.y) <= 140;
     const onOwnPlatform = s.grounded && s._standingPlatform === e.platformIndex;
     const chasing = onOwnPlatform && Math.abs(s.x - e.x) <= 400 && sameBand;
@@ -129,7 +130,7 @@ export function step(s, input = {}, dt = 1 / 60, config = {}) {
   const b = avatarBox(s); let dead = false;
   for (const h of level.hazards) if ((h.kind === 'pit' && s.y > 590 && s.x > h.x && s.x < h.x + h.w) || (h.kind !== 'pit' && hit(b, hazardBox(h)))) { const e = die(s, h, s.elapsed, cfg); if (e) events.push(e); dead = true; break; }
   if (!dead && s.y > 590) { const e = die(s, { x: s.x, y: 500, kind: 'pit', actualKind: 'pit', label: level.theme === 'ocean' ? 'Took the scenic route into the sea.' : level.theme === 'hell' ? 'The lava was warmer than expected.' : 'Found a shortcut. It went straight down.' }, s.elapsed, cfg); if (e) events.push(e); dead = true; }
-  if (!dead) { for (const e of s.enemies) if (e.y < 700 && hit(b, e)) { const name=e.kind.replaceAll('_',' ');const d = die(s, { ...e, kind: 'enemy', label: `Bonked by ${/^[aeiou]/i.test(name)?'an':'a'} ${name}` }, s.elapsed, cfg); if (d) events.push(d); dead = true; break; } }
+  if (!dead) { for (const e of s.enemies) { if (e.dead || e.y >= 700 || !hit(b, e)) continue; if (s.vy > 0 && oldY <= e.y + e.h * .5) { e.dead = true; e.deathTimer = .5; s.vy = -cfg.jumpSpeed * .65; s.y = e.y; s.enemyKills = (s.enemyKills || 0) + 1; events.push({ type: 'enemyKill', id: e.id, kind: e.kind, x: e.x + e.w / 2, y: e.y }); } else { const name=e.kind.replaceAll('_',' ');const d = die(s, { ...e, kind: 'enemy', label: `Bonked by ${/^[aeiou]/i.test(name)?'an':'a'} ${name}` }, s.elapsed, cfg); if (d) events.push(d); dead = true; } break; } }
   if (!dead) for (const p of s.projectiles) if (hit(b, { x: p.x - (p.w || PROJECTILE_RULES.width) / 2, y: p.y - (p.h || PROJECTILE_RULES.height) / 2, w: p.w || PROJECTILE_RULES.width, h: p.h || PROJECTILE_RULES.height })) { const d = die(s, { x: p.x, y: p.y, kind: 'projectile', label: 'A projectile found its mark.' }, s.elapsed, cfg); if (d) events.push(d); dead = true; break; }
   if (!dead) for (const c of level.coins) if (!s.collected.includes(c.id) && Math.hypot(s.x - c.x, s.y - c.y) < 34) { s.collected.push(c.id); s.coins += 1; s.current += cfg.coinPoints; }
   if (!dead && !s.finished && Array.isArray(level.checkpoints)) for (const cp of level.checkpoints) {

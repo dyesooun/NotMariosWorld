@@ -307,3 +307,38 @@ test('losing a chase resumes patrol in its prior direction away from an edge', (
     assert.ok(enemy.x >= platform.x + 8 && enemy.x <= platform.x + platform.w - enemy.w - 8);
   } finally { level.hazards = hazards; }
 });
+
+test('landing on an enemy from above kills it, bounces the player, and leaves them alive', () => {
+  const state = startRun(createState()), level = LEVELS[state.level], enemy = state.enemies.find(e => level.platforms[e.platformIndex]?.kind === 'ground');
+  assert.ok(enemy);
+  const hazards = level.hazards; level.hazards = [];
+  try {
+    state.x = enemy.x + enemy.w / 2; state.y = enemy.y + 1; state.vy = 50; state.vx = 0; state.grounded = false; state._standingPlatform = null;
+    const events = step(state, {}, 1 / 60);
+    assert.equal(events.find(e => e.type === 'enemyKill')?.id, enemy.id);
+    assert.equal(enemy.dead, true);
+    assert.ok(enemy.deathTimer > 0);
+    assert.equal(state.enemyKills, 1);
+    assert.equal(state.deaths, 0);
+    assert.ok(state.vy < 0, 'the player should bounce upward off the enemy');
+    assert.equal(events.some(e => e.type === 'death'), false);
+    for (let i = 0; i < 60; i++) step(state, {}, 1 / 60);
+    assert.equal(enemy.deathTimer, 0);
+    assert.equal(enemy.dead, true, 'a dead enemy stays gone for the rest of the run');
+  } finally { level.hazards = hazards; }
+});
+
+test('touching an enemy from the side (not falling onto it) still kills the player', () => {
+  const state = startRun(createState()), level = LEVELS[state.level], enemy = state.enemies.find(e => level.platforms[e.platformIndex]?.kind === 'ground');
+  assert.ok(enemy);
+  const hazards = level.hazards; level.hazards = [];
+  try {
+    const platform = level.platforms[enemy.platformIndex];
+    state.x = enemy.x + enemy.w / 2; state.y = enemy.y + enemy.h; state.vy = 0; state.vx = 0; state.grounded = true; state._standingPlatform = enemy.platformIndex; state._platformX = platform.x; state._platformY = platform.y;
+    const events = step(state, {}, 1 / 60);
+    assert.equal(events[0]?.type, 'death');
+    assert.match(events[0].label, /Bonked/);
+    assert.equal(enemy.dead, false);
+    assert.equal(state.enemyKills, 0);
+  } finally { level.hazards = hazards; }
+});

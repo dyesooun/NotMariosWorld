@@ -42,6 +42,34 @@ test('correct attack waits for all defenses; only failed defenders get a full fi
   await f.advance(4999);assert.ok(f.room.activePower);await f.advance(1);assert.equal(f.room.powerDuel,null);
 });
 
+test('attackers and defenders cannot move until every answer is in',async t=>{
+  const f=await fixture(t);
+  for(const ws of f.clients) send(ws,'input',{right:true});
+  await f.advance(200); // reach steady-state movement before measuring freezes
+  await f.use();
+  const atUse=f.players.map(p=>p.state.x);
+  await f.advance(100);
+  assert.equal(f.players[0].state.x,atUse[0],'the attacker must hold still during their own attack question');
+  assert.ok(f.players[1].state.x>atUse[1],'nobody is targeted yet, so other players keep moving in the attack phase');
+  assert.ok(f.players[2].state.x>atUse[2]);
+  await f.answer(0);
+  assert.equal(f.room.powerDuel.phase,'defense');
+  const atDefense=f.players.map(p=>p.state.x);
+  await f.advance(100);
+  assert.equal(f.players[0].state.x,atDefense[0],'the caster stays frozen through the defense phase too');
+  assert.equal(f.players[1].state.x,atDefense[1],'a defender must hold still while the question is live');
+  assert.equal(f.players[2].state.x,atDefense[2]);
+  await f.answer(1);
+  const afterFirstDefense=f.players[1].state.x;
+  await f.advance(100);
+  assert.equal(f.players[1].state.x,afterFirstDefense,'a defender who already answered still waits for the others');
+  await f.answer(2,false);
+  assert.equal(f.room.powerDuel.phase,'effect');
+  await f.advance(100);
+  assert.ok(f.players[0].state.x>atDefense[0],'movement resumes for everyone once the duel resolves');
+  assert.ok(f.players[1].state.x>afterFirstDefense);
+});
+
 test('wrong attacker answer backfires on self with no defense phase',async t=>{
   const f=await fixture(t);await f.use();assert.equal((await f.answer(0,false)).correct,false);
   await waitFor(()=>f.room.activePower);assert.equal(f.room.powerDuel.outcome,'attackerFailed');

@@ -8,7 +8,7 @@ import * as engine from '../public/game/engine.js';
 import { LEVELS } from '../public/game/levels.js';
 import { chestPower, collectPower, powerEffects, reservePower, releasePowerReservation, resetPowerInventory, powerStrength } from '../public/game/powers.js';
 import { DEFAULT_QUESTIONS } from '../public/game/default-questions.js';
-import { beginPowerDuel, answerPowerDuel, advancePowerDuel, prunePowerDuel, duelView, privateDuelQuiz } from './power-duels.js';
+import { beginPowerDuel, answerPowerDuel, advancePowerDuel, prunePowerDuel, duelView, privateDuelQuiz, isDuelFrozen } from './power-duels.js';
 import { normalizeWorldOrder } from '../public/game/world-order.js';
 
 const { WebSocketServer } = createRequire(import.meta.url)('ws');
@@ -165,7 +165,10 @@ export function createGameServer({port=Number(process.env.PORT)||10000, host='0.
           if (t - player.lastInput > 1000) player.input = {};
           for (let tick = 0; tick < ticks; tick++) {
             const activeEffects=powerEffects(player,t);
-            const events = engine.step(player.state, player.input, 1 / 60, {...room.settings,powerEffects:activeEffects});
+            const frozen = isDuelFrozen(room,player);
+            if (frozen) player.state.vx = 0;
+            const input = frozen ? {} : player.input;
+            const events = engine.step(player.state, input, 1 / 60, {...room.settings,powerEffects:activeEffects});
             for (const event of events) {
               if (event.type === 'levelComplete') { const queued=room.powerQueue.some(item=>item.caster===player)||room.announcementQueue.some(item=>item.kind==='power'&&item.caster===player); if(!queued) player.power=null; player.powerOffer=null; syncPower(player); announce(room, `${player.name} escaped ${['the lobby', 'Whimsical Woods', 'Troubled Tides', 'Inferno Express'][event.level]}!`, event.level); }
               if (event.type === 'finished') player.finishTime = (t - room.startedAt) / 1000;

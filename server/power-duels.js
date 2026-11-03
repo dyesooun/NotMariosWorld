@@ -71,6 +71,14 @@ export function prunePowerDuel(room,{now=Date.now()}={}){
   for(const defense of duel.defenses.values())if(!currentParticipant(room,defense.player,defense.runId)){defense.answered=true;defense.result='skipped';}
   return resolveDefenses(room,duel,now);
 }
+export function isDuelFrozen(room, player) {
+  const duel = room?.powerDuel;
+  if (!duel || duel.phase === 'effect') return false;
+  if (duel.caster === player && player.runId === duel.casterRunId) return true;
+  if (duel.phase !== 'defense') return false;
+  const defense = duel.defenses.get(player.id);
+  return !!defense && defense.player === player && defense.runId === player.runId;
+}
 export function duelView(room){
   const duel=room?.powerDuel;if(!duel)return null;
   const answeredCount=duel.phase==='attack'?(duel.attackAnswered?1:0):[...duel.defenses.values()].filter(d=>d.answered).length;
