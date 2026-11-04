@@ -10,6 +10,7 @@ import { activePowerEffects, renderPowerUI } from './game/power-ui.js';
 import { powerQuizModel, renderPowerQuiz } from './game/power-quiz-ui.js';
 import { createPowerQuizControls } from './game/power-quiz-controls.js';
 import { powerChestOfferModel, createPowerChestControls } from './game/power-chest-ui.js';
+import { POWER_DEFINITIONS } from './game/powers.js';
 import { LocalRunRuntime } from './game/local-run.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -43,6 +44,7 @@ let ws, room = null, you = null, role = null, screen = 'entry', entryTab = 'join
 let connected = false, reconnectTimer, reconnectAttempts = 0, intentionalClose = false;
 let checkedRuntime = null, runtimeError = null;
 let clockOffset = 0, clockOffsetReady = false, clockSynced = false, lastStatus = null, rosterKey = '', scoreKey = '', questionKey = '', screenKey = '';
+let hostReportsOpen = true;
 let localRun = null, input = {left:false,right:false,jump:false};
 let localFinalizing = false, simulationCursor = null, finalPending = false;
 const audio = new GameAudio();
@@ -50,7 +52,6 @@ let podiumArrivedAt=0,lastCountdownSecond=null,lastCountdownRoom=null,finalSentR
 let playerQuizControls=null,playerQuizViewport=null;
 let playerChestControls=null,playerChestViewport=null;
 const demo = createState({level:1,name:'A perfectly normal adventure'});
-const hostStage = createState();
 demo.x = 310; demo.y = 500;
 const app = $('#app'), modal = $('#modal');
 const scoreLocal = state => score(state, room?.settings || DEFAULTS);
@@ -142,6 +143,7 @@ function onMessage(msg) {
   if(msg.type==='error'&&msg.transactionId){const q=room?.players.find(p=>p.id===you)?.powerQuiz;if(q&&q.transactionId===msg.transactionId&&q.id===msg.challengeId){playerQuizControls?.resetSubmission();syncPlayerQuiz();}}
   if(msg.type==='powerAnswerResult'){toast(msg.correct?(msg.role==='attack'?'Correct! Your opponents must defend.':'Correct! You blocked this attack.'):(msg.role==='attack'?'Incorrect. Your power backfires on you.':'Incorrect. The power will affect you.'));return;}
   if(msg.type==='powerQueued'){toast(`${msg.name||'Your power'} queued${msg.position?` (#${msg.position})`:''}. It will activate in turn.`);return;}
+  if(msg.type==='hostAttackCancelled'){toast(`${msg.name||'Host challenge'} skipped: no active players remain.`);return;}
   if(msg.type==='powerCancelled'){toast(msg.reason==='NO_TARGET'?'No opponents are ready. Your unused power is kept.':`${msg.name||'Your queued power'} could not start. Your unused power is kept.`);return;}
   if (msg.type === 'progress' || msg.type === 'leaderboard') {
     if (room && Array.isArray(msg.players)) for (const patch of msg.players) {
@@ -301,9 +303,11 @@ function syncPlayerChest() {
 }
 function renderHost() {
   const running=room.status==='running';
+  const existingReports=$('#host-run-reports');
+  if(existingReports)hostReportsOpen=existingReports.open;
   app.innerHTML = `${shellTop('The control room.',running?'Follow scores, checkpoints, and escapes as they happen.':'Gather the team, break the ice, then let the chaos begin.',`${running?'<span class="pill lime"><i class="dot"></i> LIVE ROUND</span>':`<button class="button ghost small" data-action="settings">${icon('settings')} Game settings</button>`}<button class="button ${running?'danger':'primary'}" data-action="${running?'end-confirm':'start'}">${icon(running?'stop':'play')}${running?'End round':'Start the race'}</button>`)}
   <div class="session-strip"><div class="session-stat"><div class="stat-label">${running?'TIME REMAINING':'ROUND DURATION'}</div><div class="stat-value lime" id="host-timer">${clock(room.settings.durationMinutes*60000)}</div></div><div class="session-stat"><div class="stat-label">PLAYERS CONNECTED</div><div class="stat-value" id="host-player-count">0 <em>/ 25</em></div></div><div class="session-stat"><div class="stat-label">${running?'TOTAL RESPAWNS':'READY TO EXPLORE'}</div><div class="stat-value" id="host-death-count">0 <em>${running?'second chances':'spawned in lobby'}</em></div></div><div class="session-stat"><div class="stat-label">${running?'FINISHED ALL WORLDS':'SCORING'}</div><div class="stat-value" id="host-finish-count">${running?'0':room.settings.coinPoints} <em>${running?'runners':'pts / coin'}</em></div></div></div>
-  <div class="host-layout"><section><div class="live-section-head"><h2>${running?'Run reports':'Lobby roster'} <span class="pill lime" style="margin-left:8px">LIGHTWEIGHT</span></h2><small>Updates at milestones and gameplay events</small></div><div id="feed-grid" class="feed-grid"></div><section class="game-shell broadcast-stage"><div class="game-topbar"><span>WORLD BROADCAST</span><span class="pill lime">SHARED ANNOUNCEMENTS</span><button class="link-button" data-action="fullscreen" aria-label="Full screen world broadcast">${icon('expand')}</button></div>${worldScreenMarkup('host-world-canvas','World broadcast stage')}</section></section><aside class="aside-stack host-aside"><section class="panel"><div class="panel-head"><h2>${running?'The leaderboard':'The guest list'}</h2><small id="leader-count">0 PLAYERS</small></div><div id="leaderboard" class="leaderboard"></div></section><section class="panel" id="host-question-panel"><div class="panel-head"><h2>Break the ice</h2><span class="pill">15s / VOTE</span></div><div id="host-questions" class="host-questions"></div></section><p class="host-note">${running?'Scores and progress come from each player’s local run report.':'Share the room code or copy an invite link.'}</p><button class="button ghost wide small" data-action="copy-link">${icon('copy')} Copy invite link</button></aside></div></main>`;
+  <div class="host-layout"><section><details id="host-run-reports" class="host-reports" ${hostReportsOpen?'open':''}><summary><span class="live-section-head"><span><h2>${running?'Run reports':'Lobby roster'} <span class="pill lime" style="margin-left:8px">LIGHTWEIGHT</span></h2><small>Updates at milestones and gameplay events</small></span><span class="report-toggle" aria-hidden="true">${hostReportsOpen?'HIDE':'SHOW'}</span></span></summary><div id="feed-grid" class="feed-grid"></div></details><section class="game-shell broadcast-stage"><div class="game-topbar"><span>WORLD BROADCAST</span><span class="pill lime">SHARED ANNOUNCEMENTS</span><button class="link-button" data-action="fullscreen" aria-label="Full screen world broadcast">${icon('expand')}</button></div>${worldScreenMarkup('host-world-canvas','Shared announcements stage')}</section></section><aside class="aside-stack host-aside"><section class="panel"><div class="panel-head"><h2>${running?'The leaderboard':'The guest list'}</h2><small id="leader-count">0 PLAYERS</small></div><div id="leaderboard" class="leaderboard"></div></section><section class="panel host-power-panel" id="host-power-panel"><div class="panel-head"><h2>Launch a power</h2><span class="pill" id="host-power-status">RUNNING ONLY</span></div><p class="host-power-help">Challenge every active player directly. No attack question.</p><div id="host-power-actions" class="host-power-actions"></div></section><section class="panel" id="host-question-panel"><div class="panel-head"><h2>Break the ice</h2><span class="pill">15s / VOTE</span></div><div id="host-questions" class="host-questions"></div></section><p class="host-note">${running?'Scores and progress come from each player’s local run report.':'Share the room code or copy an invite link.'}</p><button class="button ghost wide small" data-action="copy-link">${icon('copy')} Copy invite link</button></aside></div></main>`;
 }
 function renderPlayer() {
   app.innerHTML = `${shellTop(room.status==='running'?'Run. Collect. Question everything.':'Your adventure starts here.',room.status==='running'?'Coins are good. The floor is negotiable.':'Pick your character, find your color, and take a practice jump.')}
@@ -359,6 +363,23 @@ function updateHost() {
     qPanel.dataset.key=qKey;
     qPanel.innerHTML=room.status==='running'?'<p class="leader-empty">Icebreakers are for the lobby.<br>Right now, the floor is asking the questions.</p>':room.settings.questions.length ? room.settings.questions.map((q,i)=>`<div class="question-item"><div><small>QUESTION 0${i+1}</small>${esc(q.prompt)}</div><button class="button small ghost" data-launch="${i}">Launch ${icon('play')}</button></div>`).join('') : `<p class="leader-empty" style="padding:7px 2px 15px">A quick question before a questionable adventure. Add up to five in game settings.</p><button class="button ghost small wide" data-action="settings">${icon('plus')} Add icebreakers</button>`;
   }
+  updateHostPowerPanel();
+}
+function updateHostPowerPanel(){
+  const panel=$('#host-power-actions'),status=$('#host-power-status');if(!panel||!status)return;
+  const eligible=room.status==='running'&&room.players.some(p=>p.connected&&p.spawned&&!p.summary?.finished);
+  const queued=room.powerQueue||[],active=room.activePower||room.powerDuel;
+  const activeType=active?.type||active?.power?.type;
+  status.textContent=active?`ACTIVE${queued.length?` / ${queued.length} QUEUED`:''}`:queued.length?`${queued.length} QUEUED`:eligible?'READY':'RUNNING ONLY';
+  status.className=`pill ${active?'lime':''}`;
+  const key=`${eligible}:${runtimeError?'error':''}:${connected}:${queued.map(entry=>entry.powerType||entry.power?.type).join(',')}:${activeType||''}`;
+  if(panel.dataset.key===key)return;
+  panel.dataset.key=key;
+  panel.innerHTML=POWER_DEFINITIONS.map(def=>{
+    const queuedCount=queued.filter(entry=>entry.powerType===def.type||entry.power?.type===def.type).length;
+    const activeLabel=activeType===def.type?' · ACTIVE':'';
+    return `<button class="button ghost small host-power-button" data-host-power="${def.type}" ${eligible&&!runtimeError&&connected?'':'disabled'}>${esc(def.name)}<small>${queuedCount?`${queuedCount} queued`:''}${activeLabel}</small></button>`;
+  }).join('');
 }
 function reportAge(player){return player.lastReportAt?`Updated ${new Date(player.lastReportAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`:'Awaiting race report';}
 function updatePlayer() {
@@ -497,8 +518,10 @@ document.addEventListener('submit',async e=>{
     send('settings',{settings});closeModal();toast('Game settings saved.');
   }
 });
+document.addEventListener('toggle',e=>{if(e.target.id==='host-run-reports'){hostReportsOpen=e.target.open;const label=$('.report-toggle',e.target);if(label)label.textContent=hostReportsOpen?'HIDE':'SHOW';}},{capture:true});
 document.addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b||b.disabled)return;
+  if(b.dataset.hostPower){if(runtimeError||!connected||role!=='host'||room?.status!=='running')return;send('hostAttack',{roundId:room.roundId,powerType:b.dataset.hostPower});return;}
   if(b.dataset.avatar){profile.avatar=b.dataset.avatar;persistProfile();send('profile',profile);renderProfile();return;}
   if(b.dataset.color){profile.color=b.dataset.color;persistProfile();send('profile',profile);renderProfile();return;}
   if(b.dataset.vote!==undefined){send('vote',{choice:Number(b.dataset.vote)});return;}
@@ -628,7 +651,7 @@ function frame(time){
   if(role==='host'&&room&&!ceremony()&&time-lastHostDraw>120){
     lastHostDraw=time;
     const stage=$('#host-world-canvas');
-    if(stage){renderGame(stage,hostStage,{time:t,compact:true});drawWorldBroadcasts(stage,{now});}
+    if(stage){const ctx=stage.getContext('2d');ctx.clearRect(0,0,stage.width,stage.height);ctx.fillStyle='#101b17';ctx.fillRect(0,0,stage.width,stage.height);const model=drawWorldBroadcasts(stage,{now});if(!model.question&&!model.announcement&&model.countdown===null){ctx.fillStyle='#839783';ctx.font='12px monospace';ctx.textAlign='center';ctx.fillText('No shared announcements right now.',stage.width/2,stage.height/2);ctx.textAlign='left';}}
   }
   if(time-lastUiDraw>100){lastUiDraw=time;
     if(role==='player'&&room&&!ceremony()){updatePlayer();updateMusicScene();}

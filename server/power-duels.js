@@ -13,15 +13,23 @@ function resolveDefenses(room, duel, now) {
   return true;
 }
 export function beginPowerDuel(room, entry, { now = Date.now(), random = Math.random } = {}) {
-  const caster = entry.caster, slot = caster.powerSlots?.[entry.level];
-  if (room.status !== 'running' || room.powerDuel || room.activePower || !caster.connected || (entry.runId && entry.runId !== caster.runId) || !slot?.claimed || slot.used || slot.reserved !== entry.id || (entry.itemId && slot.itemId !== entry.itemId)) return { ok:false, code:'POWER_UNAVAILABLE' };
-  if (!eligible(room, caster).length) return { ok:false, code:'NO_TARGET' };
-  slot.used = true; slot.reserved = null;
+  const caster = entry.caster, hostAttack = entry.source === 'host';
+  const slot = caster?.powerSlots?.[entry.level];
+  if (room.status !== 'running' || room.powerDuel || room.activePower) return { ok:false, code:'POWER_UNAVAILABLE' };
+  if (!hostAttack && (!caster?.connected || (entry.runId && entry.runId !== caster.runId) || !slot?.claimed || slot.used || slot.reserved !== entry.id || (entry.itemId && slot.itemId !== entry.itemId))) return { ok:false, code:'POWER_UNAVAILABLE' };
+  if (hostAttack && !entry.power?.type) return { ok:false, code:'POWER_UNAVAILABLE' };
+  const targets = eligible(room, hostAttack ? null : caster);
+  if (!targets.length) return { ok:false, code:'NO_TARGET' };
+  if (!hostAttack) { slot.used = true; slot.reserved = null; }
   const attackMs = Math.max(1000, Number(room.settings?.attackWindowSeconds ?? 10) * 1000);
   const defendMs = Math.max(1000, Number(room.settings?.defendWindowSeconds ?? 10) * 1000);
   const durationMs = Math.max(1000, Number(room.settings?.powerDurationSeconds ?? (entry.power.durationMs / 1000)) * 1000);
   entry.power = { ...entry.power, target: 'all', durationMs, strength: powerStrength(room.settings, entry.power.type) };
-  const duel = { id:randomUUID(),entry,caster,casterRunId:caster.runId,random,attackMs,defendMs,phase:'attack',startedAt:now,endsAt:now+attackMs,attackQuestion:choosePowerQuestion({random}),attackAnswered:null,defenses:new Map(),targets:[],outcome:null,affectedIds:[] };
+  const duel = { id:randomUUID(),entry,caster,casterRunId:caster?.runId,random,attackMs,defendMs,phase:hostAttack?'defense':'attack',startedAt:now,endsAt:now+(hostAttack?defendMs:attackMs),attackQuestion:hostAttack?null:choosePowerQuestion({random}),attackAnswered:hostAttack?{correct:true,result:'host'}:null,defenses:new Map(),targets, outcome:null,affectedIds:[] };
+  if (hostAttack) {
+    const usedQuestions = [];
+    for (const target of targets) { const question=choosePowerQuestion({random,excludedIds:usedQuestions}); usedQuestions.push(question.id); duel.defenses.set(target.id,{player:target,runId:target.runId,question,result:null,answered:false}); }
+  }
   room.powerDuel = duel;
   return { ok:true,duel };
 }
@@ -84,7 +92,7 @@ export function duelView(room){
   const answeredCount=duel.phase==='attack'?(duel.attackAnswered?1:0):[...duel.defenses.values()].filter(d=>d.answered).length;
   const blockedCount=[...duel.defenses.values()].filter(d=>d.result==='correct').length;
   const targetIds=validDefenses(room,duel).map(d=>d.player.id);
-  return {id:duel.id,phase:duel.phase,casterId:duel.caster.id,casterName:duel.caster.name,power:{...duel.entry.power},endsAt:duel.endsAt,targetIds,defenderTotal:duel.targets.length,answeredCount,blockedCount,outcome:duel.outcome,affectedIds:[...duel.affectedIds]};
+  return {id:duel.id,source:duel.entry.source||'player',phase:duel.phase,casterId:duel.entry.source==='host'?null:duel.caster?.id,casterName:duel.entry.source==='host'?'Host':duel.caster?.name,power:{...duel.entry.power},endsAt:duel.endsAt,targetIds,defenderTotal:duel.targets.length,answeredCount,blockedCount,outcome:duel.outcome,affectedIds:[...duel.affectedIds]};
 }
 export function privateDuelQuiz(room,player){
   const duel=room?.powerDuel;if(!duel)return null;

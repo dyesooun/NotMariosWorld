@@ -52,8 +52,8 @@ export function worldUIModel(room,{now=Date.now(),viewerId=null,isHost=false}={}
       dismiss:box(panel.x+panel.w-174,panel.y+panel.h-33,151,24)};
   }
   const a=room?.announcement;
-  const announcementX=room?.status==='running'?POWER_HUD_RECT.x+POWER_HUD_RECT.w+16:130;
-  const announcementRight=countdown!==null?740:946;
+  const announcementX=isHost?60:room?.status==='running'?POWER_HUD_RECT.x+POWER_HUD_RECT.w+16:130;
+  const announcementRight=countdown!==null?740:isHost?900:946;
   const announcement=!question&&a&&a.endsAt>now?{...a,remainingSeconds:Math.max(0,Math.ceil((a.endsAt-now)/1000)),queuedPowerCount:room.powerQueue?.length||0,rect:box(announcementX,18,announcementRight-announcementX,68)}:null;
   return {question,announcement,countdown};
 }

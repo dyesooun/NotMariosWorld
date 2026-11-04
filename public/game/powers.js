@@ -108,6 +108,8 @@ export function activatePower(room, caster, { now = Date.now(), random = Math.ra
 }
 
 export function releasePowerReservation(entry) {
+  // Host challenges are room-owned and have no chest item to release.
+  if (!entry?.caster) return;
   const slot = entry?.caster?.powerSlots?.[entry.level];
   if (slot && slot.reserved === entry.id && slot.itemId === entry.itemId) slot.reserved = null;
   if (entry?.caster?.power?.itemId === entry.itemId && entry.caster.power.used === false) {

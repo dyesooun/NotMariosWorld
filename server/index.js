@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { AVATARS, COLORS } from '../public/game/engine.js';
 import { LEVELS } from '../public/game/levels.js';
-import { chestPower, collectPower, powerEffects, reservePower, releasePowerReservation, resetPowerInventory } from '../public/game/powers.js';
+import { POWER_DEFINITIONS, chestPower, collectPower, powerEffects, powerStrength, reservePower, releasePowerReservation, resetPowerInventory } from '../public/game/powers.js';
 import { DEFAULT_QUESTIONS } from '../public/game/default-questions.js';
 import { beginPowerDuel, answerPowerDuel, advancePowerDuel, prunePowerDuel, duelView, privateDuelQuiz } from './power-duels.js';
 import { normalizeWorldOrder } from '../public/game/world-order.js';
@@ -61,8 +61,8 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     startedAt:room.startedAt, endsAt:room.endsAt, cutoffAt:room.cutoffAt, settleEndsAt:room.settleEndsAt,
     remainingMs:room.status==='running' ? Math.max(0,room.endsAt-now()) : 0,
     runtimeVersion, protocolVersion:PROTOCOL_VERSION, results:room.results,
-    activePower:room.activePower ? { id:room.activePower.id, by:room.activePower.casterId, byName:room.activePower.casterName, type:room.activePower.power.type, name:room.activePower.power.name, level:room.activePower.level, startedAt:room.activePower.startedAt, endsAt:room.activePower.endsAt } : null,
-    powerDuel:duelView(room), powerQueue:room.powerQueue.map((q,index)=>({id:q.id,casterId:q.casterId,casterName:q.casterName,level:q.level,power:q.power,position:index+1})),
+    activePower:room.activePower ? { id:room.activePower.id, source:room.activePower.source||'player', by:room.activePower.casterId, byName:room.activePower.casterName, type:room.activePower.power.type, name:room.activePower.power.name, level:room.activePower.level, startedAt:room.activePower.startedAt, endsAt:room.activePower.endsAt } : null,
+    powerDuel:duelView(room), powerQueue:room.powerQueue.map((q,index)=>({id:q.id,source:q.source||'player',casterId:q.source==='host'?null:q.casterId,casterName:q.source==='host'?'Host':q.casterName,level:q.level,power:q.power,position:index+1})),
     players:[...room.players.values()].map(p=>playerDTO(room,p,viewer)),
     question:room.question ? { index:room.question.index,prompt:room.question.prompt,choices:room.question.choices,votes:Object.fromEntries(room.question.votes),endsAt:room.question.endsAt,closed:room.question.closed } : null,
     announcement:room.announcement,
@@ -85,8 +85,8 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     if (item.kind==='power') {
       room.powerQueue=room.powerQueue.filter(q=>q.id!==item.id);
       const result=beginPowerDuel(room,item,{now:startedAt});
-      if (!result.ok) { releasePowerReservation(item); send(item.caster.ws,{type:'powerCancelled',name:item.power.name,reason:result.code}); return nextAnnouncement(room); }
-      room.announcement={id:result.duel.id,kind:'power-quiz',phase:'attack',text:`${item.caster.name} is challenged!`,startedAt,endsAt:result.duel.endsAt,durationMs:result.duel.attackMs};
+      if (!result.ok) { releasePowerReservation(item); send(item.caster?.ws||room.hostWs,{type:item.source==='host'?'hostAttackCancelled':'powerCancelled',name:item.power.name,reason:result.code}); return nextAnnouncement(room); }
+      room.announcement={id:result.duel.id,kind:'power-quiz',phase:result.duel.phase,text:item.source==='host'?`Host challenges everyone with ${item.power.name}!`:`${item.caster.name} is challenged!`,startedAt,endsAt:result.duel.endsAt,durationMs:item.source==='host'?result.duel.defendMs:result.duel.attackMs};
     } else room.announcement={...item,kind:'level',startedAt,endsAt:startedAt+2000,durationMs:2000};
     syncPowers(room);
     for(const player of room.players.values())tryCollect(room,player);
@@ -99,11 +99,12 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
   };
   const enterEffect = (room, startedAt=now()) => {
     const duel=room.powerDuel; if (!duel) return;
-    const targets=duel.outcome==='attackerFailed' ? (duel.caster.connected&&duel.caster.runId===duel.casterRunId?[duel.caster]:[]) : [...duel.defenses.values()].filter(d=>d.result!=='correct'&&d.result!=='skipped'&&d.player.connected&&d.player.runId===d.runId&&!d.player.state.finished).map(d=>d.player);
+    const targets=duel.outcome==='attackerFailed' ? (duel.caster?.connected&&duel.caster.runId===duel.casterRunId?[duel.caster]:[]) : [...duel.defenses.values()].filter(d=>d.result!=='correct'&&d.result!=='skipped'&&d.player.connected&&d.player.runId===d.runId&&!d.player.state.finished).map(d=>d.player);
     duel.affectedIds=targets.map(p=>p.id); duel.phase='effect'; duel.endsAt=startedAt+duel.entry.power.durationMs;
-    for (const target of targets) (target.effects||={})[duel.entry.power.type]={type:duel.entry.power.type,strength:{...duel.entry.power.strength},by:duel.caster.id,startedAt,endsAt:duel.endsAt,id:duel.id};
-    room.activePower={id:duel.id,casterId:duel.caster.id,casterName:duel.caster.name,power:duel.entry.power,level:duel.entry.level,startedAt,endsAt:duel.endsAt};
-    const text=duel.outcome==='attackerFailed' ? `${duel.caster.name}'s ${duel.entry.power.name} backfired!` : duel.outcome==='blocked' ? `${duel.caster.name}'s ${duel.entry.power.name} was blocked!` : `${duel.caster.name} unleashed ${duel.entry.power.name}!`;
+    for (const target of targets) (target.effects||={})[duel.entry.power.type]={type:duel.entry.power.type,strength:{...duel.entry.power.strength},by:duel.entry.source==='host'?null:duel.caster.id,startedAt,endsAt:duel.endsAt,id:duel.id};
+    room.activePower={id:duel.id,casterId:duel.entry.source==='host'?null:duel.caster.id,casterName:duel.entry.source==='host'?'Host':duel.caster.name,power:duel.entry.power,level:duel.entry.level??null,source:duel.entry.source||'player',startedAt,endsAt:duel.endsAt};
+    const casterName=duel.entry.source==='host'?'Host':duel.caster.name;
+    const text=duel.outcome==='attackerFailed' ? `${casterName}'s ${duel.entry.power.name} backfired!` : duel.outcome==='blocked' ? `${casterName}'s ${duel.entry.power.name} was blocked!` : `${casterName} unleashed ${duel.entry.power.name}!`;
     room.announcement={id:duel.id,kind:'power',phase:'effect',text,startedAt,endsAt:duel.endsAt,durationMs:duel.entry.power.durationMs};
     for(const player of room.players.values())tryCollect(room,player);
     syncPowers(room); broadcast(room);
@@ -199,6 +200,19 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     if (!room.announcement) nextAnnouncement(room);
     syncPowers(room); broadcast(room);
   };
+  const queueHostAttack = (room, ws, msg) => {
+    if (room.status !== 'running') return error(ws,'Host attacks are only available during a running round','ROUND_ENDED');
+    if (msg.roundId !== room.roundId) return error(ws,'This action belongs to another round','RUN_INVALID');
+    const definition=POWER_DEFINITIONS.find(power=>power.type===msg.powerType);
+    if (!definition) return error(ws,'Unknown host power','POWER_INVALID');
+    const eligibleTargets=[...room.players.values()].filter(p=>p.connected&&p.spawned&&!p.state.finished);
+    if (!eligibleTargets.length) return error(ws,'No opponents are ready for this power yet','NO_TARGET');
+    const item={id:randomUUID(),source:'host',kind:'power',caster:null,casterId:null,casterName:'Host',level:null,power:{...definition,target:'all',durationMs:room.settings.powerDurationSeconds*1000,strength:powerStrength(room.settings,definition.type)}};
+    room.powerQueue.push(item); room.announcementQueue.push(item);
+    send(ws,{type:'powerQueued',id:item.id,source:'host',powerType:item.power.type,name:item.power.name,position:room.powerQueue.length});
+    if (!room.announcement) nextAnnouncement(room);
+    broadcast(room);
+  };
   const acceptReport = (room, player, msg, ws) => {
     const time=now();
     if (room.status==='running'&&time>=room.endsAt) settle(room,room.endsAt);
@@ -274,11 +288,12 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
       else if (msg.type==='settings'&&room.status==='lobby') { room.settings=settings(msg.settings); broadcast(room); }
       else if (msg.type==='launchQuestion'&&room.status==='lobby') { const index=clamp(msg.index,0,4), q=room.settings.questions[index]; if (q) { room.question={...q,index,votes:new Map(),endsAt:now()+15000,closed:false}; broadcast(room); } }
       else if (msg.type==='skipQuestion'&&room.status==='lobby') { room.question=null; broadcast(room); }
+      else if (msg.type==='hostAttack') return queueHostAttack(room,ws,msg);
       else if (['usePower','powerAnswer','powerChestChoice','runReport'].includes(msg.type)) return error(ws,'Player action required','AUTH');
       return;
     }
     if (!player||player.ws!==ws||!player.connected) return error(ws,'Invalid player session','AUTH');
-    if (['start','end','reset','settings','launchQuestion','skipQuestion'].includes(msg.type)) return error(ws,'Host only','AUTH');
+    if (['start','end','reset','settings','launchQuestion','skipQuestion','hostAttack'].includes(msg.type)) return error(ws,'Host only','AUTH');
     if (msg.type==='runReport') return acceptReport(room,player,msg,ws);
     if (msg.type==='profile'&&['lobby','running'].includes(room.status)&&!player.spawned) { Object.assign(player,profile(msg)); return broadcast(room); }
     if (msg.type==='spawn'&&['lobby','running'].includes(room.status)) { player.spawned=true; return broadcast(room); }

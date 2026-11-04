@@ -17,7 +17,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Desktop browser and keyboard play. Mobile controls are outside the agreed scope.
 - Internet multiplayer, deployed as a Node Web Service on Render, with room-code entry and shareable invite links.
 - Support a host plus up to **25 players**. The host is an observer/controller and does not consume a player slot.
-- Every player runs a separate simulation of the same level layout. Players do not collide, share collectible depletion, or physically enter one another's world. Chest powers are the explicitly requested cross-player interaction.
+- Every player runs a separate simulation of the same level layout. Players do not collide, share collectible depletion, or physically enter one another's world. Chest powers and host-triggered power challenges are the explicitly requested interactions between worlds.
 - Layouts and obstacle definitions must be identical for every player. Random power types and quiz questions do not change the terrain; successful attacks target all eligible opponents.
 - Aim for **5–10 minutes** of casual play across all three race levels, including surprise deaths. Actual duration depends on skill and needs team rehearsal; do not claim the target has been proven merely because tests pass.
 - No particular licensed character or theme is required. Preserve the original artwork and playful surprise-death tone.
@@ -138,6 +138,8 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 ## Global power queue and broadcasts
 
+- During a running round, the authenticated host can choose any of the four powers and challenge every eligible connected, spawned, unfinished player, including players currently respawning. The host skips the attacker quiz and consumes no player chest/inventory. Each player receives a private defense question; correct answers block individually, while incorrect or unanswered defenses receive the effect.
+- Host challenges share the same FIFO queue with player attacks and escape announcements, configured defense window, latched power strength, and full effect/result duration. Choose eligible players when the queued challenge begins. Reject launches with no eligible players and safely skip a queued challenge if none remain. Host requests belong to the current round, survive host reconnection, and clear on round end/reset. The host is never a player target.
 - Only **one power turn** can run across the entire room at a time, even when players are on different levels. A turn includes its attack quiz, defense phase, and effect/result phase.
 - Multiple activation requests enter a shared **FIFO queue**. Show each pending power request's position; reject duplicate reservation/use of the same level slot.
 - Queued requests survive the caster's death and level changes. Disconnecting/refreshing cancels pending requests; ending or resetting the round clears requests, quizzes, and effects.
@@ -204,7 +206,8 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Show the top three on the main podium and every other ranked player on a ranked stand. Highlight the viewer's avatar/rank and support all 25 player positions.
 - Preserve the host's full rankings, CSV export, and return-to-lobby flow.
 - Remove CCTV, gameplay preview canvases, and enlarged Watch views entirely. The host sees avatar/name, connection status, current world/stage, reported progress/checkpoint, score/banked points/coins/deaths, playing/respawning/finished status, and update time.
-- Host progress updates are incremental and event-driven: progress milestones (every 5%), batched coin collection, checkpoints, deaths with rollback totals, respawns, world/course completion, chest contact, and final cutoff. Keep the host's independent world-broadcast stage for votes, announcements, power phases, and countdowns.
+- Host progress updates are incremental and event-driven: progress milestones (every 5%), batched coin collection, checkpoints, deaths with rollback totals, respawns, world/course completion, chest contact, and final cutoff. Run reports are collapsible, with visible spacing before shared announcements; coordinator/progress updates preserve the chosen collapse state.
+- The host's independent shared-announcement stage shows votes, announcements, power phases, and countdowns on a plain background, without a game-world scene. Preserve fullscreen broadcasts and the separate ranked podium world.
 
 ## Architecture and operation
 
