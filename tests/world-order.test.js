@@ -120,7 +120,8 @@ test('WebSocket rooms isolate valid orders and invalid orders fall back to defau
 });
 
 test('WebSocket ordered completion broadcasts identity, banks once, resets checkpoints, and preserves order after death', async t => {
-  const server = createGameServer({ port: 0, host: '127.0.0.1', tickMs: 2 });
+  let clock=30000000;
+  const server = createGameServer({ port: 0, host: '127.0.0.1', tickMs: 2, now:()=>clock });
   await server.listen(); t.after(() => server.close());
   const url = `ws://127.0.0.1:${server.httpServer.address().port}`;
   const host = await socket(url); host.send(JSON.stringify({ type: 'create', settings: { worldOrder: [3, 1, 2] } }));
@@ -129,29 +130,34 @@ test('WebSocket ordered completion broadcasts identity, banks once, resets check
   const joined = await receive(playerSocket, message => message.type === 'joined'); playerSocket.send(JSON.stringify({ type: 'spawn' }));
   await waitFor(() => server.rooms.get(made.code).players.get(joined.id).spawned);
   host.send(JSON.stringify({ type: 'start' })); await receive(host, message => message.type === 'state' && message.room.status === 'running');
-  const room = server.rooms.get(made.code), runner = room.players.get(joined.id);
+  const room = server.rooms.get(made.code), runner = room.players.get(joined.id), local=startRun(createState(),room.settings);
   const names = { 1: 'Whimsical Woods', 2: 'Troubled Tides', 3: 'Inferno Express' };
+  let seq=0;
+  async function report(){
+    playerSocket.send(JSON.stringify({type:'runReport',roundId:room.roundId,runId:runner.runId,seq:++seq,at:clock,chestId:null,final:false,summary:{level:local.level,completedWorlds:local.completedWorlds,coins:local.coins,current:local.current,banked:local.banked,distanceMax:local.distanceMax,progress:local.progress,checkpoint:local.checkpoint?{id:local.checkpoint.id}:null,deaths:local.deaths,respawnRemaining:local.respawnRemaining,finished:local.finished,finishedAt:local.finished?clock:null}}));
+    await receive(playerSocket,m=>m.type==='reportAck'&&m.seq===seq);
+  }
   for (const [index, levelId] of [3, 1, 2].entries()) {
-    runner.state.current = 5; runner.state.x = LEVELS[levelId].endX + 1; runner.state.y = 400;
-    if (index === 0) runner.state.checkpoint = { id: 'old', x: 200, y: 500, current: 2, coins: 1, collected: [], distanceMax: 20, progress: .1 };
-    const before = runner.state.banked;
+    local.current = 5; local.x = LEVELS[levelId].endX + 1; local.y = 400;
+    const before = local.banked;
+    step(local,{},1/60,room.settings);await report();
     const announcement = await receive(host, message => message.type === 'state' && message.room.announcement?.kind === 'level' && message.room.announcement.text.includes(names[levelId]));
-    await waitFor(() => runner.state.completedWorlds.length === index + 1);
-    assert.equal(runner.state.banked > before, true);
-    assert.deepEqual(runner.state.completedWorlds, [3, 1, 2].slice(0, index + 1));
-    if (index < 2) assert.equal(runner.state.finished, false);
-    if (index === 0) assert.equal(runner.state.checkpoint, null);
+    assert.equal(runner.summary.banked > before, true);
+    assert.deepEqual(runner.summary.completedWorlds, [3, 1, 2].slice(0, index + 1));
+    if (index < 2) assert.equal(runner.summary.finished, false);
+    if (index === 0) assert.equal(runner.summary.checkpoint, null);
     assert.ok(announcement.room.announcement.text.includes(names[levelId]));
     if (index === 0) {
-      runner.state.y = 620; runner.state.x = 100; runner.state.grounded = false; runner.state._standingPlatform = null;
-      await waitFor(() => runner.state.deaths > 0);
-      assert.deepEqual(runner.state.worldOrder, [3, 1, 2]);
-      assert.deepEqual(runner.state.completedWorlds, [3]);
-      await waitFor(() => runner.state.deadUntil === 0, 4500);
+      local.y=620;local.x=100;local.grounded=false;local._standingPlatform=null;
+      step(local,{},1/60,room.settings);await report();assert.equal(runner.summary.deaths,1);
+      assert.deepEqual(local.worldOrder,[3,1,2]);assert.deepEqual(runner.summary.completedWorlds,[3]);
+      for(let frame=0;frame<181;frame++)step(local,{},1/60,room.settings);
+      clock+=3100;await report();assert.equal(runner.summary.respawnRemaining,0);
     }
+    clock+=2001;await new Promise(resolve=>setTimeout(resolve,20));
   }
-  assert.equal(runner.state.finished, true); assert.equal(runner.state.level, 2);
-  assert.deepEqual(runner.state.worldOrder, [3, 1, 2]);
-  assert.deepEqual(runner.state.completedWorlds, [3, 1, 2]);
+  assert.equal(runner.summary.finished, true); assert.equal(runner.summary.level, 2);
+  assert.deepEqual(local.worldOrder, [3, 1, 2]);
+  assert.deepEqual(runner.summary.completedWorlds, [3, 1, 2]);
   playerSocket.close(); host.close();
 });

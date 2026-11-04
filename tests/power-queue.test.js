@@ -7,7 +7,8 @@ import { collectPower,powerEffects } from '../public/game/powers.js';
 const waitFor=async check=>{for(let i=0;i<200;i++){if(check())return;await new Promise(r=>setTimeout(r,5));}throw new Error('Condition timed out');};
 async function socket(url){const ws=new WebSocket(url);ws.messages=[];ws.on('message',raw=>ws.messages.push(JSON.parse(raw)));await new Promise((resolve,reject)=>{ws.once('open',resolve);ws.once('error',reject);});return ws;}
 async function receive(ws,predicate){await waitFor(()=>ws.messages.some(predicate));return ws.messages.splice(ws.messages.findIndex(predicate),1)[0];}
-const send=(ws,type,data={})=>ws.send(JSON.stringify({type,...data}));
+const ACTIONS=new Set(['usePower','powerAnswer','powerChestChoice']);
+const send=(ws,type,data={})=>{const identity=ws.player&&ACTIONS.has(type)?{roundId:ws.room?.roundId,runId:ws.player.runId}:{};ws.send(JSON.stringify({type,...identity,...data}));};
 async function fixture(t,count=3){
   let clock=10000000;
   const server=createGameServer({port:0,host:'127.0.0.1',tickMs:2,now:()=>clock});await server.listen();t.after(()=>server.close());
@@ -15,7 +16,7 @@ async function fixture(t,count=3){
   send(host,'create');const made=await receive(host,m=>m.type==='created'),room=server.rooms.get(made.code),clients=[],players=[];
   for(let i=0;i<count;i++){
     const ws=await socket(url);send(ws,'join',{code:made.code,name:`Caster ${i+1}`});const joined=await receive(ws,m=>m.type==='joined');
-    send(ws,'spawn');clients.push(ws);players.push(room.players.get(joined.id));
+    send(ws,'spawn');clients.push(ws);players.push(room.players.get(joined.id));ws.player=players.at(-1);ws.room=room;
   }
   await waitFor(()=>players.every(p=>p.spawned));send(host,'start');await receive(host,m=>m.room?.status==='running');
   for(let i=0;i<count;i++){collectPower(players[i],1,()=>i/4);players[i].powerSlots[1].power.target='all';players[i].power.power.target='all';}
@@ -27,9 +28,11 @@ async function fixture(t,count=3){
     for(const defense of duel.defenses.values())send(clients[players.indexOf(defense.player)],'powerAnswer',{transactionId:duel.id,challengeId:defense.question.id,answer:'intentionally wrong'});
     await waitFor(()=>duel.phase==='effect');
   };
-  return {server,room,host,clients,players,url,code:made.code,now:()=>clock,
+  const reportSeq=new Map();const sendRaw=(ws,type,data={})=>ws.send(JSON.stringify({type,...data}));
+  const report=async(i,overrides={})=>{const p=players[i],base=p.summary||{},level=overrides.level??base.level??1,completed=overrides.completedWorlds??base.completedWorlds??(level>1?room.settings.worldOrder.slice(0,Math.max(0,room.settings.worldOrder.indexOf(level))):[]),summary={level,completedWorlds:completed,coins:0,current:0,banked:0,distanceMax:0,progress:0,checkpoint:null,deaths:0,respawnRemaining:0,finished:false,finishedAt:null,...base,...overrides,completedWorlds:completed};const seq=(reportSeq.get(p.id)||0)+1;reportSeq.set(p.id,seq);sendRaw(clients[i],'runReport',{roundId:room.roundId,runId:p.runId,seq,at:clock,summary,chestId:null,final:false});await receive(clients[i],m=>m.type==='reportAck'&&m.seq===seq);};
+  return {server,room,host,clients,players,url,code:made.code,now:()=>clock,report,
     async advance(ms){clock+=ms;await new Promise(r=>setTimeout(r,20));await resolveQuiz();},
-    async use(index){send(clients[index],'usePower');await waitFor(()=>players[index].powerSlots[players[index].state.level].used||players[index].powerSlots[players[index].state.level].reserved);await resolveQuiz();},
+    async use(index){send(clients[index],'usePower');await waitFor(()=>room.powerDuel?.caster===players[index]||players[index].power?.queued);await resolveQuiz();},
     async state(predicate=()=>true){return receive(host,m=>m.type==='state'&&m.serverTime===clock&&predicate(m.room));}
   };
 }
@@ -75,14 +78,14 @@ test('level broadcasts share FIFO ordering without shortening power effects or s
 
 test('queued use survives death and level changes, blocking new pickup until consumed',async t=>{
   const f=await fixture(t),b=f.players[1];await f.use(0);await f.use(1);
-  b.state.level=2;assert.equal(collectPower(b,2,()=>.99),null);
-  b.state.deadUntil=b.state.elapsed+100;b.state.respawnRemaining=100;
-  await f.advance(5000);
+  await f.report(1,{level:2,completedWorlds:[1]});assert.equal(collectPower(b,2,()=>.99),null);
+  await f.report(1,{level:2,respawnRemaining:3,deaths:1});
+  while(f.room.activePower?.casterId!==b.id) await f.advance(1000);
   assert.equal(f.room.activePower.casterId,b.id);assert.equal(f.room.activePower.level,1);
   assert.equal(b.powerSlots[1].used,true);assert.equal(b.power.level,1);assert.equal(b.power.used,true);
-  b.state.deadUntil=0;b.state.respawnRemaining=0;assert.ok(collectPower(b,2,()=>.99));assert.equal(b.power.level,2);assert.equal(b.power.power.type,'fog');await f.use(1);
-  b.state.deadUntil=b.state.elapsed+100;b.state.respawnRemaining=100;
-  await f.advance(5000);
+  await f.report(1,{level:2,respawnRemaining:0});assert.ok(collectPower(b,2,()=>.99));assert.equal(b.power.level,2);assert.equal(b.power.power.type,'fog');await f.use(1);
+  await f.report(1,{level:2,respawnRemaining:3,deaths:2});
+  while(f.room.activePower?.casterId!==b.id || f.room.activePower?.level!==2) await f.advance(1000);
   assert.equal(f.room.activePower.level,2);assert.equal(b.powerSlots[2].used,true);
   assert.deepEqual(Object.keys(powerEffects(f.players[0],f.now())),['fog']);
 });
@@ -107,16 +110,17 @@ test('a queued power with no remaining opponent is returned unused',async t=>{
 test('round expiry cancels the queue before another power can start',async t=>{
   const f=await fixture(t),b=f.players[1];await f.use(0);await f.use(1);
   const deadline=f.room.endsAt;await f.advance(deadline-f.now());
-  assert.equal(f.room.status,'ended');assert.equal(f.room.activePower,null);assert.equal(f.room.powerQueue.length,0);assert.equal(f.room.announcement,null);
+  assert.ok(['settling','ended'].includes(f.room.status));assert.equal(f.room.activePower,null);assert.equal(f.room.powerQueue.length,0);assert.equal(f.room.announcement,null);
   assert.equal(b.powerSlots[1].used,false);assert.equal(b.powerSlots[1].reserved,null);
   for(const player of f.players)assert.deepEqual(player.effects,{});
   assert.equal(f.host.messages.some(m=>m.serverTime===deadline&&m.room?.status==='running'&&m.room.activePower?.by===b.id),false);
 });
 
 test('manual end and lobby reset clear active powers and every queued reservation',async t=>{
-  const f=await fixture(t);await f.use(0);await f.use(1);send(f.host,'end');await waitFor(()=>f.room.status==='ended');
+  const f=await fixture(t);await f.use(0);await f.use(1);send(f.host,'end');await waitFor(()=>['settling','ended'].includes(f.room.status));
   assert.equal(f.room.activePower,null);assert.equal(f.room.powerQueue.length,0);
   for(const player of f.players){assert.deepEqual(player.effects,{});assert.equal(player.powerSlots[1].reserved,null);}
+  if(f.room.status==='settling') await f.advance(2000);
   send(f.host,'reset');await waitFor(()=>f.room.status==='lobby');
   assert.equal(f.room.announcementQueue.length,0);
   for(const player of f.players){assert.deepEqual(player.powerSlots,{});assert.equal(player.power,null);}

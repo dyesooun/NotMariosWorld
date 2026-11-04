@@ -1,15 +1,16 @@
-import { createState, step, LEVELS, AVATARS, COLORS } from './game/engine.js';
+import { createState, score, LEVELS, AVATARS, COLORS } from './game/engine.js';
 import { renderGame, drawAvatar } from './game/renderer.js';
 import { GameAudio } from './game/audio.js';
 import { renderWorldUI, worldUIModel, countdownSeconds } from './game/world-ui.js';
-import { renderPodium } from './game/podium.js';
+import { renderPodium, renderPendingPodium } from './game/podium.js';
 import { DEFAULT_QUESTIONS } from './game/default-questions.js';
-import { checkpointRenderState, runtimeMismatch, worldProgressModel, isDuelFrozen } from './game/client-state.js';
+import { runtimeMismatch, worldProgressModel, isDuelFrozen, mergePlayerPatch } from './game/client-state.js';
 import { DEFAULT_WORLD_ORDER, normalizeWorldOrder, worldOrdinal } from './game/world-order.js';
 import { activePowerEffects, renderPowerUI } from './game/power-ui.js';
 import { powerQuizModel, renderPowerQuiz } from './game/power-quiz-ui.js';
 import { createPowerQuizControls } from './game/power-quiz-controls.js';
 import { powerChestOfferModel, createPowerChestControls } from './game/power-chest-ui.js';
+import { LocalRunRuntime } from './game/local-run.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -41,22 +42,65 @@ try { hostSession = JSON.parse(sessionStorage.getItem('nmw-host') || 'null'); } 
 let ws, room = null, you = null, role = null, screen = 'entry', entryTab = 'join', pending = false;
 let connected = false, reconnectTimer, reconnectAttempts = 0, intentionalClose = false;
 let checkedRuntime = null, runtimeError = null;
-let clockOffset = 0, predicted = null, lastAuthoritative = null, lastStatus = null, rosterKey = '', scoreKey = '', questionKey = '', screenKey = '';
-let watchedPlayer = null, input = {left:false,right:false,jump:false};
+let clockOffset = 0, clockOffsetReady = false, clockSynced = false, lastStatus = null, rosterKey = '', scoreKey = '', questionKey = '', screenKey = '';
+let localRun = null, input = {left:false,right:false,jump:false};
+let localFinalizing = false, simulationCursor = null, finalPending = false;
 const audio = new GameAudio();
-let podiumArrivedAt=0,lastCountdownSecond=null,lastCountdownRoom=null;
+let podiumArrivedAt=0,lastCountdownSecond=null,lastCountdownRoom=null,finalSentRound=null;
 let playerQuizControls=null,playerQuizViewport=null;
 let playerChestControls=null,playerChestViewport=null;
 const demo = createState({level:1,name:'A perfectly normal adventure'});
+const hostStage = createState();
 demo.x = 310; demo.y = 500;
 const app = $('#app'), modal = $('#modal');
+const scoreLocal = state => score(state, room?.settings || DEFAULTS);
 
 function toast(message, error = false) {
   const el = document.createElement('div'); el.className = `toast${error ? ' error' : ''}`; el.textContent = message;
   $('#toasts').append(el); setTimeout(() => el.remove(), 4500);
 }
 function persistProfile() { localStorage.setItem('nmw-profile', JSON.stringify(profile)); }
-function send(type, data = {}) { if (ws?.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({type, ...data})); return true; } return false; }
+function send(type, data = {}) {
+  if (ws?.readyState !== WebSocket.OPEN) return false;
+  // Reports are ordered before actions that consume a chest or start a duel.
+  if (localRun && room?.status==='running' && ['usePower','powerChestChoice','powerAnswer'].includes(type)) localRun.report('before-action', true, serverNow());
+  const me = room?.players?.find(p => p.id === you);
+  const lifecycle = role === 'player' && me && room?.roundId && me.runId ? { roundId: room.roundId, runId: me.runId } : {};
+  ws.send(JSON.stringify({type, ...lifecycle, ...data})); return true;
+}
+function ensureLocalRun(me) {
+  if (role !== 'player' || !me) return null;
+  const roundId = room?.roundId || null, runId = me.runId || null;
+  if (!localRun || localRun.roundId !== roundId || localRun.runId !== runId) {
+    localFinalizing=false; finalPending=false; finalSentRound=null; simulationCursor=serverNow();
+    localRun = new LocalRunRuntime({ profile:{name:me.name,avatar:me.avatar,color:me.color}, settings: room?.settings || DEFAULTS, roundId, runId, now:serverNow,
+      sendReport: report => sendRaw('runReport', report),
+      onEvent: event => {
+        const scene=sceneForLevel(event.level??localRun.state.level);
+        const tone={death:'death',checkpoint:'checkpoint',finished:'finish',levelComplete:'clear',enemyKill:'stomp',coin:'coin',respawn:'respawn'}[event.type];
+        if(tone)playTone(tone,scene);
+        if(event.type==='checkpoint')toast('Checkpoint saved! Your score and collected coins are protected.');
+      } });
+  }
+  localRun.settings = {...room.settings,powerEffects:activePowerEffects(me,serverNow())};
+  Object.assign(localRun.state,{name:me.name,avatar:me.avatar,color:me.color});
+  if (room?.status === 'running' && me.spawned && !localRun.state.started) localRun.begin(room.settings?.worldOrder);
+  me.state=localRun.state;
+  return localRun;
+}
+const serverNow=()=>Date.now()+clockOffset;
+const ceremony=()=>localFinalizing||room?.status==='settling'||room?.status==='ended';
+function finalizeLocal(cutoffAt){
+  if(!localRun||!room?.players.find(p=>p.id===you)?.spawned)return;
+  localRun.pause(true);localFinalizing=true;zeroInput();
+  if(finalSentRound!==room.roundId){const retry=!!localRun.finalReportValue;finalSentRound=room.roundId;finalPending=true;localRun.finalReport(cutoffAt,{retry});}
+}
+function sendRaw(type, data = {}) {
+  if(type==='runReport'&&!data.final&&(room?.status!=='running'||serverNow()>=room.endsAt))return false;
+  // A fresh clock sample can trail the start packet by a few milliseconds.
+  if(type==='runReport')data={...data,at:Math.max(room.startedAt,data.at)};
+  if (ws?.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type, ...data })); return true; } return false;
+}
 function showRuntimeWarning(message) {
   runtimeError=message; const banner=$('#runtime-warning'); banner.hidden=!message; banner.textContent=message||'';
   if(message)zeroInput();
@@ -76,7 +120,7 @@ async function connect() {
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`);
   ws.addEventListener('message', e => { try { onMessage(JSON.parse(e.data)); } catch (err) { console.error('Room update failed', err); toast('A room update could not be displayed.',true); } });
   ws.addEventListener('close', () => {
-    connected = false; pending = false; zeroInput(); updateConnection();
+    connected = false; pending = false; localRun?.pause(true); zeroInput(); updateConnection();
     if (intentionalClose || screen === 'entry') return;
     if (role === 'host' && hostSession) {
       clearTimeout(reconnectTimer);
@@ -94,43 +138,43 @@ async function connect() {
 function scheduleReconnect() { if (role === 'host' && hostSession) { clearTimeout(reconnectTimer); reconnectTimer = setTimeout(async () => { try { await connect(); send('hostJoin',hostSession); } catch { scheduleReconnect(); } },3000); } }
 function updateConnection() { $$('.connection').forEach(el => { el.classList.toggle('offline',!connected); el.innerHTML = `<i class="dot"></i>${connected ? 'Connected' : 'Reconnecting'}`; }); }
 function onMessage(msg) {
+  if(msg.type==='reportAck'){if(msg.runId===localRun?.runId&&msg.seq===localRun?.lastReport?.seq&&localRun.lastReport.final)finalPending=false;return;}
   if(msg.type==='error'&&msg.transactionId){const q=room?.players.find(p=>p.id===you)?.powerQuiz;if(q&&q.transactionId===msg.transactionId&&q.id===msg.challengeId){playerQuizControls?.resetSubmission();syncPlayerQuiz();}}
   if(msg.type==='powerAnswerResult'){toast(msg.correct?(msg.role==='attack'?'Correct! Your opponents must defend.':'Correct! You blocked this attack.'):(msg.role==='attack'?'Incorrect. Your power backfires on you.':'Incorrect. The power will affect you.'));return;}
   if(msg.type==='powerQueued'){toast(`${msg.name||'Your power'} queued${msg.position?` (#${msg.position})`:''}. It will activate in turn.`);return;}
   if(msg.type==='powerCancelled'){toast(msg.reason==='NO_TARGET'?'No opponents are ready. Your unused power is kept.':`${msg.name||'Your queued power'} could not start. Your unused power is kept.`);return;}
+  if (msg.type === 'progress' || msg.type === 'leaderboard') {
+    if (room && Array.isArray(msg.players)) for (const patch of msg.players) {
+      const player = room.players.find(p => p.id === patch.id);
+      if (player) Object.assign(player,mergePlayerPatch(player,patch));
+    }
+    renderRoom();
+    return;
+  }
+  if (msg.type === 'timeSync') { const received=Date.now(),sample=msg.serverTime-(msg.clientTime+received)/2;if(!Number.isFinite(sample)||received-msg.clientTime>2000)return;clockOffset=clockSynced?clockOffset*.8+sample*.2:sample;clockOffsetReady=true;clockSynced=true;return; }
+  if(msg.type==='error'&&msg.code==='RUN_REPORT_CLOSED'&&finalPending){finalSentRound=null;return;}
   if (msg.type === 'error') { pending = false; playerChestControls?.resetSubmission();toast(msg.message || 'Something went wrong.',true); $$('.entry-submit').forEach(b => b.disabled=false); if (msg.code === 'AUTH' && !room) { hostSession=null; sessionStorage.removeItem('nmw-host'); role=null; renderEntry(); } return; }
   if (msg.type === 'created') {
     hostSession = {code:msg.code,token:msg.token}; sessionStorage.setItem('nmw-host',JSON.stringify(hostSession));
     role='host'; room={code:msg.code,status:'lobby',settings:{...DEFAULTS},players:[],question:null}; you=null; pending=false; renderRoom(true);
   }
-  if (msg.type === 'joined') { you=msg.id; role='player'; pending=false; }
+  if (msg.type === 'joined') { you=msg.id; role='player'; pending=false;send('timeSync',{clientTime:Date.now()}); }
   if (msg.type !== 'state') return;
   if(msg.room.runtimeVersion!==checkedRuntime){showRuntimeWarning('The game server changed. Refresh this page before playing.');return;}
-  clockOffset = msg.serverTime - Date.now();
+  if(!clockOffsetReady){clockOffset=msg.serverTime-Date.now();clockOffsetReady=true;}
   const previous = room; room = msg.room; you = msg.you; if (!role) role = you ? 'player' : 'host';
-  if(previous?.status!=='ended'&&room.status==='ended'){podiumArrivedAt=performance.now();closeModal();zeroInput();}
-  if (room.status !== lastStatus) { predicted=null; lastAuthoritative=null; lastStatus=room.status; zeroInput(); }
+  const metaMe = room.players.find(p => p.id === you);
+  if (role === 'player' && metaMe && ['lobby','running'].includes(room.status)) ensureLocalRun(metaMe);
+  if(room.status==='settling'&&role==='player')finalizeLocal(room.cutoffAt??room.endsAt);
+  if(ceremony()&&!['settling','ended'].includes(previous?.status)){podiumArrivedAt=performance.now();closeModal();zeroInput();playTone('teleport','results');}
+  if (room.status !== lastStatus) { lastStatus=room.status; zeroInput(); }
   const me = room.players.find(p => p.id === you);
   const previousMe=previous?.players.find(p=>p.id===you);
   if(role==='player'&&me?.powerQuiz&&`${me.powerQuiz.transactionId}:${me.powerQuiz.id}`!==`${previousMe?.powerQuiz?.transactionId}:${previousMe?.powerQuiz?.id}`)zeroInput();
-  if(me?.power?.claimed&&me.power.itemId!==previousMe?.power?.itemId){playTone('checkpoint',sceneForLevel(me.state?.level));toast(`${me.power.power.name} found! Press F or USE to unleash it.`);}
-  if (me?.state) {
-    const s = me.state;
-    if (lastAuthoritative && s.deaths > lastAuthoritative.deaths) playTone('death',sceneForLevel(s.level));
-    else if (lastAuthoritative && (s.enemyKills||0) > (lastAuthoritative.enemyKills||0)) playTone('stomp',sceneForLevel(s.level));
-    else if (lastAuthoritative && s.finished && !lastAuthoritative.finished) playTone('finish',sceneForLevel(s.level));
-    else if (lastAuthoritative && (s.completedWorlds?.length||0) > (lastAuthoritative.completedWorlds?.length||0)) playTone('clear',sceneForLevel(lastAuthoritative.level));
-    else if (lastAuthoritative && s.checkpoint && s.checkpoint.id!==lastAuthoritative.checkpoint?.id) {playTone('checkpoint',sceneForLevel(s.level));toast('Checkpoint saved! Your score and collected coins are protected.');}
-    else if (lastAuthoritative?.respawnRemaining > 0 && !s.respawnRemaining) playTone('respawn',sceneForLevel(s.level));
-    else if (lastAuthoritative && s.coins > lastAuthoritative.coins) playTone('coin',sceneForLevel(s.level));
-    const next = structuredClone(s);
-    // Preserve a small visual lead between authoritative snapshots for responsive input.
-    if (predicted && predicted.level === next.level && predicted.deaths === next.deaths && !next.respawnRemaining && Math.abs(predicted.x-next.x)<55) { next.x = next.x*.7+predicted.x*.3; next.y = next.y*.7+predicted.y*.3; }
-    predicted=next; lastAuthoritative=s;
-  }
+  if(me?.power?.claimed&&me.power.itemId!==previousMe?.power?.itemId){playTone('checkpoint',sceneForLevel(localRun?.state.level));toast(`${me.power.power.name} found! Press F or USE to unleash it.`);}
+  if (role === 'player' && localRun) me.state = localRun.state;
   renderRoom();
   if (previous?.status === 'lobby' && room.status === 'running') { closeModal(); toast('The race is on. Good luck out there!'); playTone('start',sceneForLevel(normalizeWorldOrder(room.settings.worldOrder)[0])); }
-  if (previous?.status === 'running' && room.status === 'ended') playTone('teleport','results');
 }
 function header(content = '') {
   return `<header class="site-header">${brand()}<div class="nav-actions">${content}<button class="link-button" data-action="help">HOW TO PLAY</button><button class="button square ghost" data-action="sound" aria-pressed="${audio.enabled}" aria-label="${audio.enabled?'Mute':'Enable'} music and sound effects" title="${audio.enabled?'Mute':'Enable'} music and sound effects">${icon(audio.enabled?'volume':'mute')}</button></div></header>`;
@@ -143,7 +187,7 @@ function renderEntry() {
   <main class="landing"><section class="hero"><div class="hero-copy"><div class="eyebrow"><i class="dot"></i> CLOCK IN. ZONE OUT.</div>
     <h1>YOUR NEXT<br><em>BAD IDEA.</em></h1><p class="hero-description">Three worlds. One timer. A suspicious number of coins.<br>Welcome to your team's newest friendly rivalry.</p>
     <div class="entry-box"><div class="tabs" role="tablist" aria-label="Enter a game"><button class="tab ${entryTab==='join'?'active':''}" role="tab" aria-selected="${entryTab==='join'}" data-action="join-tab">Join the adventure</button><button class="tab ${entryTab==='host'?'active':''}" role="tab" aria-selected="${entryTab==='host'}" data-action="host-tab">Host a room</button></div>
-    ${entryTab==='join' ? `<form id="join-form"><div class="field-row"><label class="field"><span class="field-label">ROOM CODE</span><input id="room-code" class="room-input" placeholder="ABC123" autocomplete="off" minlength="6" maxlength="6" pattern="[A-Za-z0-9]{6}" value="${esc(code)}" required aria-label="Six character room code"></label><label class="field"><span class="field-label">YOUR NAME</span><input id="player-name" placeholder="Your team knows you as…" maxlength="24" autocomplete="nickname" value="${esc(profile.name)}" required></label></div><button class="button primary wide entry-submit" type="submit">Let's do this ${icon('arrow')}</button></form><p class="entry-note">${icon('shield')} No accounts. Just a room code and questionable instincts.</p>` : `<p class="host-entry-copy">Your team brings the chaos. You get the control room.<br>Set the timer, launch icebreakers, and watch every run live.</p><button class="button primary wide entry-submit" data-action="create">Create a game room ${icon('arrow')}</button><p class="entry-note">${icon('users')} One host · Up to 25 players · Your rules</p>${hostSession?'<button class="link-button" data-action="resume" style="margin-top:12px;color:var(--lime)">RESUME YOUR HOST ROOM →</button>':''}`}
+    ${entryTab==='join' ? `<form id="join-form"><div class="field-row"><label class="field"><span class="field-label">ROOM CODE</span><input id="room-code" class="room-input" placeholder="ABC123" autocomplete="off" minlength="6" maxlength="6" pattern="[A-Za-z0-9]{6}" value="${esc(code)}" required aria-label="Six character room code"></label><label class="field"><span class="field-label">YOUR NAME</span><input id="player-name" placeholder="Your team knows you as…" maxlength="24" autocomplete="nickname" value="${esc(profile.name)}" required></label></div><button class="button primary wide entry-submit" type="submit">Let's do this ${icon('arrow')}</button></form><p class="entry-note">${icon('shield')} No accounts. Just a room code and questionable instincts.</p>` : `<p class="host-entry-copy">Your team brings the chaos. You get the control room.<br>Set the timer, launch icebreakers, and follow every milestone.</p><button class="button primary wide entry-submit" data-action="create">Create a game room ${icon('arrow')}</button><p class="entry-note">${icon('users')} One host · Up to 25 players · Your rules</p>${hostSession?'<button class="link-button" data-action="resume" style="margin-top:12px;color:var(--lime)">RESUME YOUR HOST ROOM →</button>':''}`}
     </div></div>
     <div class="hero-art"><div class="scene-frame"><div class="scene-topbar"><span>01 / WHIMSICAL WOODS</span><div class="window-dots"><i></i><i></i><i></i></div></div><div class="scene-window"><canvas id="demo-canvas" width="960" height="600" aria-label="Animated pixel forest preview"></canvas><div class="scene-caption"><span>LOOKS SAFE.<br><b>Probably isn't.</b></span><span class="pill lime">${icon('play')} READY PLAYER YOU</span></div></div></div><div class="float-tag">100% ORIGINAL CHAOS ↗</div><div class="hero-art-bottom"><span>A LITTLE ADVENTURE. A LOT OF BETRAYAL.</span><span>← → + SPACE</span></div></div>
   </section><section class="realm-strip"><div class="section-kicker"><span>THE SCENIC ROUTE TO DISASTER</span><span class="muted">3 WORLDS TO ESCAPE · 5–10 MINUTES OF MAYHEM</span></div><div class="realms">
@@ -155,14 +199,14 @@ function renderEntry() {
 function roomCode() { return `<div class="room-badge"><div><small>ROOM CODE</small><strong class="code">${esc(room.code)}</strong></div><button data-action="copy-code" title="Copy room code" aria-label="Copy room code">${icon('copy')}</button></div>`; }
 function renderRoom(force=false) {
   if (!room) return;
-  const key = `${role}-${room.status}`;
+  const key = `${role}-${ceremony()?(room.status==='ended'?'ended':'settling'):room.status}`;
   if (key !== screenKey || force) {
     screenKey=key; screen=role; rosterKey=scoreKey=questionKey='';
-    if (room.status==='ended') renderResults(); else if (role==='host') renderHost(); else renderPlayer();
+    if (ceremony()) renderResults(); else if (role==='host') renderHost(); else renderPlayer();
   }
   updateMusicScene();
   updateConnection();
-  if (room.status==='ended') { updateResults(); updateAnnouncement();syncPlayerQuiz();syncPlayerChest();return; }
+  if (ceremony()) { updateResults(); updateAnnouncement();syncPlayerQuiz();syncPlayerChest();return; }
   updateQuestion(); updateAnnouncement();
   if (role==='host') updateHost(); else updatePlayer();
   syncPlayerQuiz();
@@ -257,10 +301,9 @@ function syncPlayerChest() {
 }
 function renderHost() {
   const running=room.status==='running';
-  app.innerHTML = `${shellTop('The control room.',running?'Every adventure. Every questionable jump. All live.':'Gather the team, break the ice, then let the chaos begin.',`${running?'<span class="pill lime"><i class="dot"></i> LIVE ROUND</span>':`<button class="button ghost small" data-action="settings">${icon('settings')} Game settings</button>`}<button class="button ${running?'danger':'primary'}" data-action="${running?'end-confirm':'start'}">${icon(running?'stop':'play')}${running?'End round':'Start the race'}</button>`)}
+  app.innerHTML = `${shellTop('The control room.',running?'Follow scores, checkpoints, and escapes as they happen.':'Gather the team, break the ice, then let the chaos begin.',`${running?'<span class="pill lime"><i class="dot"></i> LIVE ROUND</span>':`<button class="button ghost small" data-action="settings">${icon('settings')} Game settings</button>`}<button class="button ${running?'danger':'primary'}" data-action="${running?'end-confirm':'start'}">${icon(running?'stop':'play')}${running?'End round':'Start the race'}</button>`)}
   <div class="session-strip"><div class="session-stat"><div class="stat-label">${running?'TIME REMAINING':'ROUND DURATION'}</div><div class="stat-value lime" id="host-timer">${clock(room.settings.durationMinutes*60000)}</div></div><div class="session-stat"><div class="stat-label">PLAYERS CONNECTED</div><div class="stat-value" id="host-player-count">0 <em>/ 25</em></div></div><div class="session-stat"><div class="stat-label">${running?'TOTAL RESPAWNS':'READY TO EXPLORE'}</div><div class="stat-value" id="host-death-count">0 <em>${running?'second chances':'spawned in lobby'}</em></div></div><div class="session-stat"><div class="stat-label">${running?'FINISHED ALL WORLDS':'SCORING'}</div><div class="stat-value" id="host-finish-count">${running?'0':room.settings.coinPoints} <em>${running?'runners':'pts / coin'}</em></div></div></div>
-  <div class="host-layout"><section><div class="live-section-head"><h2>${running?'Live adventures':'Lobby lookout'} <span class="pill lime" style="margin-left:8px">LIVE FEEDS</span></h2><small>Click a player to watch closer ${icon('expand')}</small></div><div id="feed-grid" class="feed-grid"></div></section><aside class="aside-stack host-aside"><section class="panel"><div class="panel-head"><h2>${running?'The leaderboard':'The guest list'}</h2><small id="leader-count">0 PLAYERS</small></div><div id="leaderboard" class="leaderboard"></div></section><section class="panel" id="host-question-panel"><div class="panel-head"><h2>Break the ice</h2><span class="pill">15s / VOTE</span></div><div id="host-questions" class="host-questions"></div></section><p class="host-note">${running?'Scores include banked points and the current attempt. Each player has a separate world with the same layout.':'Share the room code or copy an invite link. Players can explore the lobby while you get everyone together.'}</p><button class="button ghost wide small" data-action="copy-link">${icon('copy')} Copy invite link</button></aside></div></main>`;
-  $('#feed-grid').parentElement.insertAdjacentHTML('afterbegin',`<section class="game-shell broadcast-stage"><div class="game-topbar"><span>WORLD BROADCAST</span><span class="pill lime">INSIDE EVERY PLAYER'S WORLD</span><button class="link-button" data-action="fullscreen" aria-label="Full screen world broadcast">${icon('expand')}</button></div>${worldScreenMarkup('host-world-canvas','Live world broadcast stage')}</section>`);
+  <div class="host-layout"><section><div class="live-section-head"><h2>${running?'Run reports':'Lobby roster'} <span class="pill lime" style="margin-left:8px">LIGHTWEIGHT</span></h2><small>Updates at milestones and gameplay events</small></div><div id="feed-grid" class="feed-grid"></div><section class="game-shell broadcast-stage"><div class="game-topbar"><span>WORLD BROADCAST</span><span class="pill lime">SHARED ANNOUNCEMENTS</span><button class="link-button" data-action="fullscreen" aria-label="Full screen world broadcast">${icon('expand')}</button></div>${worldScreenMarkup('host-world-canvas','World broadcast stage')}</section></section><aside class="aside-stack host-aside"><section class="panel"><div class="panel-head"><h2>${running?'The leaderboard':'The guest list'}</h2><small id="leader-count">0 PLAYERS</small></div><div id="leaderboard" class="leaderboard"></div></section><section class="panel" id="host-question-panel"><div class="panel-head"><h2>Break the ice</h2><span class="pill">15s / VOTE</span></div><div id="host-questions" class="host-questions"></div></section><p class="host-note">${running?'Scores and progress come from each player’s local run report.':'Share the room code or copy an invite link.'}</p><button class="button ghost wide small" data-action="copy-link">${icon('copy')} Copy invite link</button></aside></div></main>`;
 }
 function renderPlayer() {
   app.innerHTML = `${shellTop(room.status==='running'?'Run. Collect. Question everything.':'Your adventure starts here.',room.status==='running'?'Coins are good. The floor is negotiable.':'Pick your character, find your color, and take a practice jump.')}
@@ -283,8 +326,8 @@ function updateHost() {
   const players=room.players;
   setText('#host-player-count',`${players.filter(p=>p.connected).length} / 25`);
   if(room.status==='running') {
-    setHTML('#host-death-count',`${number(players.reduce((n,p)=>n+(p.state?.deaths||0),0))} <em>second chances</em>`);
-    setHTML('#host-finish-count',`${players.filter(p=>p.state?.finished).length} <em>/ ${players.length} runners</em>`);
+    setHTML('#host-death-count',`${number(players.reduce((n,p)=>n+(p.summary?.deaths||0),0))} <em>second chances</em>`);
+    setHTML('#host-finish-count',`${players.filter(p=>p.summary?.finished).length} <em>/ ${players.length} runners</em>`);
   } else {
     setHTML('#host-death-count',`${players.filter(p=>p.spawned).length} <em>spawned in lobby</em>`);
     setHTML('#host-finish-count',`${room.settings.coinPoints} <em>pts / coin</em>`);
@@ -292,14 +335,22 @@ function updateHost() {
   const key='players:'+players.map(p=>p.id).sort().join('|');
   if(key!==rosterKey) {
     rosterKey=key;
-    $('#feed-grid').innerHTML=players.length ? [...players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<button class="feed-card" data-watch="${p.id}" aria-label="Watch ${esc(p.name)} live"><canvas class="feed-canvas" width="384" height="216" data-feed="${p.id}"></canvas><div class="feed-topline"><span data-feed-level="${p.id}">LOBBY</span><span>${icon('expand')}</span></div><div class="feed-caption"><span class="name" data-feed-name="${p.id}"></span><span class="points" data-feed-score="${p.id}">0 PTS</span></div><div class="feed-meta"><span data-feed-status="${p.id}"></span><span data-feed-deaths="${p.id}"></span></div></button>`).join('') : `<div class="empty-feed"><div class="pixel-prompt">☕</div><h3>Waiting for the usual suspects.</h3><p>Share <b style="color:var(--lime)">${esc(room.code)}</b> with your team. Their live adventures will appear here as they join.</p><button class="button small ghost" style="margin-top:18px" data-action="copy-link">${icon('copy')} Copy invite link</button></div>`;
+    $('#feed-grid').innerHTML=players.length ? [...players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<article class="report-card"><div class="report-identity"><canvas width="44" height="48" data-roster-avatar="${p.id}" aria-label="${esc(p.avatar)} avatar"></canvas><div><strong data-feed-name="${p.id}"></strong><small data-feed-level="${p.id}">LOBBY</small></div><span class="report-score" data-feed-score="${p.id}">0 PTS</span></div><div class="report-track"><i data-report-bar="${p.id}"></i></div><div class="report-line"><span data-feed-progress="${p.id}"></span><span data-feed-status="${p.id}"></span></div><div class="report-line"><span data-report-coins="${p.id}"></span><span data-report-bank="${p.id}"></span></div><div class="report-line muted"><span data-feed-deaths="${p.id}"></span><span data-report-age="${p.id}"></span></div></article>`).join('') : `<div class="empty-feed"><div class="pixel-prompt">☕</div><h3>Waiting for the usual suspects.</h3><p>Share <b style="color:var(--lime)">${esc(room.code)}</b> with your team. Their run reports will appear here.</p><button class="button small ghost" style="margin-top:18px" data-action="copy-link">${icon('copy')} Copy invite link</button></div>`;
   }
   for(const p of players) {
     setHTML(`[data-feed-name="${p.id}"]`,`<i class="player-color" style="background:${esc(p.color)}"></i>${esc(p.name)}`);
     setText(`[data-feed-score="${p.id}"]`,`${number(p.score)} PTS`);
-    setText(`[data-feed-level="${p.id}"]`,p.state?.finished?'ALL WORLDS CLEARED':p.state?.level?`0${racePosition(p.state.level,p.state)} / ${levelNames[p.state.level]}`:'LOBBY');
-    setText(`[data-feed-status="${p.id}"]`,!p.connected?'Disconnected':!p.spawned?'Choosing character':p.state?.respawnRemaining>0?(p.state.checkpoint?'Respawning at checkpoint…':'Respawning…'):p.state?.finished?'Taking a well-earned break':room.status==='lobby'?'Exploring the lobby':p.state?.checkpoint?'Checkpoint saved · on the move':'On the move');
-    setText(`[data-feed-deaths="${p.id}"]`,`${p.state?.deaths||0} DEATHS`);
+    const summary=p.summary||{};
+    const avatar=$(`[data-roster-avatar="${p.id}"]`);if(avatar)drawAvatar(avatar,p.avatar,p.color);
+    setText(`[data-feed-level="${p.id}"]`,summary.finished?'ALL WORLDS CLEARED':summary.level?`WORLD ${racePosition(summary.level,p)} / ${levelNames[summary.level]}`:'LOBBY');
+    setText(`[data-feed-status="${p.id}"]`,!p.connected?'Disconnected':!p.spawned?'Choosing character':summary.respawnRemaining>0?'Respawning…':summary.finished?'Finished':room.status==='lobby'?'Exploring the lobby':summary.checkpoint?'Checkpoint saved':'Running');
+    setText(`[data-feed-deaths="${p.id}"]`,`${summary.deaths||0} DEATHS`);
+    const checkpoint=(LEVELS[summary.level]?.checkpoints||[]).findIndex(cp=>cp.id===summary.checkpoint?.id)+1;
+    setText(`[data-feed-progress="${p.id}"]`,`${Math.round((summary.progress||0)*100)}% · Checkpoint ${checkpoint}/3`);
+    setText(`[data-report-coins="${p.id}"]`,`${number(summary.coins)} coins`);
+    setText(`[data-report-bank="${p.id}"]`,`${number(summary.banked)} banked`);
+    const bar=$(`[data-report-bar="${p.id}"]`);if(bar)bar.style.width=`${Math.round((summary.progress||0)*100)}%`;
+    setText(`[data-report-age="${p.id}"]`,reportAge(p));
   }
   updateLeaderboard();
   const qKey=JSON.stringify(room.settings.questions)+room.status;
@@ -309,14 +360,17 @@ function updateHost() {
     qPanel.innerHTML=room.status==='running'?'<p class="leader-empty">Icebreakers are for the lobby.<br>Right now, the floor is asking the questions.</p>':room.settings.questions.length ? room.settings.questions.map((q,i)=>`<div class="question-item"><div><small>QUESTION 0${i+1}</small>${esc(q.prompt)}</div><button class="button small ghost" data-launch="${i}">Launch ${icon('play')}</button></div>`).join('') : `<p class="leader-empty" style="padding:7px 2px 15px">A quick question before a questionable adventure. Add up to five in game settings.</p><button class="button ghost small wide" data-action="settings">${icon('plus')} Add icebreakers</button>`;
   }
 }
+function reportAge(player){return player.lastReportAt?`Updated ${new Date(player.lastReportAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`:'Awaiting race report';}
 function updatePlayer() {
   const me=room.players.find(p=>p.id===you); if(!me) return;
+  if(localRun) me.state=localRun.state;
   const s=me.state;
   if(!s)return;
   setText('#level-label',!me.spawned?'LOBBY / CHOOSE YOUR CHARACTER':s.level?`0${racePosition(s.level,s)} / ${levelNames[s.level].toUpperCase()}`:'LOBBY / THE WAITING WOODS');
   const spawnButton=$('#profile-section [data-action="spawn"]');
   if(spawnButton&&room.status==='running')spawnButton.innerHTML=`${icon('play')} Enter the race`;
-  setText('#my-score',number(me.score)); setText('#my-banked',number(s.banked)); setText('#my-current',number(Math.max(0,me.score-s.banked)));
+  const localScore=localRun ? scoreLocal(localRun.state) : me.score;
+  setText('#my-score',number(localScore)); setText('#my-banked',number(s.banked)); setText('#my-current',number(Math.max(0,localScore-s.banked)));
   const broadcastVisible=!!room.question||!!room.announcement||countdownSeconds(room,Date.now()+clockOffset)!==null;
   const overlay=$('#spawn-overlay'); if(overlay)overlay.hidden=me.spawned||broadcastVisible;
   const finish=$('#finish-overlay'); if(finish)finish.hidden=!s.finished||broadcastVisible;
@@ -357,33 +411,34 @@ function updateAnnouncement() {
 }
 function renderResults() {
   if(!podiumArrivedAt)podiumArrivedAt=performance.now();
-  app.innerHTML=`${header(`${roomCode()}<span class="pill lime">ROUND COMPLETE</span>`)}
+  const settling=room.status!=='ended';
+  app.innerHTML=`${header(`${roomCode()}<span class="pill lime">${settling?'FINALIZING':'ROUND COMPLETE'}</span>`)}
     <div id="connection-banner" class="disconnected-banner" hidden></div><main class="workspace podium-workspace">
-    <div class="workspace-header"><div><div class="eyebrow">${icon('trophy')} TELEPORT COMPLETE</div><h1>Welcome to the podium world.</h1><p>Everyone’s here. Final points include your current world. Time breaks equal scores.</p></div><span id="podium-rank-label" class="pill lime">FINAL RANKS</span></div>
-    <section class="game-shell podium-world"><div class="game-topbar"><span>04 / THE PODIUM WORLD</span><span>FINAL SCORES LOCKED</span></div>
+    <div class="workspace-header"><div><div class="eyebrow">${icon('trophy')} TELEPORT COMPLETE</div><h1>Welcome to the podium world.</h1><p>${settling?'Finalizing scores… Please wait for the immutable results.':'Everyone’s here. Final points include your current world. Time breaks equal scores.'}</p></div><span id="podium-rank-label" class="pill lime">${settling?'FINALIZING SCORES…':'FINAL RANKS'}</span></div>
+    <section class="game-shell podium-world"><div class="game-topbar"><span>04 / THE PODIUM WORLD</span><span>${settling?'FINALIZING SCORES…':'FINAL SCORES LOCKED'}</span></div>
     ${worldScreenMarkup('podium-canvas','Podium world with every player standing in final rank order',{width:1200,height:720,controls:false})}
     <div class="game-bottom"><span id="podium-status" aria-live="polite">Your team’s final rankings.</span><button class="link-button" data-action="fullscreen" aria-label="Full screen podium">${icon('expand')}</button></div></section>
-    <div class="results-actions">${role==='host'?`<button class="button ghost" data-action="export">${icon('download')} Download results</button><button class="button primary" data-action="reset">Back to the lobby ${icon('arrow')}</button>`:`<button class="button ghost" data-action="home">${icon('home')} Back to home</button>`}</div>
+    <div class="results-actions">${role==='host'&&!settling?`<button class="button ghost" data-action="export">${icon('download')} Download results</button><button class="button primary" data-action="reset">Back to the lobby ${icon('arrow')}</button>`:role==='host'?'':`<button class="button ghost" data-action="home">${icon('home')} Back to home</button>`}</div>
     <details class="podium-details panel"><summary>Full rankings and finish times</summary><table class="result-table"><thead><tr><th>RANK</th><th>PLAYER</th><th>SCORE</th><th>FINISH TIME</th></tr></thead><tbody id="result-rows"></tbody></table></details>
     ${role!=='host'?'<p class="host-status-note">Your host can bring everyone back to the lobby for another round.</p>':''}</main>`;
 }
 function updateResults() {
-  const results=room.results||room.players;
+  const results=room.status==='ended'?(room.results||[]):[];
   const key=JSON.stringify(results);if(key===scoreKey)return;scoreKey=key;
   const me=results.find(p=>p.id===you);
-  setText('#podium-rank-label',role==='host'?`${results.length} FINAL RANKS`:me?`YOUR PLACE #${me.rank} / ${number(me.score)} PTS`:'PODIUM SPECTATOR');
-  setText('#podium-status',me?`${me.name}, you finished #${me.rank} with ${number(me.score)} points.`:role==='host'?`${results.length} players ranked. The highest score wins.`:'The round is over. You’re watching the final podium.');
-  $('#result-rows').innerHTML=results.map(p=>`<tr class="${p.id===you?'me':''}"><td class="mono">${String(p.rank).padStart(2,'0')}</td><td><i class="player-color" style="background:${esc(p.color)}"></i>${esc(p.name)}${p.id===you?' · you':''}</td><td class="result-points">${number(p.score)}</td><td class="muted mono">${elapsed(p.finishTime)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">No players joined this round.</td></tr>';
+  if(room.status!=='ended'){setText('#podium-rank-label','FINALIZING SCORES…');setText('#podium-status','Finalizing scores…');}
+  else { setText('#podium-rank-label',role==='host'?`${results.length} FINAL RANKS`:me?`YOUR PLACE #${me.rank} / ${number(me.score)} PTS`:'PODIUM SPECTATOR'); setText('#podium-status',me?`${me.name}, you finished #${me.rank} with ${number(me.score)} points.`:role==='host'?`${results.length} players ranked. The highest score wins.`:'The round is over. You’re watching the final podium.'); }
+  $('#result-rows').innerHTML=results.map(p=>`<tr class="${p.id===you?'me':''}"><td class="mono">${String(p.rank).padStart(2,'0')}</td><td><i class="player-color" style="background:${esc(p.color)}"></i>${esc(p.name)}${p.id===you?' · you':''}</td><td class="result-points">${number(p.score)}</td><td class="muted mono">${elapsed(p.finishTime)}</td></tr>`).join('')||`<tr><td colspan="4" class="muted">${room.status==='ended'?'No players joined this round.':'Collecting final reports…'}</td></tr>`;
 }
 function setText(selector,value) { const el=$(selector);if(el&&el.textContent!==String(value))el.textContent=value; }
 function setHTML(selector,value) { const el=$(selector);if(el&&el.innerHTML!==value)el.innerHTML=value; }
 
 function openModal(title,body,footer='',className='') {
-  zeroInput(); watchedPlayer=null;modal.className=className;
+  zeroInput(); modal.className=className;
   modal.innerHTML=`<div class="modal-header"><h2 id="modal-title">${title}</h2><button class="button square ghost" data-action="close-modal" aria-label="Close dialog">${icon('close')}</button></div><div class="modal-content">${body}</div>${footer?`<div class="modal-footer">${footer}</div>`:''}`;
   if(!modal.open)modal.showModal();
 }
-function closeModal() { watchedPlayer=null;modal.close();updateMusicScene(); }
+function closeModal() { modal.close();updateMusicScene(); }
 function showHelp() {
   openModal('A field guide to questionable decisions.',`
     <div class="help-block"><h3>01 / LEARN THE MOVES</h3><p>Use <kbd>A</kbd> / <kbd>D</kbd> or <kbd>←</kbd> / <kbd>→</kbd> to move. Jump with <kbd>SPACE</kbd>, <kbd>W</kbd>, or <kbd>↑</kbd>. Explore the lobby before your host starts the round. This game is made for a desktop keyboard.</p></div>
@@ -401,23 +456,23 @@ function showSettings() {
   openModal('A little order before the chaos.',`<form id="settings-form">${worldOrderSettings(s)}<div class="settings-fields"><label class="field"><span class="field-label">ROUND MINUTES</span><input name="durationMinutes" type="number" min="1" max="60" step="1" value="${s.durationMinutes}" required></label><label class="field"><span class="field-label">POINTS / COIN</span><input name="coinPoints" type="number" min="0" max="1000" step="1" value="${s.coinPoints}" required></label><label class="field"><span class="field-label">POINTS / TILE</span><input name="distancePoints" type="number" min="0" max="1000" step="1" value="${s.distancePoints}" required></label></div><p class="settings-help">Distance uses the farthest point reached in the current attempt, in 32-pixel tiles. Completing a world banks its coins and distance. A 10-minute round is a good starting point; you can set 1–60 minutes.</p><div class="settings-section-heading"><span>Power challenges</span></div><div class="settings-fields"><label class="field"><span class="field-label">POWER DURATION / SEC</span><input name="powerDurationSeconds" type="number" min="1" max="60" step="1" value="${s.powerDurationSeconds??5}" required></label><label class="field"><span class="field-label">ATTACK WINDOW / SEC</span><input name="attackWindowSeconds" type="number" min="1" max="60" step="1" value="${s.attackWindowSeconds??10}" required></label><label class="field"><span class="field-label">DEFEND WINDOW / SEC</span><input name="defendWindowSeconds" type="number" min="1" max="60" step="1" value="${s.defendWindowSeconds??10}" required></label></div><p class="settings-help">Each setting accepts 1–60 seconds. A correct attack challenges everyone else. Correct defenders block the power; wrong or missing answers are affected. The effect and its broadcast last for the configured power duration after defenses resolve.</p>${strengthMarkup}<div class="settings-section-heading"><span>Lobby icebreakers</span><button type="button" class="button small ghost" data-action="add-question">${icon('plus')} Add question</button></div><div id="question-editors">${s.questions.map((q,i)=>questionEditor(q,i)).join('')}</div><p class="settings-help">Up to 5 questions, with 2 choices each. Launch them manually from your dashboard. Named votes are visible live and close automatically after 15 seconds.</p></form>`,`<button class="button ghost" data-action="close-modal">Cancel</button><button class="button primary" type="submit" form="settings-form">Save settings ${icon('check')}</button>`);
 }
 function questionEditor(q={prompt:'',choices:['','']},i=0) { return `<div class="question-editor"><div class="question-editor-top"><span>QUESTION <span class="question-index">${i+1}</span></span><button class="link-button" type="button" data-action="remove-question" aria-label="Remove question">${icon('trash')}</button></div><label class="field"><span class="sr-only">Question</span><input data-q-prompt maxlength="240" placeholder="Pineapple on pizza?" value="${esc(q.prompt)}" required></label><div class="field-row"><label class="field"><span class="sr-only">Choice A</span><input data-q-a maxlength="100" placeholder="Absolutely" value="${esc(q.choices[0])}" required></label><label class="field"><span class="sr-only">Choice B</span><input data-q-b maxlength="100" placeholder="Absolutely not" value="${esc(q.choices[1])}" required></label></div></div>`; }
-function watch(id) { const p=room.players.find(p=>p.id===id); if(!p)return;openModal(`${esc(p.name)}’s adventure.`,`<canvas id="watch-canvas" width="960" height="540" aria-label="Live gameplay view"></canvas>`,`<span class="muted" style="font-size:12px" id="watch-score"></span><button class="button ghost small" data-action="close-modal">Back to all players</button>`,'watch-dialog');watchedPlayer=id;wrapWorldCanvas($('#watch-canvas'));updateQuestion();updateMusicScene(); }
 async function copy(value,message) { try { await navigator.clipboard.writeText(value);toast(message); } catch { openModal('Copy this to your team.',`<label class="field"><input value="${esc(value)}" readonly onclick="this.select()" aria-label="Invitation"></label>`); } }
-function zeroInput() { input={left:false,right:false,jump:false};send('input',input); }
+function zeroInput() { input={left:false,right:false,jump:false}; localRun?.setInput(input); }
 function useHeldPower() { const me=room?.players.find(p=>p.id===you);if(!runtimeError&&!me?.power?.queued&&!me?.power?.testing&&(!me?.powerQuiz||me.powerQuiz.answered)){const offer=me?.powerOffer;if(offer?.canAttack)send('powerChestChoice',{offerId:offer.id,itemId:offer.itemId,choice:'attack'});else send('usePower');} }
 function sceneForLevel(level){return ['lobby','forest','ocean','hell'][level]||'lobby';}
-function hostWorldPlayer(){return room?.players.find(p=>p.id===watchedPlayer)||room?.players.find(p=>p.spawned&&p.connected)||room?.players[0];}
 function currentEffectScene(){
   if(!room||room.status==='lobby')return 'lobby';
-  if(room.status==='ended')return 'results';
-  const player=role==='host'?hostWorldPlayer():room.players.find(p=>p.id===you);
+  if(ceremony())return 'results';
+  if(role==='host')return 'lobby';
+  const player=room.players.find(p=>p.id===you);
   return sceneForLevel(player?.spawned?player.state?.level:0);
 }
 function playTone(kind,scene=currentEffectScene()) { audio.playEffect(kind,scene); }
 function updateMusicScene() {
   if(screen==='entry'||!room){audio.setScene('lobby');return;}
-  if(room.status==='ended'){audio.setScene('results');return;}
-  const player=role==='host'?hostWorldPlayer():room.players.find(p=>p.id===you);
+  if(ceremony()){audio.setScene('results');return;}
+  if(role==='host'){audio.setScene('lobby');return;}
+  const player=room.players.find(p=>p.id===you);
   if(player?.state?.finished){audio.setScene('results');return;}
   const level=player?.spawned?player.state?.level:0;
   const scene=room.status==='lobby'?'lobby':sceneForLevel(level);
@@ -446,7 +501,6 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b||b.disabled)return;
   if(b.dataset.avatar){profile.avatar=b.dataset.avatar;persistProfile();send('profile',profile);renderProfile();return;}
   if(b.dataset.color){profile.color=b.dataset.color;persistProfile();send('profile',profile);renderProfile();return;}
-  if(b.dataset.watch){watch(b.dataset.watch);return;}
   if(b.dataset.vote!==undefined){send('vote',{choice:Number(b.dataset.vote)});return;}
   if(b.dataset.launch!==undefined){send('launchQuestion',{index:Number(b.dataset.launch)});return;}
   const action=b.dataset.action;
@@ -504,55 +558,80 @@ function keyboard(e,pressed){
   if(e.target.closest('.world-controls button,.power-controls button,.power-chest-controls button')&&(e.key===' '||e.key==='Enter'))return;
   if(pressed&&!e.repeat&&e.key.toLowerCase()==='f'&&role==='player'&&room?.status==='running'&&!modal.open&&!runtimeError&&!e.target.closest('input,textarea,select')){e.preventDefault();useHeldPower();return;}
   const k=keyMap[e.key]||keyMap[e.key.toLowerCase()];if(!k)return;
-  if(role!=='player'||!room||room.status==='ended'||modal.open||runtimeError||e.target.closest('input,textarea,select'))return;
+  if(role!=='player'||!room||ceremony()||modal.open||runtimeError||e.target.closest('input,textarea,select'))return;
   if(!room.players.find(p=>p.id===you)?.spawned)return;
   e.preventDefault();if(input[k]===pressed)return;
-  if(k==='jump'&&pressed&&predicted&&!predicted.respawnRemaining&&!predicted.finished&&(predicted.grounded||predicted.coyote>0))playTone('jump');
-  input[k]=pressed;send('input',input);
+  const state=localRun?.state;
+  if(k==='jump'&&pressed&&state&&!state.respawnRemaining&&!state.finished&&(state.grounded||state.coyote>0))playTone('jump');
+  input[k]=pressed;localRun?.setInput(input);
 }
 document.addEventListener('keydown',e=>keyboard(e,true));document.addEventListener('keyup',e=>keyboard(e,false));
-window.addEventListener('blur',zeroInput);document.addEventListener('visibilitychange',()=>{if(document.hidden)zeroInput();audio.setHidden(document.hidden);if(!document.hidden)syncPlayerQuiz({focus:true});});
+window.addEventListener('blur',zeroInput);document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){zeroInput();}
+  advanceLocalSimulation();
+  if(!document.hidden)syncPlayerQuiz({focus:true});
+  audio.setHidden(document.hidden);
+});
 window.addEventListener('pagehide',event=>{if(role==='player'&&room?.status!=='ended')send('leave');audio.setHidden(true);if(!event.persisted)audio.dispose();});
 window.addEventListener('pageshow',()=>{audio.setHidden(document.hidden);syncPlayerQuiz({focus:true});});
 window.addEventListener('resize',()=>{syncPlayerQuiz();syncPlayerChest();});
 document.addEventListener('fullscreenchange',()=>{syncPlayerQuiz();syncPlayerChest();});
-setInterval(()=>{syncPlayerQuiz();syncPlayerChest();},100);
+setInterval(()=>{if(document.hidden)advanceLocalSimulation();syncPlayerQuiz();syncPlayerChest();},100);
+setInterval(()=>{if(connected)send('timeSync',{clientTime:Date.now()});},10000);
 audio.setHidden(document.hidden);
 modal.addEventListener('click',e=>{if(e.target===modal){const r=modal.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal();}});
-modal.addEventListener('close',()=>{watchedPlayer=null;updateMusicScene();});
-setInterval(()=>{if(role==='player'&&connected&&room?.status!=='ended'&&!runtimeError)send('input',input);},50);
+modal.addEventListener('close',()=>{updateMusicScene();});
 
 // Avatar selection uses the same production atlas as the game.
 const atlas=new Image();atlas.src='/assets/sprites.png';
 function drawAvatarSelections(){if(!atlas.complete||!atlas.naturalWidth)return;$$('[data-avatar-canvas]').forEach(canvas=>drawAvatar(canvas,canvas.dataset.avatarCanvas,profile.color));}
-let previousTime=performance.now(),lastHostDraw=0,lastUiDraw=0;
-function frame(time){
-  requestAnimationFrame(frame);const dt=Math.min((time-previousTime)/1000,.035);previousTime=time;
-  if(document.hidden)return;
-  const t=time/1000,now=Date.now()+clockOffset;
-  if(screen==='entry') {const canvas=$('#demo-canvas');if(canvas)renderGame(canvas,demo,{time:t,compact:true});}
-  if(room?.status==='ended'){
-    const canvas=$('#podium-canvas');if(canvas){renderPodium(canvas,room.results||room.players,{time:t,viewerId:you,arrivalAge:(time-podiumArrivedAt)/1000});renderWorldUI(canvas,room,{now,viewerId:you,isHost:role==='host'});}
+let lastHostDraw=0,lastUiDraw=0;
+function advanceLocalSimulation(){
+  const now=serverNow(),me=room?.players.find(p=>p.id===you);
+  if(role!=='player'||!localRun||!me?.spawned||!connected||runtimeError||!['lobby','running'].includes(room?.status)){simulationCursor=now;return;}
+  if(room.status==='running'&&finalSentRound===room.roundId)return;
+  simulationCursor??=now;
+  const target=room.status==='running'?Math.min(now,room.endsAt):now;
+  const budget=performance.now()+12;
+  localRun.pause(false);
+  while(target-simulationCursor>.001&&performance.now()<budget){
+    const delta=Math.min(5/60,(target-simulationCursor)/1000);
+    const end=simulationCursor+delta*1000;
+    localRun.settings={...room.settings,powerEffects:activePowerEffects(me,end)};
+    localRun.setFrozen(isDuelFrozen(room.powerDuel,you));
+    localRun.tick(delta,{serverNow:end});
+    simulationCursor=end;
   }
-  if(role==='player'&&room?.status!=='ended'){
+  me.state=localRun.state;
+  if(room.status==='running'&&now>=room.endsAt){
+    const first=!localFinalizing;localFinalizing=true;
+    if(simulationCursor>=room.endsAt-.001)finalizeLocal(room.endsAt);
+    if(first){podiumArrivedAt=performance.now();closeModal();zeroInput();playTone('teleport','results');renderRoom();}
+  }
+}
+function frame(time){
+  requestAnimationFrame(frame);
+  if(document.hidden)return;
+  const t=time/1000,now=serverNow();
+  advanceLocalSimulation();
+  if(screen==='entry') {const canvas=$('#demo-canvas');if(canvas)renderGame(canvas,demo,{time:t,compact:true});}
+  if(ceremony()){
+    const canvas=$('#podium-canvas');if(canvas){if(room.status!=='ended')renderPendingPodium(canvas,{time:t});else renderPodium(canvas,room.results||[],{time:t,viewerId:you,arrivalAge:(time-podiumArrivedAt)/1000});renderWorldUI(canvas,room,{now,viewerId:you,isHost:role==='host'});}
+  }
+  if(role==='player'&&room&&!ceremony()){
     const me=room?.players.find(p=>p.id===you),canvas=$('#game-canvas');
-    if(predicted&&me?.spawned&&connected&&!modal.open&&!runtimeError&&(room.status!=='running'||now<room.endsAt)){const frozen=isDuelFrozen(room?.powerDuel,you);if(frozen)predicted.vx=0;step(predicted,frozen?{}:input,dt,{...room.settings,powerEffects:activePowerEffects(me,now)});}
-    if(canvas){const visual=me?.spawned?checkpointRenderState(predicted,me.state):createState(profile);renderGame(canvas,visual,{time:t,compact:true,powerChestClaims:me?.powerChestClaims||[],showInstructions:room.status==='lobby'||!me?.spawned});drawPlayerPowers(canvas,me,{now,time:t});drawWorldBroadcasts(canvas,{now});drawPlayerQuiz(canvas,me,{now});}
-    const state=lastAuthoritative,death=$('#death-caption');
+    if(canvas){const visual=me?.spawned?localRun.state:createState(profile);renderGame(canvas,visual,{time:t,compact:true,powerChestClaims:me?.powerChestClaims||[],showInstructions:room.status==='lobby'||!me?.spawned});drawPlayerPowers(canvas,me,{now,time:t});drawWorldBroadcasts(canvas,{now});drawPlayerQuiz(canvas,me,{now});}
+    const state=localRun?.state,death=$('#death-caption');
     if(death&&state){const remain=state.respawnRemaining||0;death.hidden=remain<=0||!!me?.powerQuiz;if(remain>0)death.innerHTML=`<strong>WELL, THAT HAPPENED.</strong><p>${esc(state.deathCause?.label||'A surprise encounter with danger.')}</p><small>RESPAWNING IN ${Math.max(1,Math.ceil(remain))}s · ${state.checkpoint?'BACK TO YOUR CHECKPOINT · SAVED SCORE & COINS RESTORED':'BACK TO THE WORLD START · LEVELS BANKED ARE SAFE'}</small>`;}
     drawAvatarSelections();
   }
-  if(role==='host'&&room?.status!=='ended'&&time-lastHostDraw>120){
+  if(role==='host'&&room&&!ceremony()&&time-lastHostDraw>120){
     lastHostDraw=time;
-    const stage=$('#host-world-canvas'),mainPlayer=hostWorldPlayer();
-    if(stage){renderGame(stage,mainPlayer?.state||createState(),{time:t,compact:true,powerChestClaims:mainPlayer?.powerChestClaims||[]});drawPlayerPowers(stage,mainPlayer,{now,time:t});drawWorldBroadcasts(stage,{now});drawPlayerQuiz(stage,mainPlayer,{now});}
-    for(const canvas of $$('[data-feed]')){
-      const p=room?.players.find(p=>p.id===canvas.dataset.feed);
-      if(p?.state){renderGame(canvas,p.state,{time:t,compact:true,powerChestClaims:p.powerChestClaims||[],showInstructions:room.status==='lobby'});drawPlayerPowers(canvas,p,{now,time:t});renderWorldUI(canvas,room,{now,viewerId:p.id,isHost:true});drawPlayerQuiz(canvas,p,{now});}
-    }
-    if(watchedPlayer){const p=room?.players.find(p=>p.id===watchedPlayer),canvas=$('#watch-canvas');if(p?.state&&canvas){renderGame(canvas,p.state,{time:t,compact:true,powerChestClaims:p.powerChestClaims||[],showInstructions:room.status==='lobby'});drawPlayerPowers(canvas,p,{now,time:t});drawWorldBroadcasts(canvas,{now,viewerId:p.id});drawPlayerQuiz(canvas,p,{now});setText('#watch-score',`${number(p.score)} points · ${p.state.deaths} deaths · ${p.connected?'Live':'Disconnected'}`);}}
+    const stage=$('#host-world-canvas');
+    if(stage){renderGame(stage,hostStage,{time:t,compact:true});drawWorldBroadcasts(stage,{now});}
   }
   if(time-lastUiDraw>100){lastUiDraw=time;
+    if(role==='player'&&room&&!ceremony()){updatePlayer();updateMusicScene();}
     if(room?.status==='running'){const text=clock(room.endsAt-now);setText('#host-timer',text);setText('#player-timer',text);}
     else if(room?.status==='lobby')setText('#host-timer',clock(room.settings.durationMinutes*60000));
     const second=countdownSeconds(room,now),roundKey=room?`${room.code}:${room.startedAt}`:null;

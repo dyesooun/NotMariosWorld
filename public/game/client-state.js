@@ -1,12 +1,12 @@
 import { normalizeWorldOrder, worldOrdinal } from './world-order.js';
-// Predictions make movement responsive. Persistent saves are authoritative.
+// Coordinator metadata never replaces the browser's active gameplay state.
 export function worldProgressModel(state={},order){
   const route=normalizeWorldOrder(state.level===0?(order??state.worldOrder):(state.worldOrder??order));
   return {order:route,ordinal:worldOrdinal(state.level??0,route),done:route.map(id=>!!state.finished||!!state.completedWorlds?.includes(id))};
 }
-export function checkpointRenderState(predicted,authoritative){
-  if(!predicted)return authoritative;
-  return {...predicted,checkpoint:authoritative?.checkpoint??null};
+export function mergePlayerPatch(player,patch){
+  const {state:ignored,summary,...metadata}=patch;
+  return {...player,...metadata,summary:{...player.summary,...summary}};
 }
 // Attackers and defenders hold still for the whole quiz, not just their own answered question.
 export function isDuelFrozen(duel,playerId){

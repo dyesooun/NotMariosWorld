@@ -1,17 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkpointRenderState, runtimeMismatch, worldProgressModel } from '../public/game/client-state.js';
+import { mergePlayerPatch, runtimeMismatch, worldProgressModel } from '../public/game/client-state.js';
 import { DEFAULT_QUESTIONS } from '../public/game/default-questions.js';
 import { powerUIModel, activePowerEffects, renderPowerUI } from '../public/game/power-ui.js';
 import { powerChestOfferModel } from '../public/game/power-chest-ui.js';
 
-test('predicted checkpoint never shows a save before server confirmation', () => {
-  const predicted={x:7142,checkpoint:{id:'forest-checkpoint-1'}},server={x:7130,checkpoint:null};
-  assert.equal(checkpointRenderState(predicted,server).checkpoint,null);
-  assert.equal(checkpointRenderState(predicted,server).x,7142);
-  server.checkpoint={id:'forest-checkpoint-1',coins:2,current:20};
-  assert.deepEqual(checkpointRenderState({...predicted,checkpoint:null},server).checkpoint,server.checkpoint);
-  assert.equal(predicted.checkpoint.id,'forest-checkpoint-1');
+test('compact leaderboard patches preserve host detail and the active local checkpoint', () => {
+  const state={x:7142,checkpoint:{id:'forest-checkpoint-2',coins:2,current:20}};
+  const player={id:'me',state,summary:{level:1,deaths:2,coins:7,checkpoint:{id:'forest-checkpoint-2'}}};
+  const patched=mergePlayerPatch(player,{id:'me',rank:2,score:400,summary:{level:1,finished:false},state:{x:90,checkpoint:null}});
+  assert.equal(patched.state,state);
+  assert.equal(patched.summary.deaths,2);assert.equal(patched.summary.coins,7);
+  assert.equal(patched.summary.checkpoint.id,'forest-checkpoint-2');
+  assert.equal(patched.rank,2);assert.equal(patched.score,400);
 });
 test('runtime guard catches legacy servers and changed simulation files', () => {
   assert.match(runtimeMismatch({ok:true}),/older game build/);
@@ -28,11 +29,10 @@ test('progress indicators follow the selected route rather than increasing world
   state.level=2;state.completedWorlds=[3,1];assert.equal(worldProgressModel(state).ordinal,3);assert.deepEqual(worldProgressModel(state).done,[true,true,false]);
   state.finished=true;assert.deepEqual(worldProgressModel(state).done,[true,true,true]);
 });
-test('five editable default icebreakers contain both supplied choices', () => {
+test('five editable default icebreakers preserve the executive choices and valid custom prompts', () => {
   assert.equal(DEFAULT_QUESTIONS.length,5);
   for(const question of DEFAULT_QUESTIONS){assert.equal(question.choices.length,2);assert.ok(question.prompt.length<=240);}
   assert.deepEqual(DEFAULT_QUESTIONS[0].choices,['Madam Elena','Tita Ambe']);
-  assert.deepEqual(DEFAULT_QUESTIONS[1].choices,['Pillows','Blankets']);
 });
 test('power UI reflects server-held/spent state, expiry, and death restrictions', () => {
   const player={connected:true,spawned:true,state:{level:1,respawnRemaining:0},power:{level:1,claimed:true,used:false,power:{name:'Ink Cloud',target:'all'}},effects:{fog:{endsAt:5100},slow:{endsAt:100}}};

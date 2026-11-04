@@ -25,18 +25,18 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 ## Session and host flow
 
 - The host creates a room, configures it, and **starts the race manually**. Joining or spawning must not start the round.
-- Room states are lobby, running, and ended. Host actions are authenticated separately from player access; a room code must not grant host control.
+- Room states are lobby, running, settling, and ended. Settling stops gameplay and collects final reports for at most two seconds before publishing immutable ranks. Host actions are authenticated separately from player access; a room code must not grant host control.
 - Host settings are editable in the lobby. Round duration defaults to **10 minutes** and is configurable from **1–60 minutes**.
 - The host can select **any of the six world orders** in Game settings, including putting ocean or inferno first for testing. Every sequence includes all three worlds exactly once; the default is forest → ocean → inferno. The selected order is room-specific and fixed when a run starts. Late joins and refreshed runs begin at the first world in that selected order, with the shared remaining time.
-- Keep biome identity separate from race position. Stage numbers, progress indicators, and host previews follow the selected sequence; artwork, music, chests, checkpoint IDs, and escape broadcasts follow the actual biome. Finish only after the last world in the selected sequence, even if it is the forest or ocean. Do not reorder the global `LEVELS` array to implement this setting.
+- Keep biome identity separate from race position. Stage numbers, progress indicators, and the host dashboard follow the selected sequence; artwork, music, chests, checkpoint IDs, and escape broadcasts follow the actual biome. Finish only after the last world in the selected sequence, even if it is the forest or ocean. Do not reorder the global `LEVELS` array to implement this setting.
 - Scoring settings default to **10 points per coin** and **1 point per 32-pixel distance tile**; the current supported range for each weight is 0–1000.
 - The host can separately configure **power duration**, **attack-answer window**, and **defense-answer window** in the lobby, each from **1–60 seconds**. Defaults are **5**, **10**, and **10 seconds**, respectively. The server owns these deadlines; quiz progress and result broadcasts must use the configured values.
-- The host can also configure every power's strength: Sticky Boots speed (10–90% of normal, default 55%), Wrong Way speed while reversed (50–200%, default 100%), Ice Skates speed (110–250%, default 170%), Ice Skates braking grip (2–50% of normal, default 12%), and Ink Cloud darkness (0–95%, default 75%). Lower ice grip preserves more momentum. Latch strength when the turn begins and use it consistently in server physics, client prediction, and rendering.
+- The host can also configure every power's strength: Sticky Boots speed (10–90% of normal, default 55%), Wrong Way speed while reversed (50–200%, default 100%), Ice Skates speed (110–250%, default 170%), Ice Skates braking grip (2–50% of normal, default 12%), and Ink Cloud darkness (0–95%, default 75%). Lower ice grip preserves more momentum. The server latches strength when the turn begins; local physics and rendering use those issued values consistently.
 - Late arrivals are allowed during a running round. They start the first world in the selected sequence and have only the room's remaining time, with no personal timer extension.
 - Refreshing/rejoining a player during an unfinished round resets their run: location, score, banked points, checkpoints, inventory, and collected coins. It is not a saved-game recovery feature.
 - A disconnected player must stop moving. Rejoining the same disconnected name replaces that entry; players should use distinct names.
 - The host can resume their host session after refresh using the credential in that tab's session storage. This is separate from player-run reset behavior.
-- The host can end a running round manually and return an ended room to the lobby for another round. Manual end currently finishes immediately.
+- The host can end a running round manually and return an ended room to the lobby for another round. Manual end stops gameplay at the server-issued cutoff and uses the same bounded final-report settlement as natural expiry.
 - Post-round arrivals may watch as unranked spectators when room capacity permits. Reconnecting to frozen results must not reset or rerank those results.
 
 ## Lobby, identity, and controls
@@ -91,7 +91,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - After a checkpoint, death restores the checkpoint's saved state and respawns there. Only gains made after the saved checkpoint are lost.
 - Coins already collected at the checkpoint stay collected. Coins collected after it reappear after death. Never allow coin duplication or repeated-checkpoint score farming.
 - Checkpoints advance monotonically. Only a later checkpoint can replace the save; revisiting the same or an earlier checkpoint must not overwrite or downgrade it.
-- Unreached flags are blue; **all reached flags remain gold**, including after client/server reconciliation and respawn.
+- Unreached flags are blue; **all reached flags remain gold**, including after coordinator messages and respawn. Checkpoint state is local and never waits for server confirmation.
 - Checkpoints must have solid support and clear landing/respawn space. Touching a flag from ground level must not kill the player. Do not allow nearby hazard placement or enemy patrols to invalidate its safe landing area.
 - Respawn resets enemy and moving-platform cycles. The saved scoring/collection state and separately tracked power inventory must still survive as specified.
 - Current total score is `banked + current coin points + floor(farthest current-level distance / 32) * distancePoints`.
@@ -118,7 +118,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Forest reward chests are at **x = 3940, 7460, and 10940**; ocean/inferno reward chests remain at **3880, 7380, and 10880**. All sit after the three checkpoints, with cyan sparkles. Keep rewards distinguishable from decoys, with stable IDs, solid support, and clear access.
 - Each chest grants one random power, allowing **up to three uses per level**. Players can hold or reserve **only one power at a time across levels**, without stacking inventory.
 - Reaching another chest while holding a power shows an **in-world Attack / Replace choice**. Attack queues the current item and leaves the new chest unopened until the slot is free. Replace discards the current item and claims the new chest; replacement does not grant an extra inventory slot.
-- Cache an unopened chest's offered reward for that run so walking away and returning cannot reroll it. Validate each choice against the actual nearby chest, offer, held-item identity, current run, liveness, and round deadline. A queued item cannot be replaced.
+- Cache an unopened chest's offered reward for that run so walking away and returning cannot reroll it. The browser detects chest contact; the server validates choices against that reported contact, the known chest, offer, held-item identity, current run, reported liveness, and round deadline. The server does not reconstruct collision geometry. A queued item cannot be replaced.
 - An unused held power survives death. A claimed chest stays spent across respawns, including when death rewinds coins to a checkpoint. Used powers/chests must never regenerate through death or checkpoint rollback.
 - Entering the next level gives access to that level's three fresh chests and discards an unreserved old-level item. Already queued requests remain tied to their original level/item and survive the transition; a reserved old item blocks new pickup until consumed. An active turn has already consumed its item and is not a second held slot.
 
@@ -134,7 +134,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Opponents can be in different levels. Eligible targets are connected, spawned players who have not finished the course; the host is never a target.
 - If no opponent is available, keep the held power rather than silently spending it.
 - Place the inventory/use widget in the **upper left of the game viewport**. It must not cover the main play area, quiz controls, broadcasts, or final countdown.
-- Show held, queued, testing, used, and active-effect states clearly. The host's live previews must reflect inventories and effects, including fog.
+- Show held, queued, testing, used, and active-effect states clearly. Keep detailed gameplay and fog rendering local; the host observes lightweight status and the shared power phase instead of gameplay previews.
 
 ## Global power queue and broadcasts
 
@@ -162,7 +162,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - A targeted defender must get a question even if they have **no held chest power**. A committed queued attacker must still get their attack question after death or level completion.
 - Death must not hide an active quiz or make its answer inaccessible. It does not pause the room clock or quiz deadline.
 - Show the question, answer input, submit control, and timer **together inside the game viewport**. The actual player uses one DOM card, independent of the canvas animation lifecycle; host previews are read-only.
-- Sync the card from server state, with lifecycle recovery on tab visibility changes, page restoration, resizing, and fullscreen changes. Do not rely solely on `requestAnimationFrame` for its existence or visibility.
+- Sync the card from server coordinator events, with lifecycle recovery on tab visibility changes, page restoration, resizing, and fullscreen changes. Do not rely solely on `requestAnimationFrame` or periodic full-state snapshots for its existence or visibility.
 - Preserve typed input across repeated snapshots of the same challenge; reset for a genuinely new challenge. Submit once, restore controls after a rejected request when appropriate, and prevent duplicate handlers/submissions.
 - Help dialogs must not cover an unanswered quiz. Focus the input and suppress gameplay key handling while answering. Restore normal play after submission/closure.
 - A bystander or a player who has already answered should not receive a fresh answer input. Explain the phase/target status instead of implying a missing question.
@@ -198,18 +198,22 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 ## Countdown, podium, and host observation
 
 - Run the visible/audible **10-second countdown during the final 10 seconds of play**, not as an extra frozen period after time expires. Players can still move, collect coins, and score during it.
-- At zero, freeze authoritative scores, stop gameplay/power processing, and teleport everyone into **World 4: the podium**.
+- At zero, stop local gameplay and server power processing and teleport everyone into **World 4: the podium**. Show **Finalizing scores…** while the server collects final reports for at most **2 seconds**; this is not extra playtime. Publish ranks once every eligible run has reported or that limit expires, then keep them immutable.
+- A final report must represent the cutoff, including current unbanked points and distance below the next reporting milestone. Manual end uses a short local summary history to select totals at or before its server-issued cutoff. Missing/disconnected players use their last accepted totals. New/refreshed runs cannot replace an eligible run during settlement, and late messages cannot rerank published results.
+- Full-course completion time is trusted client-reported time relative to the shared room start, not message arrival time or a personal timer. Join order remains the last tiebreaker.
 - Show the top three on the main podium and every other ranked player on a ranked stand. Highlight the viewer's avatar/rank and support all 25 player positions.
 - Preserve the host's full rankings, CSV export, and return-to-lobby flow.
-- The host must see live views of players' games, points, levels, and deaths, with an enlarged watch view on selection.
-- These feeds are rendered from authoritative simulation snapshots, not webcam or screen-capture video. Do not introduce screen-sharing permissions to implement this feature.
+- Remove CCTV, gameplay preview canvases, and enlarged Watch views entirely. The host sees avatar/name, connection status, current world/stage, reported progress/checkpoint, score/banked points/coins/deaths, playing/respawning/finished status, and update time.
+- Host progress updates are incremental and event-driven: progress milestones (every 5%), batched coin collection, checkpoints, deaths with rollback totals, respawns, world/course completion, chest contact, and final cutoff. Keep the host's independent world-broadcast stage for votes, announcements, power phases, and countdowns.
 
 ## Architecture and operation
 
 - Stack: Node.js **22+**, ES modules, `ws`, plain HTML/CSS/JavaScript, and canvas. No frontend build step is required.
-- The server owns room time, physics, collision, deaths, coins, checkpoints, scores, inventories, target selection, quizzes, voting, broadcasts, and results. Clients send input/actions; never trust client-submitted scores or quiz correctness.
-- Share deterministic simulation and rule modules between server and browser where appropriate. Local prediction must reconcile with server-confirmed checkpoints, coins, deaths, and level changes without reverting durable state.
-- Detailed player state is private to that player and the host; other players receive summaries and the required public votes/broadcasts.
+- Each player's browser owns its movement, physics, collisions, enemies/projectiles, coins, checkpoints, deaths/respawns, banking, level transitions, and local score. Reuse the deterministic engine and layouts. Input is processed locally; do not send movement controls or reconcile against server physics. This casual game deliberately trusts client-reported gameplay results.
+- The server coordinates rooms, authenticated host actions, run identities, settings, shared deadlines, random chest rewards and inventory, target selection, quiz correctness, voting, ordered broadcasts, and leaderboard/final-result aggregation. Answer keys stay server-only. Keep authentication, lifecycle checks, schema bounds, and duplicate/stale-message handling; do not add a server physics replay or anti-cheat system.
+- Reports carry round/run identity, an increasing sequence, a server-synchronized timestamp, compact current totals/status, and reported chest contact. Keep positions, velocities, enemies, projectiles, particles, and collected-coin arrays entirely local. Score/progress can decrease on checkpoint rollback; reports are replacement totals rather than additive awards.
+- Send detailed progress patches to the host, compact ranking changes to players, and shared interaction events to their intended recipients. Full coordinator initialization/recovery messages are allowed; fixed-rate full-world snapshots and continuous input packets are not. Unchanged idle runs generate no gameplay reports. Heartbeats and low-frequency clock synchronization remain allowed.
+- Incoming coordinator events and acknowledgements must never overwrite an active local run. Reset gameplay only for a genuine new round/run or the defined lobby/refresh lifecycle. Preserve quiz controls independently of rendering and apply server-issued effect identities, strengths, and deadlines without restarting effects on repeated messages.
 - Serve HTTP and WebSockets on the same port. Default local address: `http://localhost:10000`; honor `PORT`. HTTPS deployments use secure WebSockets automatically.
 - Render configuration is in `render.yaml`: Node Web Service, build `npm ci`, start `npm start`, health check `/health`.
 - Rooms are held in memory on **one server instance**. Restarts/deployments clear rooms and running games. Persistent recovery and multi-instance room coordination are outside the current scope.
@@ -220,12 +224,14 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 | Path | Responsibility |
 | --- | --- |
-| `server/index.js` | HTTP/WebSockets, authoritative room lifecycle/tick, host authorization, queue, snapshots, final results |
+| `server/index.js` | HTTP/WebSockets, session coordinator/deadlines, report aggregation, host authorization, queue, final settlement/results |
 | `server/power-duels.js` | Attack/defense phases, participants, answer validation, outcomes |
 | `server/power-questions.js` | Private general-knowledge pool, aliases, answer normalization |
-| `public/app.js` | Browser UI, controls, connection, prediction reconciliation, quiz lifecycle |
+| `public/app.js` | Browser UI, local controls/runtime, event connection, milestone dashboard, quiz lifecycle |
 | `public/styles.css` | Browser layout, viewport overlays, quiz card styling |
-| `public/game/engine.js` | Shared movement, collisions, deaths, checkpoint state, scoring, enemy simulation |
+| `public/game/engine.js` | Local gameplay movement, collisions, deaths, checkpoint state, scoring, enemy simulation |
+| `public/game/local-run.js` | Local fixed-step runtime, milestone reports, cutoff summary history |
+| `public/game/run-protocol.js` | Compact report schema, score aggregation, protocol version and settlement constants |
 | `public/game/levels.js` | Deterministic layouts, checkpoints, platforms, hazards, critter placement, power chest |
 | `public/game/world-order.js` | Validated per-room world sequences and race-position lookup |
 | `public/game/renderer.js` | Pixel scene, sprite atlas, wildlife, animation, effects |
@@ -240,7 +246,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 | `public/game/podium.js` | Ranked ceremony world |
 | `public/game/audio.js` | Original music, biome effects, audio lifecycle |
 | `public/game/default-questions.js` | Five default lobby icebreakers |
-| `public/game/client-state.js` | Confirmed checkpoint reconciliation and runtime compatibility guards |
+| `public/game/client-state.js` | World progress models, quiz movement restrictions, runtime compatibility guards |
 | `public/assets/`, `docs/ASSETS.md` | Original assets and provenance |
 | `tests/` | Unit, DOM lifecycle, simulation, and real WebSocket integration checks |
 | `README.md`, `render.yaml` | Operator instructions and deployment configuration |
@@ -250,7 +256,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Install with `npm ci`; run with `npm start` or use `npm run dev` for watched local edits. The test command is `npm test` (`node --test`).
 - Run checks appropriate to changed behavior; use real multi-client WebSocket checks for authoritative multiplayer rules and browser checks for viewport/focus/rendering behavior. Documentation-only edits do not require restarting the server or rerunning the game suite.
 - When touching relevant systems, preserve or extend coverage for these prior failures:
-  - All nine checkpoint saves, persistent gold flags, safe ground contact, saved coins/points/location, no backward overwrite or farming, and client reconciliation.
+  - All nine local checkpoint saves, persistent gold flags, safe ground contact, saved coins/points/location, no backward overwrite/farming, and no coordinator-message rollback.
   - Three distinct chest claims per level, death/checkpoint persistence, one held/reserved item, Attack / Replace choices, stable previews, stale-item rejection, no-target behavior, cross-level FIFO, and cleanup at disconnect/reset/end.
   - Host timing settings, normalization, configured quiz progress/deadlines, and full-duration effect/result banners, including nondefault durations.
   - Attack correctness/failure/timeout, individual defenses, mixed results, no-inventory defenders, committed queued attackers, one-attempt authentication, run refresh isolation, and private answer keys.
@@ -259,7 +265,8 @@ This file records the agreed requirements for the company's Game Day Thursday ga
   - Distinct authored forest geometry, safe reward/checkpoint havens, complete forest sprite crops, grounded scenery, two new enemy species, and ambient moths.
   - Configured power strengths, increased slippery speed/coasting, latched effect values shared by server/client, and custom fog darkness.
   - All six world orders, distinct biome identity/race position, final completion on the last selected world, independent rooms, late/refresh starts, bank/checkpoint/death persistence, and correct progress indicators.
-  - Final 10 seconds remaining playable, current points included at zero, frozen ranks, all podium positions, and reconnect/spectator stability.
+  - Final 10 seconds remaining playable, exact cutoff reports including current points, two-second settlement, immutable published ranks, all podium positions, and reconnect/spectator stability.
+  - Local movement independent of network latency; no server physics, movement packets, CCTV payloads/canvases, or unchanged-state broadcast loops. Ordered reports, death reductions, duplicate/stale rejection, host-only detailed patches, and 25-player aggregation.
   - Optional/default icebreakers, named live votes, 15-second closure, manual skip, and in-world presentation.
   - Default-on music/effects, biome variation, mute, hidden-tab behavior, and no duplicated playback.
 - Do not treat simulation tests as proof of visual quality, browser audio, internet behavior, or 25-player event readiness. Describe any manual checks and rehearsal still needed when relevant.

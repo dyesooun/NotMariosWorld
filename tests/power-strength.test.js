@@ -32,7 +32,7 @@ test('boolean and latched slippery effects use configured strength', () => {
   assert.ok(coast.vx > 260, 'slippery braking should preserve momentum');
 });
 
-test('slow and reverse speed settings affect client prediction', () => {
+test('slow and reverse speed settings affect local movement', () => {
   assert.ok(run({ slow: true }, { slowSpeedPercent: 40 }) < run({}));
   const reverse = createState({ level: 0 });
   step(reverse, { left: true }, 1 / 60, { powerEffects: { reverse: true }, reverseSpeedPercent: 150 });

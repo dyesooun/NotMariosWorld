@@ -10,6 +10,26 @@ export function podiumSlots(results) {
     const i=rank-4;return {...player,rank,x:100+(i%11)*100,y:515+Math.floor(i/11)*135,featured:false};
   });
 }
+
+export function renderPendingPodium(canvasOrContext, { time = 0 } = {}) {
+  const ctx = canvasOrContext.canvas ? canvasOrContext : canvasOrContext.getContext('2d');
+  const canvas = ctx.canvas;
+  ctx.save();
+  ctx.setTransform(canvas.width / WIDTH, 0, 0, canvas.height / HEIGHT, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  rect(ctx, '#20283d', 0, 0, WIDTH, HEIGHT);
+  rect(ctx, '#2d3c4b', 0, 150, WIDTH, 300);
+  rect(ctx, '#40564e', 0, 400, WIDTH, 320);
+  text(ctx, 'WORLD 04 / THE PODIUM', 600, 44, 12, '#a7c5b1');
+  text(ctx, 'FINALIZING SCORES…', 600, 106, 31, '#e2edbc');
+  text(ctx, 'THE ROOM IS COLLECTING FINAL RUN REPORTS', 600, 132, 11, '#9ab8a3');
+  const pulse = 0.45 + Math.sin(time * 3) * .2;
+  ctx.globalAlpha = pulse;
+  rect(ctx, '#b7ef51', 440, 240, 320, 8);
+  ctx.globalAlpha = 1;
+  text(ctx, 'PLEASE WAIT', 600, 310, 18, '#d0e0c0');
+  ctx.restore();
+}
 export function renderPodium(canvasOrContext,results,{time=0,viewerId=null,arrivalAge=10}={}) {
   const ctx=canvasOrContext.canvas?canvasOrContext:canvasOrContext.getContext('2d'),canvas=ctx.canvas;
   ctx.save();ctx.setTransform(canvas.width/WIDTH,0,0,canvas.height/HEIGHT,0,0);ctx.imageSmoothingEnabled=false;
