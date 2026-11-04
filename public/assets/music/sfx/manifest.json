@@ -1,0 +1,168 @@
+{
+  "pack": "Game Day Universal SFX",
+  "description": "Theme-neutral retro arcade effects. First 13 filenames are identical to Forest, Tides, and Hell.",
+  "files": {
+    "jump.wav": {
+      "duration_seconds": 0.22,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "double_jump.wav": {
+      "duration_seconds": 0.34,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "land.wav": {
+      "duration_seconds": 0.16,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "coin_pickup.wav": {
+      "duration_seconds": 0.305,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "powerup.wav": {
+      "duration_seconds": 0.69,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "hurt.wav": {
+      "duration_seconds": 0.27,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "death.wav": {
+      "duration_seconds": 0.749,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "checkpoint.wav": {
+      "duration_seconds": 0.865,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "enemy_attack.wav": {
+      "duration_seconds": 0.23,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "enemy_defeat.wav": {
+      "duration_seconds": 0.4,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "ui_select.wav": {
+      "duration_seconds": 0.09,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "timer_warning.wav": {
+      "duration_seconds": 0.7,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "respawn.wav": {
+      "duration_seconds": 0.435,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "dash.wav": {
+      "duration_seconds": 0.21,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "spike_trigger.wav": {
+      "duration_seconds": 0.18,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "platform_disappear.wav": {
+      "duration_seconds": 0.31,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "trap_reveal.wav": {
+      "duration_seconds": 0.39,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "buzzer.wav": {
+      "duration_seconds": 0.35,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "countdown_tick.wav": {
+      "duration_seconds": 0.09,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "countdown_go.wav": {
+      "duration_seconds": 0.52,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "ui_back.wav": {
+      "duration_seconds": 0.13,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "ui_error.wav": {
+      "duration_seconds": 0.295,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "pause.wav": {
+      "duration_seconds": 0.285,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "resume.wav": {
+      "duration_seconds": 0.285,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "score_popup.wav": {
+      "duration_seconds": 0.309,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "power_activate.wav": {
+      "duration_seconds": 0.36,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    },
+    "power_hit.wav": {
+      "duration_seconds": 0.28,
+      "sample_rate": 32000,
+      "channels": 1,
+      "encoding": "16-bit PCM WAV"
+    }
+  }
+}
