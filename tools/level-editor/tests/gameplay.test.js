@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDocument, createPlacement, parseDocument, serializeDocument, validateDocument, resolvePlacement } from '../document.js';
 import { exportAssetLibrary, importAssetLibrary } from '../metadata.js';
-import { gameplayAnchor, gameplayTriggerPolygons, resolveGameplay, setGameplayRole } from '../gameplay.js';
+import { gameplayAnchor, gameplayTriggerPolygons, resolveGameplay, setGameplayRole, setLevelSpawn } from '../gameplay.js';
 
 const catalog = {
   assets: { atlas: { id: 'atlas', name: 'Test', src: '/assets/sprites/forest/test.png', width: 32, height: 16, frames: { frame: { x: 0, y: 0, w: 16, h: 16 } } } },
@@ -35,6 +35,21 @@ test('role helper is immutable and initializes defaults', () => {
   assert.deepEqual(next.triggerVolume, [0, 0, 1, 1]);
   assert.deepEqual(next.anchor, [0.5, 1]);
   assert.equal(next.nonblocking, true);
+});
+
+test('setLevelSpawn selects one placement without retagging its neighbors', () => {
+  const d = doc();
+  const first = createPlacement(d, 'prop', 20, 30);
+  const second = createPlacement(d, 'prop', 60, 30);
+  first.gameplay = { role: 'checkpoint', order: 1 };
+  second.gameplay = { role: 'coin', coinValue: 4 };
+  d.placements.push(first, second);
+  assert.equal(setLevelSpawn(d, second.id), d);
+  assert.equal(d.world.spawnPlacementId, second.id);
+  assert.equal(d.placements[0].gameplay.role, 'checkpoint');
+  assert.equal(d.placements[1].gameplay.role, 'spawnpoint');
+  assert.equal(d.placements[1].gameplay.coinValue, 4);
+  assert.throws(() => setLevelSpawn(d, 'missing'), /Unknown placement/);
 });
 
 test('anchor follows rotation and flip and returns player top-left', () => {
@@ -85,4 +100,20 @@ test('typed gameplay nulls are rejected while the optional block remains allowed
   assert.ok(validateDocument(d).some(error => error.includes('coinValue')));
   d.definitions.prop.gameplay = { role: 'coin', triggerVolume: null };
   assert.ok(validateDocument(d).some(error => error.includes('triggerVolume')));
+});
+
+test('choosing a level spawn preserves inherited anchors and exported reference',()=>{
+  const d=doc();d.definitions.prop.gameplay.anchor=[.25,.5];
+  const p=createPlacement(d,'prop',20,30);d.placements.push(p);
+  setLevelSpawn(d,p.id);
+  assert.equal(p.gameplay.anchor,undefined);
+  assert.deepEqual(resolveGameplay(d.definitions.prop,p).anchor,[.25,.5]);
+  d.definitions.prop.gameplay.anchor=[.75,1];
+  assert.deepEqual(resolveGameplay(d.definitions.prop,p).anchor,[.75,1]);
+  const copy=parseDocument(serializeDocument(d));
+  assert.equal(copy.world.spawnPlacementId,p.id);
+  for(const bad of ['',42,{},'x'.repeat(201)]){
+    copy.world.spawnPlacementId=bad;
+    assert.ok(validateDocument(copy).some(e=>e.includes('spawnPlacementId')));
+  }
 });

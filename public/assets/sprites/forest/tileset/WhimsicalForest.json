@@ -7,7 +7,8 @@
   "world": {
     "width": 14200,
     "height": 600,
-    "backgroundColor": "#183c38"
+    "backgroundColor": "#183c38",
+    "spawnPlacementId": "object-a3637b32-1dc0-4109-816d-542d72965e8c"
   },
   "assets": {
     "whimsical-forest-1-atlas": {
@@ -4108,7 +4109,7 @@
       },
       "size": {
         "width": 180,
-        "height": 50
+        "height": 60
       },
       "physics": {
         "mode": "solid",
@@ -4637,7 +4638,25 @@
       },
       "levels": [
         "forest"
-      ]
+      ],
+      "gameplay": {
+        "role": "exit",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     "whimsical-forest-props-1-atlas:cut-0012": {
       "id": "whimsical-forest-props-1-atlas:cut-0012",
@@ -5273,6 +5292,24 @@
       "source": {
         "manifest": "tileset",
         "frameId": "cut-12"
+      },
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
       }
     },
     "whimsical-forest-props-1-atlas:cut-13": {
@@ -5541,8 +5578,8 @@
         "frameId": "cut-19"
       },
       "size": {
-        "width": 50,
-        "height": 50
+        "width": 40,
+        "height": 40
       },
       "physics": {
         "mode": "solid",
@@ -5788,7 +5825,7 @@
     {
       "id": "object-862d66b0-1859-45e8-bd35-7e5c74ca123c",
       "definitionId": "whimsical-forest-2-atlas:cut-0001",
-      "x": 999,
+      "x": 1000,
       "y": 0,
       "width": 1000,
       "height": 600,
@@ -5801,30 +5838,6 @@
       "id": "object-44e09cb4-9ee9-4d61-9002-ff54c6d680c6",
       "definitionId": "whimsical-forest-3-atlas:cut-0001",
       "x": 1998,
-      "y": 0,
-      "width": 1000,
-      "height": 600,
-      "layer": -20,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
-    },
-    {
-      "id": "object-c0772bc4-acdb-43d2-ba24-f169629d8401",
-      "definitionId": "hell-express-2-atlas:cut-0001",
-      "x": 4000,
-      "y": 0,
-      "width": 1000,
-      "height": 600,
-      "layer": -20,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
-    },
-    {
-      "id": "object-bc2fda92-2ddb-464a-88b1-4f0436dcc70b",
-      "definitionId": "hell-express-3-atlas:cut-0001",
-      "x": 4992,
       "y": 0,
       "width": 1000,
       "height": 600,
@@ -6197,7 +6210,7 @@
     {
       "id": "object-58d2412e-b321-4cdb-be06-c7c78e2102a2",
       "definitionId": "whimsical-forest-props-1-atlas:cut-8",
-      "x": 40,
+      "x": 55,
       "y": 240,
       "width": 180,
       "height": 45,
@@ -6252,7 +6265,25 @@
       "layer": -3,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "spawnpoint",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-c3b23cd2-4c93-4c54-9f1a-ad49967c12ac",
@@ -6351,8 +6382,8 @@
     {
       "id": "object-5a01e4c4-58fa-4a96-9501-681868c77544",
       "definitionId": "whimsical-forest-props-1-atlas:cut-1",
-      "x": 1824,
-      "y": 384,
+      "x": 1865,
+      "y": 385,
       "width": 180,
       "height": 30,
       "layer": 0,
@@ -6679,7 +6710,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-38e1185d-5680-4675-9946-259b6c819536",
@@ -6691,7 +6740,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-4fda866b-1fe7-4af8-b34c-5703e4e441cc",
@@ -6703,7 +6770,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-e81f9620-9c4e-412a-8e1c-026015738361",
@@ -6715,7 +6800,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-1cccb621-412b-48ac-94c5-bcf3d8125f38",
@@ -6727,7 +6830,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-24b9124f-5116-4108-9329-0608d4889cfb",
@@ -6739,7 +6860,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-59814280-b7b1-46cb-b22e-452242666386",
@@ -6751,7 +6890,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-ee9e651e-75e2-4296-8544-5c7691d539c5",
@@ -6763,7 +6920,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-ad1151f5-8f31-4db9-98a2-0123a169b704",
@@ -6775,7 +6950,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-5a2dd003-cd4d-4129-819a-8cfb46c89c34",
@@ -6799,7 +6992,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-68a4bc62-4102-440b-90d2-e7fc7fbb83de",
@@ -6811,7 +7022,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-62bae39d-8329-42ce-95c3-e2890e9187a4",
@@ -6823,7 +7052,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-b6b29b38-ca4f-4b4f-b9fc-337a54b4e212",
@@ -6835,7 +7082,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-0b858b93-6e02-465f-93ff-521b4c95c25b",
@@ -6847,7 +7112,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-1f603b42-07aa-4944-8b9c-3cecfdf485ec",
@@ -6859,7 +7142,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-bb6cd035-d7be-4082-ac4a-7093b61c1ea9",
@@ -6871,7 +7172,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-e84313cd-cb76-4ecd-b1be-90abcd7d81b0",
@@ -6883,7 +7202,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-2367c7ab-b495-4cc3-9cf5-3dd361a6bf9b",
@@ -6979,7 +7316,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-1d347f31-cbfb-4356-8d7d-7c185fa624ba",
@@ -6991,7 +7346,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-d263a17f-f0f8-41af-a6b3-f256d226b319",
@@ -7003,7 +7376,25 @@
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
     },
     {
       "id": "object-7f2563da-ff7d-42ba-a5cd-7aad62d8ba94",
@@ -7020,10 +7411,10 @@
     {
       "id": "object-8c010493-f218-4195-b89e-0f6d0cedc47b",
       "definitionId": "whimsical-forest-props-1-atlas:cut-23",
-      "x": 995,
-      "y": 490,
-      "width": 32.862645993561955,
-      "height": 34.109566461000156,
+      "x": 990,
+      "y": 485,
+      "width": 43.12876491405336,
+      "height": 40.63297455664883,
       "layer": -5,
       "flipX": false,
       "rotation": 0,
@@ -7032,10 +7423,10 @@
     {
       "id": "object-52751515-f852-4bdc-97d4-00536824d179",
       "definitionId": "whimsical-forest-props-1-atlas:cut-22",
-      "x": 1030,
-      "y": 500,
-      "width": 23,
-      "height": 24.933723752780224,
+      "x": 1040,
+      "y": 490,
+      "width": 31.32071923129297,
+      "height": 39.34877236504349,
       "layer": -5,
       "flipX": false,
       "rotation": 0,
@@ -7168,6 +7559,2921 @@
       "y": 125,
       "width": 40,
       "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-1187a4c7-9b2f-4c43-b07f-a200db150196",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0009",
+      "x": 352,
+      "y": 512,
+      "width": 64,
+      "height": 64,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-d18f30f9-4fd1-474d-8b2e-9ecfd02a8d2e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 400,
+      "y": 544,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-7d80256b-b388-48d4-b7f1-a58ada406d16",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-17",
+      "x": 215,
+      "y": 255,
+      "width": 41.22003313649088,
+      "height": 64.08684621904857,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-30917645-1ad4-457b-b089-2f559f6ff63b",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-18",
+      "x": 2510,
+      "y": 505,
+      "width": 40,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-b2aaf717-8675-41f0-a20a-78b352115ace",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-18",
+      "x": 2510,
+      "y": 470,
+      "width": 40,
+      "height": 40,
+      "layer": 0,
+      "flipX": true,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-b00ed505-7cf7-4ade-8090-34ddf7d03d74",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-18",
+      "x": 2510,
+      "y": 435,
+      "width": 40,
+      "height": 40,
+      "layer": 0,
+      "flipX": true,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-4f0aa862-a90f-4ffd-9c0c-51dc9b3347fa",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-18",
+      "x": 2510,
+      "y": 400,
+      "width": 40,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-61627c6b-807c-4c33-b8cc-999bf18e45a5",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-16",
+      "x": 2530,
+      "y": 410,
+      "width": 31.934987285471834,
+      "height": 86.28613376518553,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-564547fe-3d81-4eaf-870e-7eb98657d00c",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-15",
+      "x": 2605,
+      "y": 445,
+      "width": 60,
+      "height": 100,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "checkpoint",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-349c13e4-94b6-497c-b478-164412fbb8bf",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-19",
+      "x": 2475,
+      "y": 470,
+      "width": 40,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-1bf2a62f-5e6c-4f54-98af-3a684955c767",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-18",
+      "x": 2475,
+      "y": 505,
+      "width": 40,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-45b8d322-a08b-40d1-a1ca-e881869f00a0",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-13",
+      "x": 2440,
+      "y": 510,
+      "width": 36.18882208344485,
+      "height": 35.53996856315831,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-498a45a2-332e-4604-b58a-17bc25fa6bbc",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0002",
+      "x": 2745,
+      "y": 545,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-b2766397-0bc9-4679-b358-2465cb786d05",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0002",
+      "x": 2910,
+      "y": 545,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-2aee87fd-9cb7-4fdb-a4af-bf55462d0c9f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 2765,
+      "y": 515,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-6fd8201a-f479-48fa-b026-8320859cd86e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 2765,
+      "y": 275,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": -180,
+      "settings": {}
+    },
+    {
+      "id": "object-7bbf907a-6150-44bd-8460-25f2d6a6e475",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 2774.9771107183788,
+      "y": 302.5811606774562,
+      "width": 23.174470605214537,
+      "height": 221.41883932254382,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "type": "beam",
+        "onMs": 1000,
+        "offMs": 1000,
+        "startState": "on",
+        "startMs": 0,
+        "phaseMs": -300
+      }
+    },
+    {
+      "id": "b68545f8-20dc-4c07-a38c-f3954a49b812",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 2805,
+      "y": 515,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "352f3079-0610-4192-ab38-507203f9c2d6",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 2805,
+      "y": 275,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": -180,
+      "settings": {}
+    },
+    {
+      "id": "a88605ae-6139-432d-87a1-20dbc468509c",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 2814.9771107183788,
+      "y": 302.5811606774562,
+      "width": 23.174470605214537,
+      "height": 221.41883932254382,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "type": "beam",
+        "onMs": 1000,
+        "offMs": 1000,
+        "startState": "on",
+        "startMs": 0,
+        "phaseMs": -600
+      }
+    },
+    {
+      "id": "86f70db4-6c92-4c63-8b65-2bb85959305c",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 2845,
+      "y": 515,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "2c458d13-e87c-44d5-83a7-b2b3100647e5",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 2845,
+      "y": 275,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": -180,
+      "settings": {}
+    },
+    {
+      "id": "ad2ecb06-19cd-4044-9751-b7626991412f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 2855,
+      "y": 300,
+      "width": 23.174470605214537,
+      "height": 221.41883932254382,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "type": "beam",
+        "onMs": 1000,
+        "offMs": 1000,
+        "startState": "on",
+        "startMs": 0,
+        "phaseMs": -900
+      }
+    },
+    {
+      "id": "c5389ca3-b21a-4b53-8c8c-3b49ca131cf2",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 2935,
+      "y": 515,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "8c8b0b8e-c748-45c1-9985-1104cacdad24",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 2935,
+      "y": 275,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": -180,
+      "settings": {}
+    },
+    {
+      "id": "533aef1b-72c5-4954-995e-31041cfce79c",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 2944.9771107183788,
+      "y": 302.5811606774562,
+      "width": 23.174470605214537,
+      "height": 221.41883932254382,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "type": "beam",
+        "onMs": 1000,
+        "offMs": 2000,
+        "startState": "on",
+        "startMs": 0,
+        "phaseMs": 0
+      }
+    },
+    {
+      "id": "db7e7534-1701-402d-a291-bedfca338fa0",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 3015,
+      "y": 515,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "347b6bb3-97cd-4d5c-8316-8e805e8595fe",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 3015,
+      "y": 275,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": -180,
+      "settings": {}
+    },
+    {
+      "id": "f5f9bc50-a42c-4618-8420-168030f14486",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 3024.9771107183788,
+      "y": 302.5811606774562,
+      "width": 23.174470605214537,
+      "height": 221.41883932254382,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "type": "beam",
+        "onMs": 2000,
+        "offMs": 1000,
+        "startState": "on",
+        "startMs": 0,
+        "phaseMs": 0
+      }
+    },
+    {
+      "id": "object-e04bd1f5-5bc9-4059-acfb-4ee11fe2d589",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-1",
+      "x": 2610,
+      "y": 360,
+      "width": 95.71607968360377,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000
+        }
+      }
+    },
+    {
+      "id": "5d351740-3149-4556-8adb-7ffaf8ba5615",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-1",
+      "x": 2645,
+      "y": 255,
+      "width": 95.71607968360377,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000
+        }
+      }
+    },
+    {
+      "id": "object-12e4aae8-2cae-4958-a062-68d3981d8562",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2775,
+      "y": 230,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "e8ff3fae-849d-4ff7-864a-6fdf1ae98e82",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2815,
+      "y": 230,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "240ded09-28a7-4497-a3e8-ea3ec7e740d1",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2855,
+      "y": 230,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-df227a87-dda5-4372-9e03-82f58bea5fb9",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-2",
+      "x": 2890,
+      "y": 215,
+      "width": 40,
+      "height": 50,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-85bdd4a8-73b5-4bab-a2c9-3eb8bfdcd573",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-2",
+      "x": 2890,
+      "y": 170,
+      "width": 40,
+      "height": 50,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-943af209-97f8-4f2f-90d8-1a37847fd9cc",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-2",
+      "x": 2890,
+      "y": 120,
+      "width": 40,
+      "height": 50,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-3b639f2c-ecf0-40af-a4c4-21acc301edef",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-2",
+      "x": 2890,
+      "y": 70,
+      "width": 40,
+      "height": 50,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "b3f08188-8e15-4588-a2de-82dc7b3a3444",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0002",
+      "x": 3075,
+      "y": 545,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-47a41a15-be67-4ade-8ebc-be021112cb0e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2810,
+      "y": 405,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-14ae63d5-d15a-4fe7-be40-42703c37e2aa",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2900,
+      "y": 505,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-24332f2d-61d4-449e-ae0b-5f65e4d11cdd",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2990,
+      "y": 400,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-42559822-fff6-4c28-ac21-1d6d53fbb1fd",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3115,
+      "y": 505,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-97a3aa2b-3a2d-4308-be4e-a9295b12b573",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3185,
+      "y": 505,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-39b4cda4-5b37-4744-8080-01af2c5d17f6",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-13",
+      "x": 3020,
+      "y": 245,
+      "width": 30,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-578abbf0-5a4c-429c-89e3-a59a2c334982",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0009",
+      "x": 2925,
+      "y": 220,
+      "width": 64,
+      "height": 64,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-86753536-5784-44c0-b8c8-b4ea0af779a3",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 2285,
+      "y": 310,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-f2d26916-4768-4fed-af9a-a502e002df1a",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 2250,
+      "y": 180,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-bc035f74-db5c-42c6-b0aa-cb09b49536de",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2175,
+      "y": 140,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-64b3d637-ada2-49e6-bfb5-db4d0c09180d",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-13",
+      "x": 2315,
+      "y": 145,
+      "width": 39.33608181333875,
+      "height": 37.763448688194785,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-d74b25ee-001c-4fb9-b2d9-883d3dbcb363",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2515,
+      "y": 370,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-1c6388c5-f0c9-44e6-9784-bbf1a6f304d4",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2295,
+      "y": 280,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-82028049-e737-4e0a-a976-55d6f3b95564",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2430,
+      "y": 280,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-c8d07a1f-cea0-4cec-8efc-51ec0259906f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2275,
+      "y": 100,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-a28c478c-0592-4f41-b9ef-63c5e0401b45",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2370,
+      "y": 145,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-bd1c71b2-1871-4ad2-bc7c-e4cff8ff7515",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-3",
+      "x": 2775,
+      "y": 140,
+      "width": 40,
+      "height": 42.13805489185455,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "motion": {
+          "axis": "y",
+          "distance": 100,
+          "periodMs": 3000,
+          "phaseMs": 0.8
+        }
+      }
+    },
+    {
+      "id": "032a403b-a543-46bb-bb07-d45a97b1be33",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-3",
+      "x": 2810,
+      "y": 140,
+      "width": 40,
+      "height": 42.13805489185455,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "motion": {
+          "axis": "y",
+          "distance": 100,
+          "periodMs": 3000,
+          "phaseMs": 0.8
+        }
+      }
+    },
+    {
+      "id": "fbc1cf51-1b2b-4ed8-bfdd-3035eef13e98",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-3",
+      "x": 2840,
+      "y": 140,
+      "width": 40,
+      "height": 42.13805489185455,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "motion": {
+          "axis": "y",
+          "distance": 100,
+          "periodMs": 3000,
+          "phaseMs": 0.8
+        }
+      }
+    },
+    {
+      "id": "object-f6d97b6a-0be4-4284-bc34-a74ed78d8e3f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-2",
+      "x": 2890,
+      "y": 20,
+      "width": 40,
+      "height": 50,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-c6836fb4-13cc-4245-8957-71d2bb4332e9",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-9",
+      "x": 2790,
+      "y": 0,
+      "width": 140,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": -180,
+      "settings": {}
+    },
+    {
+      "id": "051c3b5e-188f-4183-a91a-79755e64a1d6",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-9",
+      "x": 2655,
+      "y": 0,
+      "width": 140,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": -180,
+      "settings": {}
+    },
+    {
+      "id": "object-8fcef9c9-d0e2-4d88-a740-5283a4ea6973",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 2815,
+      "y": 155,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "coin",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-9cde63cb-0a75-419d-a6bd-06c2e886129f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0009",
+      "x": 2570,
+      "y": 490,
+      "width": 64,
+      "height": 64,
+      "layer": -6,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-ae4b9d05-2993-468d-b381-835f62ec36bd",
+      "definitionId": "whimsical-forest-1-atlas:cut-0001",
+      "x": 3995,
+      "y": 0,
+      "width": 1000,
+      "height": 600,
+      "layer": -20,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-4d654b7b-5ded-4792-ba5b-586b2c8ae742",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-10",
+      "x": 1510,
+      "y": 425,
+      "width": 38.1667604732952,
+      "height": 60.36011967123818,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-a4534f88-19b1-44d5-8e4e-d9234de5f0ad",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-11",
+      "x": 1540,
+      "y": 450,
+      "width": 39.48578157423981,
+      "height": 38.544513266502065,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-852deb7f-7c15-4501-a410-a44657b77701",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-24",
+      "x": 1530,
+      "y": 460,
+      "width": 33.90237451168787,
+      "height": 26.189384860808616,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-87149364-cd1a-4276-b063-55d5037cd902",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 3685,
+      "y": 480,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-031f765a-541f-4d66-8d5a-4697ee59e1cf",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 3855,
+      "y": 480,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "9a7d5070-848d-42b1-83d7-eb852c632076",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 3505,
+      "y": 300,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "06c22490-00b6-4ef3-8eb3-a213cb9e8355",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 3680,
+      "y": 300,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "bbf16aed-46e7-4ead-b61a-d9fe86f2be72",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 3505,
+      "y": 100,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "adce6410-0606-4601-9c8a-a0789531e398",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 3850,
+      "y": 100,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-fb20124e-d5b2-44c5-924d-1a8965088aad",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-1",
+      "x": 3505,
+      "y": 480,
+      "width": 180,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-501d8830-49ab-4518-98ed-a23160e01db2",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-1",
+      "x": 3855,
+      "y": 300,
+      "width": 180,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-11de9d28-4893-4ae4-8692-0334dc4382ed",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-1",
+      "x": 3680,
+      "y": 100,
+      "width": 180,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-f8e2d9cd-0760-4577-b0c6-e8c041e9f2d2",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-8",
+      "x": 3290,
+      "y": 275,
+      "width": 180,
+      "height": 45,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "motion": {
+          "axis": "y",
+          "distance": 280,
+          "periodMs": 4000,
+          "phaseMs": 0
+        }
+      }
+    },
+    {
+      "id": "object-e8de5fff-c760-40b1-95cb-da4ca81669e4",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0004",
+      "x": 3305,
+      "y": 570,
+      "width": 50,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "510ba449-5a17-4590-8715-310fd00966e0",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0004",
+      "x": 3350,
+      "y": 570,
+      "width": 50,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "254bc0bd-2b35-4c59-93ae-09a6c810d4b4",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0004",
+      "x": 3395,
+      "y": 570,
+      "width": 50,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "b74d323b-bb68-487b-bc81-7daaae128f8a",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0004",
+      "x": 3405,
+      "y": -9.999999999999993,
+      "width": 50,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": -180,
+      "settings": {}
+    },
+    {
+      "id": "41259423-a6b3-4bde-af61-8adf8c62e8fd",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0004",
+      "x": 3360,
+      "y": -10,
+      "width": 50,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": -180,
+      "settings": {}
+    },
+    {
+      "id": "85dca838-d1fb-4bde-b91c-56fca054b3a5",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0004",
+      "x": 3315,
+      "y": -10.000000000000007,
+      "width": 50,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": -180,
+      "settings": {}
+    },
+    {
+      "id": "object-b00efd5d-4007-4180-9985-62f700d02ea9",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3360,
+      "y": 530,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "356f2dd5-1cee-44a6-8171-fffa7952fabe",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3360,
+      "y": 475,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "f276c4bc-3385-4509-9375-1ada04881733",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3360,
+      "y": 425,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "0576568c-33e3-4cd6-aca2-9f25000214bd",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3360,
+      "y": 370,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "15e959d6-5285-4c4d-aae5-59676bfd7983",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3360,
+      "y": 315,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "09f4b0a5-ebcc-415d-a8e9-4d9ed8e60e56",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3360,
+      "y": 265,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "e31a12ee-4bee-4b8c-be35-f2cbd0bf0ab5",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3360,
+      "y": 215,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "6618a8ef-bcd6-4bf6-9794-eee8a5cf1124",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3360,
+      "y": 160,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "0c575952-c6fe-4552-980b-e0523b699cf5",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3360,
+      "y": 110,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-aa9363ef-558f-4842-859a-be4b6b79073d",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 4230,
+      "y": 100,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "object-c6a5ae11-e8ee-4b6e-9cb1-8e5a294700ad",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 4305,
+      "y": 135,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "object-8ce4b249-23f1-4780-a399-2b746f324719",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 4380,
+      "y": 165,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "e515ae4a-b3a6-45a3-bac8-52eff2f7d52b",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 4525,
+      "y": 235,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "51d114ec-6e7e-412e-a671-347a48494b31",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 4590,
+      "y": 265,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "76a0099f-cb1d-4028-8ce4-00f34ee691e8",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 4665,
+      "y": 295,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "03c3a164-c6a6-48f3-8b47-3ff52cc3b199",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 4815,
+      "y": 360,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "9faed1ed-eac5-44ec-ad3e-5ed454b68874",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 4530,
+      "y": 480,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "aa9cff98-81a7-4090-aab8-5ec81b35ead0",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 4700,
+      "y": 480,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "df7a42d5-a586-428b-83e7-cb1f1e2be4d4",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 4190,
+      "y": 480,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "0902b227-dc36-488c-8f2a-71bfc27da6a9",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 4360,
+      "y": 480,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-0604d7c5-75e7-4ed6-9dcd-06f38e19de5b",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-19",
+      "x": 4110,
+      "y": 155,
+      "width": 40,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-f1663de3-65b8-4828-b4c4-5e4abcc2fb67",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 4235,
+      "y": 450,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-567951e1-2d12-42e3-b783-52f10c13e120",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 4246.751575091104,
+      "y": 127.58342024385567,
+      "width": 23.706183061814954,
+      "height": 331.41657975614436,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "100c08eb-0c9e-4453-a963-285a976c33a7",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 4310,
+      "y": 450,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "7cb64d59-9bb6-4a17-a185-62f4f3fead92",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 4321.751575091104,
+      "y": 163.78070272978016,
+      "width": 23.706183061814954,
+      "height": 295.21929727021984,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "f11e0809-ca1e-45aa-b9a8-8471806c85f9",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 4385,
+      "y": 450,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "7e252d5f-aa87-47fa-99ea-dc39c65fd9f5",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 4396.751575091104,
+      "y": 193.9451048013839,
+      "width": 23.706183061814954,
+      "height": 265.05489519861607,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "ccdde8d7-f7fc-4a1d-b0a7-e4adae285602",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 4455,
+      "y": 450,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "98d8a1b5-2614-4161-95be-2b472e0bddfb",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 4466.751575091104,
+      "y": 211.93036122029665,
+      "width": 23.706183061814954,
+      "height": 247.06963877970333,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "f0da992e-2dd0-487c-94f0-56651ca80bcc",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 4530,
+      "y": 450,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "cde88347-408e-433e-8c7b-69eb318bb265",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 4541.751575091104,
+      "y": 260.9771094049479,
+      "width": 23.706183061814954,
+      "height": 198.02289059505216,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "770a86d0-1169-4074-88e3-4a279b6d8a25",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 4600,
+      "y": 450,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "e16e1ff9-f2c9-4147-a73d-78d91c5ea518",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 4610,
+      "y": 291.1415114765515,
+      "width": 23.706183061814954,
+      "height": 166.78718636171533,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "f88bc815-0e29-414b-a090-f603582b776b",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 4670,
+      "y": 450,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "e442463d-f87e-4ab4-a96a-e44ec429efec",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 4681.751575091104,
+      "y": 318.62463336401277,
+      "width": 23.706183061814954,
+      "height": 140.37536663598723,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "6f0f37db-1157-4d0d-8dbe-3083a3a03a25",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 4745,
+      "y": 450,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "348edf1e-e009-42bf-b429-62b0deabdffd",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 4756.751575091104,
+      "y": 337.06985777573186,
+      "width": 23.706183061814954,
+      "height": 121.9301422242682,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "db7660c9-ddab-4e0a-a2ae-af4a093c16d6",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 4820,
+      "y": 450,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "8a731af9-7c0c-476f-a9df-a9fe9d36ce6d",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 4831.751575091104,
+      "y": 386.9972780596479,
+      "width": 23.706183061814954,
+      "height": 72.00272194035205,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-8e0e5d42-f42d-40dc-a1b2-83f9baedad30",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4245,
+      "y": 65,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-9a6ecb32-ec7d-41bf-bf20-a5712a002f34",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4320,
+      "y": 100,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-5038bf3d-73dd-4da3-aa11-4b1fbb3bd5ed",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4395,
+      "y": 130,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-508d4ae1-039b-4693-8e63-0960998a144a",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4545,
+      "y": 205,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-fff6bdd9-9230-440a-8322-558ab825bee3",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4610,
+      "y": 235,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-ca089f42-c115-4363-a43d-31873b96f43e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4685,
+      "y": 265,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-f0434a8e-4102-495f-a6c2-c35da60d6751",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4830,
+      "y": 330,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-67b3e3f1-6dc5-4f4e-b69f-092b5288c11f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-3",
+      "x": 4460,
+      "y": 200,
+      "width": 40,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-a83858ee-12e1-4330-9158-1cf184cea728",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-13",
+      "x": 4465,
+      "y": 170,
+      "width": 30,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-9a72601d-4f62-452c-994a-6025c9f5ef94",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-3",
+      "x": 4750,
+      "y": 330,
+      "width": 40,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-e3b9a217-43e1-4e3d-98a6-0e778d5e5282",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-13",
+      "x": 4755,
+      "y": 300,
+      "width": 30,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "0aa376f7-71e1-45f1-a029-6ad5ecdaa3e3",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-19",
+      "x": 4105,
+      "y": 500,
+      "width": 40,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-e9faa2d1-beab-4bb0-99d1-e57c2d0c2a49",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4200,
+      "y": 410,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-a632142b-4cd3-4e9e-9c63-548e560a0435",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4280,
+      "y": 410,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-a98dabe2-9c97-47c9-b3e6-aea2e87c36f7",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4355,
+      "y": 410,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-e6948b0b-cb56-48a0-8f9b-50fb7783acd7",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4430,
+      "y": 410,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-bcd10cb5-2868-4e43-9dc3-f174db6f4b04",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4505,
+      "y": 410,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-06f348bd-e34f-43e3-9430-4e10692f72da",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4580,
+      "y": 410,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-14111115-9fd2-45a8-92df-840347bd4f2c",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4645,
+      "y": 410,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-4c98ad4a-576c-4df2-aee2-dd90f32f2dd8",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4720,
+      "y": 410,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-d1428207-01ca-494c-b3ac-9a6431d0515b",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4795,
+      "y": 410,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-af4740af-efd7-458f-ad6d-6a71d0bf30fe",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3415,
+      "y": 70,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-e4903d30-c8d0-476c-8376-9949b7c3210b",
+      "definitionId": "whimsical-forest-3-atlas:cut-0001",
+      "x": 4995,
+      "y": 0,
+      "width": 1000,
+      "height": 600,
+      "layer": -20,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-c68b5baf-c2b8-4c17-818b-59a7f9e51d94",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0002",
+      "x": 5055,
+      "y": 540,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-1213b322-4968-4170-92d2-7db91bce05f9",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0002",
+      "x": 5220,
+      "y": 540,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-fdbeefa6-6c7f-4cf5-b64e-20b873bb7f8f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0002",
+      "x": 5385,
+      "y": 540,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-1e209f43-c548-4c87-aacb-6a7e8879ec4e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0002",
+      "x": 5550,
+      "y": 540,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-333c393d-80ac-4172-9c22-bfbb8e929076",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0002",
+      "x": 5715,
+      "y": 540,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-b167b424-0b77-44a6-9045-9b74e9b80cc6",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0002",
+      "x": 5820,
+      "y": 540,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-16826311-d9f6-4913-b040-62cfb09a5e62",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0011",
+      "x": 5740,
+      "y": 325,
+      "width": 169.24314083439185,
+      "height": 218.05099673044703,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-e208ea16-0ca1-493b-9233-f276de6c95b1",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0012",
+      "x": 5855,
+      "y": 400,
+      "width": 39.30691360329456,
+      "height": 96.53401180238433,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-b74950ae-8c41-47f6-b814-03fb0d5ec47e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-16",
+      "x": 5750,
+      "y": 400,
+      "width": 37.97962533060763,
+      "height": 87.15628083762118,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-781509e9-ff4d-44cd-a4b3-24bda3f3c097",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-13",
+      "x": 5695,
+      "y": 500,
+      "width": 48.737179218540405,
+      "height": 43.996820618090396,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-27ea0e1a-acf2-451d-aefe-b0af02284999",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-23",
+      "x": 5665,
+      "y": 475.07663361645587,
+      "width": 57.99845295626528,
+      "height": 66.4773696359506,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-16a267d7-7902-48c5-8dc2-567a9efe465c",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-22",
+      "x": 5670,
+      "y": 415,
+      "width": 52.61026219946962,
+      "height": 65.40709478331394,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-c8d814af-c378-49bf-8ea3-6f7579a6e17e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-21",
+      "x": 5910,
+      "y": 475,
+      "width": 48.76855859463558,
+      "height": 65.10909392831616,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-b5d6f3cc-26ed-40d1-b683-6767b8348456",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-21",
+      "x": 5910,
+      "y": 400,
+      "width": 49.135829767366886,
+      "height": 75.86246389943614,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-d83c9d1f-4194-48ca-9ba2-c43e9b98c963",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-21",
+      "x": 5910,
+      "y": 323.9497165973854,
+      "width": 47.0970106916875,
+      "height": 76.73747954931054,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-2d6ec9e9-4e4a-4b95-92bb-c5c87919cc00",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-10",
+      "x": 5100,
+      "y": 475,
+      "width": 57.38478744497661,
+      "height": 71.85200410740424,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-dd2185bd-22a3-4d5d-ad1b-e351e2c48dfd",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-25",
+      "x": 5130,
+      "y": 480,
+      "width": 67.39733919541504,
+      "height": 66.62954944535909,
+      "layer": -7,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-c158b0d2-a4ee-49c6-8500-9d0fe777b17a",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-25",
+      "x": 5690,
+      "y": 445,
+      "width": 95.78436612784571,
+      "height": 86.82992069897574,
+      "layer": -6,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-225c6458-6b00-4b89-900d-bd19846e19fd",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0009",
+      "x": 5925,
+      "y": 465,
+      "width": 80.24810307759253,
+      "height": 81.70300367990535,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-0a1f72ba-7fa0-4b3d-a8ab-765ce19a9f5f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-20",
+      "x": 5090,
+      "y": 350,
+      "width": 80.37316382857989,
+      "height": 127.22973507216744,
+      "layer": -5,
+      "flipX": true,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-5d5b4ec5-6314-4a78-b98f-1ca6789297b8",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-14",
+      "x": 5195,
+      "y": 460,
+      "width": 72.59771044903118,
+      "height": 82.77854987285798,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-b6fc28d9-7522-42ec-805f-9e80a50a16fa",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-24",
+      "x": 5170,
+      "y": 490,
+      "width": 53.68697221678667,
+      "height": 53.968461334442736,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-b18c342c-8a51-4a87-8eae-0196411c0b20",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-17",
+      "x": 5155,
+      "y": 390,
+      "width": 50.348060327703024,
+      "height": 85.08801505479079,
+      "layer": -6,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-d62bcc16-abda-4592-b68d-cda730b043bd",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-23",
+      "x": 5605,
+      "y": 480,
+      "width": 61.86107614516277,
+      "height": 63.22345919694828,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-de3725e6-7660-4d8e-9b67-339dc0220568",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 5320,
+      "y": 495,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-9c733663-0c45-492e-95cf-1cf44a35d28e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 5345,
+      "y": 445,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "5c526913-5aaa-4ddd-9bec-aa9d151e316f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 5390,
+      "y": 415,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "22b59d8e-4bba-4aa3-9d43-a70079593c22",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 5450,
+      "y": 410,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "dcbc05b9-35a9-4561-b618-a57e5b574d66",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 5510,
+      "y": 415,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "4650ee2f-29b4-4e3e-b52c-266dc0b419a2",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 5565,
+      "y": 450,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "7f91b6e3-d4a9-4a08-bd43-4e22d83a172f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 5600,
+      "y": 500,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-f139e414-843d-4ed7-941b-6037d993c8a6",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 5455,
+      "y": 475,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-79d11c66-512e-4bd8-a238-4126edadaf67",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 5375,
+      "y": 280,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-f9201283-793e-470c-b3f3-0cad7d7d88f6",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 5600,
+      "y": 205,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-d9a34242-188a-4470-a1d4-c566b676b433",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
+      "x": 5815,
+      "y": 140,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-32785a78-a18f-4879-8616-fcf48ad3638f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 5250,
+      "y": 365,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "motion": {
+          "axis": "y",
+          "distance": 80,
+          "periodMs": 4000,
+          "phaseMs": 0
+        },
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 2000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "object-483002ff-9b98-4fa7-9962-dce1ff662e83",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4115,
+      "y": 465,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-57da9cfb-abe9-4402-8e3c-c5240aaac5cb",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 4115,
+      "y": 120,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-f7cea295-2c44-4e02-8d01-cd715f540fc4",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3695,
+      "y": 445,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-1177f453-80a0-4581-8370-aff4d797ee8a",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3740,
+      "y": 445,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "0cfb9466-68ed-4af2-9b67-a027f6ef49d3",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3785,
+      "y": 445,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "c9ddb0c9-da29-42dd-a6f8-2700b7441d7b",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3830,
+      "y": 445,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "2bace1c4-294f-4a80-b6b2-97642164911e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3875,
+      "y": 445,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "682ff211-7603-412e-9cda-18d26dd286ed",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3920,
+      "y": 445,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "eb26cad8-4dfc-4be9-80be-f732ecba28f0",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3570,
+      "y": 265,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "50e62709-e32d-433d-a7cc-770528e5d0bb",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3615,
+      "y": 265,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "bb690448-d826-47c3-b67e-6179dda27cef",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3660,
+      "y": 265,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "be8c78bf-d5d4-44e6-a9b1-671f3f3d9228",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3705,
+      "y": 265,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "b6570c30-87ef-4c4c-b61b-b936776bca67",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3750,
+      "y": 265,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "a19c6698-0934-4ed9-b56a-9cd33b33f371",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3795,
+      "y": 265,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "65f01e0d-b982-47d0-98b9-3958138e36be",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3715,
+      "y": 70,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "4743db42-a22e-433c-b8d3-ffab13e1919e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3760,
+      "y": 70,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "1adcffbc-25e7-46f9-a260-fafaab9ee1a2",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 3805,
+      "y": 70,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-e77efe72-222e-4a13-b345-60fd9ef49084",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-15",
+      "x": 5075,
+      "y": 440,
+      "width": 60,
+      "height": 100,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "checkpoint",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
+      }
+    },
+    {
+      "id": "object-e40b0eb8-4dca-40d5-9c59-e57eddaf9585",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-9",
+      "x": 5483.1568582628515,
+      "y": 262.15067809963625,
+      "width": 66.84314173714847,
+      "height": 22.849321900363748,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "f34b5713-effc-47a3-8b53-e3be421f03b8",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-9",
+      "x": 5710,
+      "y": 185,
+      "width": 66.84314173714847,
+      "height": 22.849321900363748,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "32379aea-883d-420d-945e-41e294b68652",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-9",
+      "x": 5820,
+      "y": 120,
+      "width": 72.72240639062693,
+      "height": 22.849321900363748,
       "layer": 0,
       "flipX": false,
       "rotation": 0,

@@ -47,6 +47,18 @@ export function setGameplayRole(current = {}, role) {
   return next;
 }
 
+/** Mark one placement as the authored level spawn and remember its stable id. */
+export function setLevelSpawn(document, placementId) {
+  if (!document || !Array.isArray(document.placements)) throw new Error('A level document is required.');
+  const placement = document.placements.find(item => item?.id === placementId);
+  if (!placement) throw new Error(`Unknown placement: ${placementId}`);
+  // Keep inherited anchors/tags/defaults shared instead of copying them into overrides.
+  placement.gameplay = { ...placement.gameplay, role: 'spawnpoint' };
+  if (!document.world || typeof document.world !== 'object' || Array.isArray(document.world)) document.world = {};
+  document.world.spawnPlacementId = placement.id;
+  return document;
+}
+
 export function gameplayAnchor(state, playerWidth = 28, playerHeight = 36) {
   const gameplay = state?.gameplay || {};
   const anchor = Array.isArray(gameplay.anchor) ? gameplay.anchor : DEFAULT_ANCHOR;

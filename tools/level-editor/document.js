@@ -60,6 +60,7 @@ export function validateDocument(document) {
     }
     if (!/^#[0-9a-f]{6}$/i.test(document.world.backgroundColor)) error('world.backgroundColor', 'must be a six-digit hex color');
     if(document.world.spawn!=null&&(!object(document.world.spawn)||!['x','y'].every(key=>finite(document.world.spawn[key])&&Math.abs(document.world.spawn[key])<=2000000)))error('world.spawn','must contain finite x/y coordinates in logical pixels');
+    if (document.world.spawnPlacementId != null && (typeof document.world.spawnPlacementId !== 'string' || !document.world.spawnPlacementId.trim() || document.world.spawnPlacementId.length > 200)) error('world.spawnPlacementId', 'must be a nonempty string of at most 200 characters');
   }
   for (const key of ['assets', 'definitions']) if (!object(document[key])) error(key, 'must be an object');
   if (!Array.isArray(document.placements)) error('placements', 'must be an array');

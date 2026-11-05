@@ -21,7 +21,7 @@ async function install(text,label){
     const images=await loadImages(doc.assets);if(sequence!==loadSequence)return;
     runtime=candidate;renderer=new LevelRenderer(canvas,doc,images);playing=true;cameraMode='follow';lastFrame=0;pickingSpawn=false;sourceLabel=label;
     $('#levelName').textContent=doc.name;document.title=`${doc.name} · JSON Level Runner`;syncSpawn();refreshControls();canvas.focus();
-    baseMessage=`${doc.placements.length} objects · ${label}. ${(runtime.warnings||[]).join(' ')||'Spawn comes from authored world.spawn or safe solid geometry.'} Spawn X/Y override this viewer session.`;message(baseMessage);
+    baseMessage=`${doc.placements.length} objects · ${label}. ${(runtime.warnings||[]).join(' ')||'Spawn comes from the chosen asset, tagged markers, legacy world.spawn, or safe solid geometry.'} Spawn X/Y override this viewer session.`;message(baseMessage);
   }catch(error){if(sequence===loadSequence)message(`Level could not be loaded: ${error.message}`,true);}
 }
 async function loadUrl(value){

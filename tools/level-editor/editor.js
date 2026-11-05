@@ -10,7 +10,7 @@ import { detectAtlasCuts,createGridCuts } from './atlas-analysis.js';
 import { createCharacterCatalog } from './characters.js';
 import { mountSequenceEditor } from './sequence-editor.js';
 import {getGroupBounds,transformGroup} from './group-transforms.js';
-import {GAMEPLAY_ROLES,resolveGameplay,gameplayTriggerPolygons} from './gameplay.js';
+import {GAMEPLAY_ROLES,resolveGameplay,gameplayTriggerPolygons,setLevelSpawn} from './gameplay.js';
 import {renderGameplayControls} from './gameplay-controls.js';
 
 const $ = selector => document.querySelector(selector);
@@ -82,6 +82,10 @@ function save() {
   $('#undoBtn').disabled = !history.canUndo; $('#redoBtn').disabled = !history.canRedo;
 }
 function finishChange(before) {
+  if (doc.world.spawnPlacementId) {
+    const marker = doc.placements.find(p => p.id === doc.world.spawnPlacementId);
+    if (!marker || resolveGameplay(doc.definitions[marker.definitionId], marker).role !== 'spawnpoint') delete doc.world.spawnPlacementId;
+  }
   const errors = validateDocument(doc);
   if (errors.length) { doc = before; toast(errors.slice(0, 3).join('\n'), true); render(); return false; }
   history.commit(doc); save(); render(); return true;
@@ -185,7 +189,12 @@ function renderDefinition(parent, definition) {
   button(parent,'Delete asset',()=>deleteSelectedAsset(definition.id),'danger');
   field(parent, 'Definition name', definition.name, value => editDefinition(d => { d.name = value; }));
   field(parent,'Level tags',(definition.levels||[]).join(', '),value=>editDefinition(d=>{d.levels=[...new Set(value.split(',').map(s=>s.trim()).filter(Boolean))];}));
-  const gameplay=section(parent,'Gameplay defaults');renderGameplayControls(gameplay,{definition,onChange:value=>editDefinition(d=>{d.gameplay=value;})});
+  const gameplay=section(parent,'Gameplay defaults');renderGameplayControls(gameplay,{definition,onChange:value=>editDefinition((d,project)=>{
+    const p=project.placements.find(item=>item.id===selectedId&&item.definitionId===d.id);
+    const previousRole=p?resolveGameplay(d,p).role:null;
+    d.gameplay=value;
+    if(p&&previousRole!=='spawnpoint'&&resolveGameplay(d,p).role==='spawnpoint')project.world.spawnPlacementId=p.id;
+  })});
   field(parent,'Asset role',definition.kind,value=>editDefinition(d=>{
     d.kind=value;
     if(value==='platform')d.behavior={type:'static'};
@@ -235,7 +244,17 @@ function renderPlacement(parent, placement) {
   element('h3', parent, definition.name); element('p', parent, placement.id, 'muted');
   for (const [key, label] of [['x','X'],['y','Y'],['width','Width'],['height','Height'],['rotation','Rotation degrees'],['layer','Layer']]) field(parent, label, placement[key], value => editPlacement(p => { p[key] = value; }), { type: 'number' });
   field(parent, 'Flip horizontally', placement.flipX, value => editPlacement(p => { p.flipX = value; }), { type: 'checkbox' });
-  const gameplay=section(parent,'Gameplay tags');renderGameplayControls(gameplay,{definition,placement,onChange:value=>editPlacement(p=>{p.gameplay=value;})});
+  const gameplay=section(parent,'Gameplay tags');
+  const activeSpawn=doc.world.spawnPlacementId===placement.id;
+  button(gameplay,activeSpawn?'Level spawn selected':'Use as level spawn',()=>{
+    if(change(project=>setLevelSpawn(project,placement.id)))toast('Playtest will start at this asset’s foot anchor.');
+  }).disabled=activeSpawn;
+  if(activeSpawn)element('p',gameplay,'Playtest starts here. Moving, resizing or changing this asset’s foot anchor updates the starting position.','muted');
+  renderGameplayControls(gameplay,{definition,placement,onChange:value=>editPlacement((p,project)=>{
+    const previousRole=resolveGameplay(project.definitions[p.definitionId],p).role;
+    p.gameplay=value;
+    if(previousRole!=='spawnpoint'&&resolveGameplay(project.definitions[p.definitionId],p).role==='spawnpoint')project.world.spawnPlacementId=p.id;
+  })});
   const area = section(parent, 'Placement behavior');
   const number = (label, key, fallback) => field(area, label, behavior[key] ?? fallback, value => editPlacement(p => { p.settings[key] = value; }), { type: 'number' });
   const activeMotion=behavior.motion===undefined?(behavior.type==='moving'?behavior:null):behavior.motion;
@@ -315,7 +334,7 @@ function renderInspector() {
 function renderObjects() {
   const container = $('#objectList'); container.replaceChildren(); element('strong', container, `Objects (${doc.placements.length})`);
   for (const p of [...doc.placements].sort((a, b) => a.layer - b.layer)) {
-    const node = element('button', container, `${p.layer} · ${doc.definitions[p.definitionId].name} · ${Math.round(p.x)}, ${Math.round(p.y)}`, `object${selectedIds.has(p.id) ? ' selected' : ''}`);
+    const node = element('button', container, `${p.layer} · ${doc.definitions[p.definitionId].name} · ${Math.round(p.x)}, ${Math.round(p.y)}${doc.world.spawnPlacementId===p.id?' · Level spawn':''}`, `object${selectedIds.has(p.id) ? ' selected' : ''}`);
     node.setAttribute('aria-pressed',String(selectedIds.has(p.id)));
     node.onclick = event => { if(event.ctrlKey||event.metaKey)toggleSelection(p.id);else selectOnly(p.id);selectedDef = p.definitionId; setMode('select'); render(); };
     node.ondblclick = () => { view.x = p.x - stage.clientWidth / view.zoom / 2 + p.width / 2; view.y = p.y - stage.clientHeight / view.zoom / 2 + p.height / 2; };
@@ -497,7 +516,7 @@ function bind() {
       }
     }
     if (e.button === 1 || spaceHeld || e.shiftKey || mode === 'pan') { pointer = { type: 'pan', clientX: e.clientX, clientY: e.clientY, start: { ...view } }; stage.classList.add('panning'); e.preventDefault(); return; }
-    if (mode === 'place') { if (!selectedDef) { toast('Choose an asset first.'); return; } change(project => { const p = createPlacement(project, selectedDef, snap(point.x), snap(point.y)); project.placements.push(p); selectOnly(p.id); });setMode('select');return; }
+    if (mode === 'place') { if (!selectedDef) { toast('Choose an asset first.'); return; } change(project => { const p = createPlacement(project, selectedDef, snap(point.x), snap(point.y)); project.placements.push(p); if(resolveGameplay(project.definitions[p.definitionId],p).role==='spawnpoint')project.world.spawnPlacementId=p.id; selectOnly(p.id); });setMode('select');return; }
     const hit = [...doc.placements].sort((a, b) => b.layer - a.layer || doc.placements.indexOf(b) - doc.placements.indexOf(a)).find(p => containsPlacement(previewState(p),point));
     if(hit&&(e.ctrlKey||e.metaKey)){toggleSelection(hit.id);selectedDef=hit.definitionId;tab='placement';render();return;}
     if(hit){

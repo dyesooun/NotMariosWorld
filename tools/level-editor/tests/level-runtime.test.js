@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { LevelRuntime } from '../level-runtime.js';
-import { validateDocument } from '../document.js';
+import { validateDocument,parseDocument,serializeDocument } from '../document.js';
+import {setLevelSpawn} from '../gameplay.js';
 import {boxPolygon,shapePolygons,polygonsOverlap} from '../runtime-geometry.js';
 
 const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
@@ -159,10 +160,68 @@ test('mixed solid and lethal geometry damages before collision can push it away'
 });
 
 test('full solid response blocks walls and ceilings',()=>{
-  const doc=documentFixture();doc.placements=doc.placements.filter(p=>p.id==='floor-1');Object.assign(doc.placements[0],{x:100,y:0,width:20,height:200});
+  const doc=documentFixture();doc.definitions.floor.kind='prop';doc.placements=doc.placements.filter(p=>p.id==='floor-1');Object.assign(doc.placements[0],{x:100,y:0,width:20,height:200});
   const wall=new LevelRuntime(doc,{spawn:{x:60,y:50},gravity:0});advanceFor(wall,.3,{right:true});assert.ok(Math.abs(wall.player.x-72)<1e-6);assert.equal(wall.player.grounded,false);
   Object.assign(doc.placements[0],{x:0,y:50,width:200,height:20});
   const ceiling=new LevelRuntime(doc,{spawn:{x:80,y:85},gravity:0});ceiling.player.vy=-300;advanceFor(ceiling,.2);assert.ok(Math.abs(ceiling.player.y-70)<1e-6);assert.equal(ceiling.player.vy,0);
+});
+
+test('jump passes through a platform from underneath then lands on top',()=>{
+  const doc=documentFixture(); doc.placements=doc.placements.filter(p=>p.id==='floor-1');
+  doc.placements.push({...doc.placements[0],id:'lower-floor',y:300});
+  const before=JSON.stringify(doc);
+  const runtime=new LevelRuntime(doc,{spawn:{x:30,y:264}});
+  advanceFor(runtime,.05); assert.equal(runtime.player.standingId,'lower-floor');
+  runtime.advance(1/120,{jump:true});
+  let clearedTop=false;
+  for(let i=0;i<100;i++) {
+    runtime.advance(1/120);
+    if(runtime.player.y+runtime.player.height<200) clearedTop=true;
+  }
+  assert.equal(clearedTop,true);
+  assert.equal(runtime.player.grounded,true); assert.equal(runtime.player.standingId,'floor-1');
+  assert.ok(Math.abs(runtime.player.y-164)<1e-6);
+  assert.equal(JSON.stringify(doc),before);
+});
+
+test('partial platform edge landings support the feet without a sideways push',()=>{
+  const doc=documentFixture(); doc.placements=doc.placements.filter(p=>p.id==='floor-1');
+  const runtime=new LevelRuntime(doc,{spawn:{x:235,y:130}});
+  advanceFor(runtime,.4);
+  assert.equal(runtime.player.standingId,'floor-1'); assert.equal(runtime.player.grounded,true);
+  assert.equal(runtime.player.x,235); assert.ok(Math.abs(runtime.player.y-164)<1e-6);
+});
+
+test('rotated and flipped platforms retain their authored top surface',()=>{
+  const doc=documentFixture(); doc.placements=doc.placements.filter(p=>p.id==='floor-1');
+  Object.assign(doc.placements[0],{rotation:15,flipX:true});
+  const runtime=new LevelRuntime(doc,{spawn:{x:80,y:80}});
+  advanceFor(runtime,.5);
+  assert.equal(runtime.player.standingId,'floor-1'); assert.equal(runtime.player.grounded,true);
+  const solid=runtime.getStates().flatMap(entry=>shapePolygons(entry.state,'solid'));
+  assert.equal(polygonsOverlap([boxPolygon(runtime.player)],solid),false);
+});
+
+test('platforms do not snag a side or below approach, while props still block',()=>{
+  const doc=documentFixture(); doc.placements=doc.placements.filter(p=>p.id==='floor-1');
+  const runtime=new LevelRuntime(doc,{spawn:{x:250,y:190},gravity:0});
+  advanceFor(runtime,.2,{left:true});
+  assert.equal(runtime.player.grounded,false); assert.ok(runtime.player.x < 250);
+  doc.definitions.floor.kind='prop';
+  const prop=new LevelRuntime(doc,{spawn:{x:250,y:190},gravity:0});
+  advanceFor(prop,.2,{left:true});
+  assert.equal(prop.player.x,240);
+});
+
+test('vertical moving platforms carry riders and catch players on relative descent',()=>{
+  const doc=documentFixture(); doc.placements=doc.placements.filter(p=>p.id==='floor-1');
+  doc.definitions.floor.behavior.motion={axis:'y',distance:40,periodMs:1000,phaseMs:250};
+  const rider=new LevelRuntime(doc,{spawn:{x:40,y:204},gravity:1700});
+  advanceFor(rider,1/120); assert.equal(rider.player.standingId,'floor-1');
+  const riderY=rider.player.y; advanceFor(rider,.2); assert.notEqual(rider.player.y,riderY); assert.equal(rider.player.grounded,true);
+  const y=rider.player.y; advanceFor(rider,.2); assert.notEqual(rider.player.y,y); assert.equal(rider.player.grounded,true);
+  const falling=new LevelRuntime(doc,{spawn:{x:40,y:100},gravity:0});
+  falling.player.vy=200; advanceFor(falling,.4); assert.equal(falling.player.standingId,'floor-1'); assert.equal(falling.player.grounded,true);
 });
 
 test('respawn resets motion phase, state selection and trigger timestamps',()=>{
@@ -263,9 +322,9 @@ test('death before any checkpoint clears collection and auto-order uses placemen
   touch(r,doc,'later');assert.equal(r.checkpoint.order,2);touch(r,doc,'earlier');assert.equal(r.checkpoint.id,'later');assert.equal(r.reachedCheckpoints.has('earlier'),true);
 });
 
-test('spawn priority, explicit world spawn and viewer override have deterministic precedence',()=>{
+test('spawn priority, referenced marker, legacy world spawn and viewer override have deterministic precedence',()=>{
   const {doc,add}=coreFixture();add('low','spawnpoint',100,{priority:1});add('high','spawnpoint',600,{priority:3});
-  assert.deepEqual(new LevelRuntime(doc).spawn,{x:602,y:104});doc.world.spawn={x:8,y:9};assert.deepEqual(new LevelRuntime(doc).spawn,{x:8,y:9});assert.deepEqual(new LevelRuntime(doc,{spawn:{x:5,y:6}}).spawn,{x:5,y:6});
+  assert.deepEqual(new LevelRuntime(doc).spawn,{x:602,y:104});doc.world.spawn={x:8,y:9};assert.deepEqual(new LevelRuntime(doc).spawn,{x:602,y:104});doc.world.spawnPlacementId='low';assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:104});assert.deepEqual(new LevelRuntime(doc,{spawn:{x:5,y:6}}).spawn,{x:5,y:6});
 });
 
 test('power chest contacts are stable enter/leave events and do not grant local inventory',()=>{
@@ -277,4 +336,42 @@ test('power chest contacts are stable enter/leave events and do not grant local 
 test('overlapping decoy prevents same-step coin and checkpoint commits regardless of placement order',()=>{
   const {doc,add}=coreFixture();add('coin','coin',100);add('checkpoint','checkpoint',100);add('trap','decoy-chest',100,{decoyKind:'bomb'});
   const r=new LevelRuntime(doc,{spawn:{x:100,y:100},gravity:0,respawnMs:100});const events=r.advance(.02);assert.equal(r.deaths,1);assert.equal(r.coins,0);assert.equal(r.checkpoint,null);assert.equal(events.some(e=>e.type==='coin'||e.type==='checkpoint'),false);
+});
+
+test('chosen spawn switches assets and follows transformed moving anchors after JSON reload',()=>{
+  const {doc,add}=coreFixture();
+  const a=add('old','spawnpoint',100,{priority:999});
+  const b=add('new','coin',300,{tags:['chosen'],anchor:[.25,.5]});
+  doc.world.spawn={x:8,y:9};
+  setLevelSpawn(doc,a.id);assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:104});
+  setLevelSpawn(doc,b.id);assert.deepEqual(new LevelRuntime(doc).spawn,{x:294,y:84});
+  Object.assign(b,{x:300,y:160,width:72,height:48,rotation:90,flipX:true});
+  b.settings.motion={axis:'x',distance:20,periodMs:1000,phaseMs:250};
+  const reloaded=parseDocument(serializeDocument(doc));
+  const before=JSON.stringify(reloaded),runtime=new LevelRuntime(reloaded);
+  assert.deepEqual(runtime.spawn,{x:342,y:166});
+  assert.equal(JSON.stringify(reloaded),before);
+  assert.deepEqual(new LevelRuntime(reloaded,{spawn:{x:50,y:60}}).spawn,{x:50,y:60});
+});
+
+test('stale spawn references fall back to tagged markers then legacy coordinates',()=>{
+  const {doc,add}=coreFixture();const a=add('marker','spawnpoint',100);add('ordinary','coin',600);
+  doc.world.spawn={x:8,y:9};doc.world.spawnPlacementId='deleted';
+  assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:104});
+  doc.world.spawnPlacementId='ordinary';
+  assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:104});
+  doc.placements=doc.placements.filter(p=>p.id!==a.id);
+  assert.deepEqual(new LevelRuntime(doc).spawn,{x:8,y:9});
+});
+
+test('chosen asset provides initial respawn while reached checkpoints take over',()=>{
+  const {doc,add}=coreFixture();const start=add('start','spawnpoint',40);add('checkpoint','checkpoint',300);add('trap','decoy-chest',500);
+  setLevelSpawn(doc,start.id);
+  const runtime=new LevelRuntime(doc,{gravity:0,respawnMs:20});
+  touch(runtime,doc,'trap');advanceFor(runtime,.04);
+  assert.equal(runtime.player.x,runtime.spawn.x);assert.equal(runtime.checkpoint,null);
+  touch(runtime,doc,'checkpoint');const checkpointX=runtime.checkpoint.x;
+  touch(runtime,doc,'trap');advanceFor(runtime,.04);
+  assert.equal(runtime.player.x,checkpointX);
+  runtime.reset();assert.equal(runtime.player.x,runtime.spawn.x);assert.equal(runtime.checkpoint,null);
 });

@@ -45,12 +45,20 @@ export class LevelRuntime {
 
   _chooseSpawn(override) {
     if (validPoint(override)) return { x: override.x, y: override.y };
-    if (validPoint(this.document.world?.spawn)) return { x: this.document.world.spawn.x, y: this.document.world.spawn.y };
     const states = this.getStatesAt(0);
+    const referencedId = this.document.world?.spawnPlacementId;
+    const referenced = typeof referencedId === 'string' && referencedId.trim()
+      ? states.find(entry => entry.placement.id === referencedId && entry.state.gameplay?.role === 'spawnpoint')
+      : null;
+    if (referenced) {
+      this.warnings.push(`Spawn selected from ${referenced.state.definition.name}.`);
+      return gameplayAnchor(referenced.state, this.player.width, this.player.height);
+    }
     const tagged = states.filter(entry => entry.state.gameplay?.role === 'spawnpoint')
       .sort((a, b) => (Number(b.state.gameplay.priority) || 0) - (Number(a.state.gameplay.priority) || 0) ||
         this.document.placements.indexOf(a.placement) - this.document.placements.indexOf(b.placement));
     if (tagged[0]) {this.warnings.push(`Spawn selected from ${tagged[0].state.definition.name}.`);return gameplayAnchor(tagged[0].state, this.player.width, this.player.height);}
+    if (validPoint(this.document.world?.spawn)) return { x: this.document.world.spawn.x, y: this.document.world.spawn.y };
     const candidates = [];
     const sceneHazards = states.flatMap(entry => shapePolygons({...entry.state,beamOn:true,damageActive:true}, 'hazard'));
     const sceneSolids=states.flatMap(entry=>shapePolygons(entry.state,'solid'));
@@ -248,8 +256,10 @@ export class LevelRuntime {
 
   _solidStep(states, dt) {
     const current = new Map(states.map(entry => [entry.placement.id, entry]));
+    const previousStates = this._previousStates.size ? this._previousStates : new Map(this.getStatesAt(Math.max(0, this.timeMs - dt * 1000)).map(entry => [entry.placement.id, entry]));
+    const previousPlayer = { ...this.player };
     if (this.player.standingId) {
-      const previous = this._previousStates.get(this.player.standingId), next = current.get(this.player.standingId);
+      const previous = previousStates.get(this.player.standingId), next = current.get(this.player.standingId);
       if (previous && next && !next.state.vanished && shapePolygons(next.state, 'solid').length) { this.player.x += next.state.x - previous.state.x; this.player.y += next.state.y - previous.state.y; }
     }
     const direction = (this._input.left ? -1 : 0) + (this._input.right ? 1 : 0);
@@ -265,7 +275,22 @@ export class LevelRuntime {
     if (this._hazardStep(states)) return true;
     this.player.grounded = false; this.player.standingId = null;
     for (const entry of states) {
-      for (const polygon of shapePolygons(entry.state, 'solid')) {
+      const polygons = shapePolygons(entry.state, 'solid');
+      const previousEntry = previousStates.get(entry.placement.id);
+      const previousPolygons = previousEntry ? shapePolygons(previousEntry.state, 'solid') : polygons;
+      for (const polygon of polygons) {
+        // One-way platforms resolve only a feet crossing from above. Resolve
+        // vertically so partial landings never push the player off an edge.
+        if (entry.state.definition.kind === 'platform') {
+          const top = this._platformLandingTop(previousPlayer, polygon, previousPolygons);
+          if (top !== null) {
+            this.player.y = top - this.player.height;
+            this.player.vy = 0;
+            this.player.grounded = true;
+            this.player.standingId = entry.placement.id;
+          }
+          continue;
+        }
         const mtv = collisionMTV(boxPolygon(this.player), polygon);
         if (!mtv) continue;
         this.player.x += mtv.x; this.player.y += mtv.y;
@@ -276,6 +301,32 @@ export class LevelRuntime {
     }
     this._coyoteMs = this.player.grounded ? 100 : Math.max(0, this._coyoteMs - dt * 1000);
     if (this.player.grounded) this._coyoteMs = 100;
+  }
+
+  _platformLandingTop(previousPlayer, polygon, previousPolygons) {
+    const previousBottom = previousPlayer.y + this.player.height;
+    const currentBottom = this.player.y + this.player.height;
+    const topAt = (shape, x, width) => {
+      const right = x + width, ys = [];
+      const loX = Math.min(...shape.map(point => point.x)), hiX = Math.max(...shape.map(point => point.x));
+      if (Math.min(right, hiX) - Math.max(x, loX) <= 1e-7) return null;
+      for (let i = 0; i < shape.length; i++) {
+        const a = shape[i], b = shape[(i + 1) % shape.length];
+        if (Math.abs(a.x - b.x) < 1e-9) {
+          if (a.x >= x - 1e-6 && a.x <= right + 1e-6) ys.push(Math.min(a.y, b.y));
+          continue;
+        }
+        const lo = Math.min(a.x, b.x), hi = Math.max(a.x, b.x);
+        if (a.x >= x - 1e-6 && a.x <= right + 1e-6) ys.push(a.y);
+        if (b.x >= x - 1e-6 && b.x <= right + 1e-6) ys.push(b.y);
+        for (const edgeX of [x, right]) if (edgeX >= lo && edgeX <= hi) ys.push(a.y + (edgeX - a.x) * (b.y - a.y) / (b.x - a.x));
+      }
+      return ys.length ? Math.min(...ys) : null;
+    };
+    const currentTop = topAt(polygon, this.player.x, this.player.width);
+    if (currentTop === null) return null;
+    const previousTop = previousPolygons?.map(shape => topAt(shape, previousPlayer.x, this.player.width)).filter(value => value !== null).sort((a, b) => a - b)[0] ?? currentTop;
+    return previousBottom <= previousTop + 1e-4 && currentBottom >= currentTop - 1e-4 ? currentTop : null;
   }
 
   _hazardStep(states) {
