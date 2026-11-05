@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=22" },
-  "scripts": { "start": "node server/index.js", "dev": "node --watch server/index.js", "test": "node --test" },
+  "scripts": { "start": "node server/index.js", "dev": "node --watch server/index.js", "test": "node --test", "editor": "node tools/level-editor/server.mjs", "test:editor": "node --test tools/level-editor/tests/*.test.js" },
   "dependencies": { "ws": "^8.18.0" }
 }

@@ -15,6 +15,10 @@ Open [http://localhost:10000](http://localhost:10000). There is no frontend buil
 
 For local editing, use `npm run dev` so Node restarts when shared game rules change. Refresh the browser after changes. The browser checks `/health` before joining and displays a clear restart message if the server is still using older rules. Server restarts clear test rooms.
 
+## Local level companion
+
+Run `npm run editor` and open [http://127.0.0.1:10001](http://127.0.0.1:10001). The separate local browser editor starts with a blank forest level, supports asset placement and timer/animation previews, and exports versioned level JSON with separate asset, reusable-definition, and placement layers. Future tileset imports must follow `public/assets/sprites/schema.json`. The bundled forest's missing geometry is marked as editable estimates. See [the companion guide](tools/level-editor/README.md) for controls, the export contract, and limitations. It does not modify the live game layouts or renderer.
+
 ## Host a game
 
 1. Choose **Host a room → Create a game room**.

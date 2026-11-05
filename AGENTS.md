@@ -212,6 +212,8 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 ## Architecture and operation
 
+- The local level companion lives under `tools/level-editor/`, starts separately with `npm run editor`, and binds only to `127.0.0.1` (default port 10001, configurable with `EDITOR_PORT`). It authors versioned JSON with separate atlas assets, reusable interpretations, and placements; it does not change the live game's renderer or layouts. New tileset imports must follow `public/assets/sprites/schema.json`; the existing forest atlas has an explicit legacy adapter with estimated geometry. Creature metadata remains separate from the tileset schema. See `tools/level-editor/README.md` for the data contract and preview limits. Companion checks use `npm run test:editor`.
+
 - Stack: Node.js **22+**, ES modules, `ws`, plain HTML/CSS/JavaScript, and canvas. No frontend build step is required.
 - Each player's browser owns its movement, physics, collisions, enemies/projectiles, coins, checkpoints, deaths/respawns, banking, level transitions, and local score. Reuse the deterministic engine and layouts. Input is processed locally; do not send movement controls or reconcile against server physics. This casual game deliberately trusts client-reported gameplay results.
 - The server coordinates rooms, authenticated host actions, run identities, settings, shared deadlines, random chest rewards and inventory, target selection, quiz correctness, voting, ordered broadcasts, and leaderboard/final-result aggregation. Answer keys stay server-only. Keep authentication, lifecycle checks, schema bounds, and duplicate/stale-message handling; do not add a server physics replay or anti-cheat system.
