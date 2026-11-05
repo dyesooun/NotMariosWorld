@@ -820,9 +820,9 @@
           "category": "prop",
           "sourceRectPx": {
             "x": 4,
-            "y": 5,
+            "y": 10,
             "w": 90,
-            "h": 27
+            "h": 22
           },
           "measurementStatus": "estimated",
           "notes": [
@@ -832,6 +832,8 @@
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Geometry authored in editor; source-pixel interpretation is estimated."
           ],
           "contentBoundsPx": null,
@@ -843,9 +845,9 @@
               "kind": "rect",
               "rectPx": {
                 "x": 2,
-                "y": 6,
+                "y": 0,
                 "w": 80,
-                "h": 21
+                "h": 22
               }
             }
           ],
@@ -853,9 +855,9 @@
           "interactionShapesPx": null,
           "components": null,
           "x": 4,
-          "y": 5,
+          "y": 10,
           "w": 90,
-          "h": 27
+          "h": 22
         },
         "cut-0002": {
           "name": "Asset 2",
@@ -976,6 +978,9 @@
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated."
           ],
           "contentBoundsPx": {
@@ -1005,9 +1010,9 @@
             {
               "kind": "rect",
               "rectPx": {
-                "x": 0,
+                "x": 4,
                 "y": 0,
-                "w": 32,
+                "w": 25,
                 "h": 16
               }
             }
@@ -1139,6 +1144,7 @@
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated."
           ],
           "contentBoundsPx": {
@@ -1164,17 +1170,7 @@
               }
             }
           ],
-          "hazardShapesPx": [
-            {
-              "kind": "rect",
-              "rectPx": {
-                "x": 0,
-                "y": 0,
-                "w": 29,
-                "h": 14
-              }
-            }
-          ],
+          "hazardShapesPx": [],
           "interactionShapesPx": null,
           "components": null,
           "x": 130,
@@ -1453,6 +1449,8 @@
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated."
           ],
           "contentBoundsPx": {
@@ -1483,9 +1481,9 @@
               "kind": "rect",
               "rectPx": {
                 "x": 0,
-                "y": 0,
+                "y": 3,
                 "w": 12,
-                "h": 29
+                "h": 25
               }
             }
           ],
@@ -1510,6 +1508,8 @@
             "New source cut; review pixel measurements.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
@@ -1543,9 +1543,9 @@
             {
               "kind": "rect",
               "rectPx": {
-                "x": 0,
+                "x": 2,
                 "y": 8,
-                "w": 31,
+                "w": 19,
                 "h": 15
               }
             }
@@ -1571,6 +1571,8 @@
             "New source cut; review pixel measurements.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
             "Geometry authored in editor; source-pixel interpretation is estimated."
@@ -1603,9 +1605,9 @@
               "kind": "rect",
               "rectPx": {
                 "x": 9,
-                "y": 0,
+                "y": 2,
                 "w": 13,
-                "h": 29
+                "h": 26
               }
             }
           ],
@@ -2396,9 +2398,9 @@
             "category": "prop",
             "sourceRectPx": {
               "x": 4,
-              "y": 5,
+              "y": 10,
               "w": 90,
-              "h": 27
+              "h": 22
             },
             "measurementStatus": "estimated",
             "notes": [
@@ -2408,6 +2410,8 @@
               "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
               "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
               "Geometry authored in editor; source-pixel interpretation is estimated."
             ],
             "contentBoundsPx": null,
@@ -2419,9 +2423,9 @@
                 "kind": "rect",
                 "rectPx": {
                   "x": 2,
-                  "y": 6,
+                  "y": 0,
                   "w": 80,
-                  "h": 21
+                  "h": 22
                 }
               }
             ],
@@ -2540,6 +2544,9 @@
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated."
             ],
             "contentBoundsPx": {
@@ -2569,9 +2576,9 @@
               {
                 "kind": "rect",
                 "rectPx": {
-                  "x": 0,
+                  "x": 4,
                   "y": 0,
-                  "w": 32,
+                  "w": 25,
                   "h": 16
                 }
               }
@@ -2683,6 +2690,7 @@
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated."
             ],
             "contentBoundsPx": {
@@ -2708,17 +2716,7 @@
                 }
               }
             ],
-            "hazardShapesPx": [
-              {
-                "kind": "rect",
-                "rectPx": {
-                  "x": 0,
-                  "y": 0,
-                  "w": 29,
-                  "h": 14
-                }
-              }
-            ],
+            "hazardShapesPx": [],
             "interactionShapesPx": null,
             "components": null
           },
@@ -2933,6 +2931,8 @@
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated."
             ],
             "contentBoundsPx": {
@@ -2963,9 +2963,9 @@
                 "kind": "rect",
                 "rectPx": {
                   "x": 0,
-                  "y": 0,
+                  "y": 3,
                   "w": 12,
-                  "h": 29
+                  "h": 25
                 }
               }
             ],
@@ -2986,6 +2986,8 @@
               "New source cut; review pixel measurements.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
@@ -3019,9 +3021,9 @@
               {
                 "kind": "rect",
                 "rectPx": {
-                  "x": 0,
+                  "x": 2,
                   "y": 8,
-                  "w": 31,
+                  "w": 19,
                   "h": 15
                 }
               }
@@ -3043,6 +3045,8 @@
               "New source cut; review pixel measurements.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
               "Geometry authored in editor; source-pixel interpretation is estimated."
@@ -3075,9 +3079,9 @@
                 "kind": "rect",
                 "rectPx": {
                   "x": 9,
-                  "y": 0,
+                  "y": 2,
                   "w": 13,
-                  "h": 29
+                  "h": 26
                 }
               }
             ],
@@ -4056,9 +4060,9 @@
         "mode": "solid",
         "collider": [
           0.022222222222222223,
-          0.2222222222222222,
+          0,
           0.8888888888888888,
-          0.7777777777777778
+          1
         ],
         "hitbox": null,
         "lethal": false,
@@ -4069,9 +4073,9 @@
             "kind": "rect",
             "rect": [
               0.022222222222222223,
-              0.2222222222222222,
+              0,
               0.8888888888888888,
-              0.7777777777777778
+              1
             ]
           }
         ],
@@ -4211,8 +4215,8 @@
         ]
       },
       "size": {
-        "width": 64,
-        "height": 64
+        "width": 50,
+        "height": 40
       },
       "physics": {
         "mode": "solid",
@@ -4223,9 +4227,9 @@
           0.2727272727272727
         ],
         "hitbox": [
+          0.125,
           0,
-          0,
-          1,
+          0.78125,
           0.7272727272727273
         ],
         "lethal": true,
@@ -4246,9 +4250,9 @@
           {
             "kind": "rect",
             "rect": [
+              0.125,
               0,
-              0,
-              1,
+              0.78125,
               0.7272727272727273
             ]
           }
@@ -4399,15 +4403,10 @@
           1,
           1
         ],
-        "hitbox": [
-          0,
-          0,
-          1,
-          1
-        ],
-        "lethal": true,
+        "hitbox": null,
+        "lethal": false,
         "gravity": false,
-        "calibration": "estimated",
+        "calibration": "authored",
         "solidShapes": [
           {
             "kind": "rect",
@@ -4419,17 +4418,7 @@
             ]
           }
         ],
-        "hazardShapes": [
-          {
-            "kind": "rect",
-            "rect": [
-              0,
-              0,
-              1,
-              1
-            ]
-          }
-        ],
+        "hazardShapes": [],
         "interactionShapes": [],
         "walkSurfaces": []
       },
@@ -4698,8 +4687,8 @@
         "frameId": "cut-1"
       },
       "size": {
-        "width": 64,
-        "height": 15.659574468085106
+        "width": 180,
+        "height": 30
       },
       "physics": {
         "mode": "solid",
@@ -4766,9 +4755,9 @@
         ],
         "hitbox": [
           0,
-          0,
+          0.10344827586206896,
           0.5714285714285714,
-          1
+          0.8620689655172413
         ],
         "lethal": true,
         "gravity": false,
@@ -4789,9 +4778,9 @@
             "kind": "rect",
             "rect": [
               0,
-              0,
+              0.10344827586206896,
               0.5714285714285714,
-              1
+              0.8620689655172413
             ]
           }
         ],
@@ -4815,8 +4804,8 @@
         "frameId": "cut-3"
       },
       "size": {
-        "width": 31,
-        "height": 26
+        "width": 40,
+        "height": 30
       },
       "physics": {
         "mode": "solid",
@@ -4827,9 +4816,9 @@
           0.32
         ],
         "hitbox": [
-          0,
+          0.06451612903225806,
           0.32,
-          1,
+          0.5806451612903226,
           0.56
         ],
         "lethal": true,
@@ -4850,9 +4839,9 @@
           {
             "kind": "rect",
             "rect": [
-              0,
+              0.06451612903225806,
               0.32,
-              1,
+              0.5806451612903226,
               0.56
             ]
           }
@@ -4890,9 +4879,9 @@
         ],
         "hitbox": [
           0.391304347826087,
-          0,
+          0.06896551724137931,
           0.5652173913043478,
-          1
+          0.896551724137931
         ],
         "lethal": true,
         "gravity": false,
@@ -4913,9 +4902,9 @@
             "kind": "rect",
             "rect": [
               0.391304347826087,
-              0,
+              0.06896551724137931,
               0.5652173913043478,
-              1
+              0.896551724137931
             ]
           }
         ],
@@ -4933,7 +4922,7 @@
     "whimsical-forest-props-1-atlas:cut-5": {
       "id": "whimsical-forest-props-1-atlas:cut-5",
       "name": "New asset",
-      "kind": "prop",
+      "kind": "platform",
       "visual": {
         "assetId": "whimsical-forest-props-1-atlas",
         "frameId": "cut-5"
@@ -5238,8 +5227,8 @@
         "frameId": "cut-12"
       },
       "size": {
-        "width": 17,
-        "height": 20
+        "width": 25,
+        "height": 25
       },
       "physics": {
         "mode": "trigger",
@@ -5295,8 +5284,8 @@
         "frameId": "cut-13"
       },
       "size": {
-        "width": 28,
-        "height": 26
+        "width": 30,
+        "height": 30
       },
       "physics": {
         "mode": "solid",
@@ -5505,8 +5494,8 @@
         "frameId": "cut-18"
       },
       "size": {
-        "width": 50,
-        "height": 24
+        "width": 40,
+        "height": 40
       },
       "physics": {
         "mode": "solid",
@@ -5821,18 +5810,6 @@
       "settings": {}
     },
     {
-      "id": "object-523ce9b0-3b5d-4cec-ad04-6756c6c60e9a",
-      "definitionId": "hell-express-1-atlas:cut-0001",
-      "x": 3008,
-      "y": 0,
-      "width": 1000,
-      "height": 600,
-      "layer": -20,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
-    },
-    {
       "id": "object-c0772bc4-acdb-43d2-ba24-f169629d8401",
       "definitionId": "hell-express-2-atlas:cut-0001",
       "x": 4000,
@@ -5871,8 +5848,8 @@
     {
       "id": "object-e916b56f-8fc4-4eda-9a45-9a9c0a980ea9",
       "definitionId": "whimsical-forest-props-1-atlas:cut-0001",
-      "x": -16,
-      "y": 560,
+      "x": -20,
+      "y": 570,
       "width": 180,
       "height": 60,
       "layer": 0,
@@ -5950,7 +5927,19 @@
       "layer": 0,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 1000
+        }
+      }
     },
     {
       "id": "object-dea58b30-5a37-4301-99ea-881e01ad0d48",
@@ -5967,7 +5956,18 @@
         "axis": "x",
         "distance": 80,
         "periodMs": 4000,
-        "phaseMs": 0
+        "phaseMs": 0,
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 1000
+        }
       }
     },
     {
@@ -5980,7 +5980,19 @@
       "layer": 0,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 1000
+        }
+      }
     },
     {
       "id": "object-60a6d8c9-8125-46f2-9798-cce17734ba40",
@@ -5992,7 +6004,19 @@
       "layer": 0,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 1000
+        }
+      }
     },
     {
       "id": "object-9be049b6-3f43-42b9-aa89-9d752c15800c",
@@ -6033,7 +6057,7 @@
     {
       "id": "object-714184d3-662e-45b1-b252-821c45068f8f",
       "definitionId": "whimsical-forest-props-1-atlas:cut-2",
-      "x": 832,
+      "x": 800,
       "y": 400,
       "width": 40,
       "height": 50,
@@ -6052,10 +6076,10 @@
     {
       "id": "object-3098a483-b5f8-4b49-ba7b-be34246c9174",
       "definitionId": "whimsical-forest-props-1-atlas:cut-19",
-      "x": 1325,
+      "x": 1335,
       "y": 510,
-      "width": 50,
-      "height": 50,
+      "width": 40,
+      "height": 40,
       "layer": 0,
       "flipX": false,
       "rotation": 0,
@@ -6066,8 +6090,8 @@
       "definitionId": "whimsical-forest-props-1-atlas:cut-18",
       "x": 1375,
       "y": 510,
-      "width": 50,
-      "height": 50,
+      "width": 40,
+      "height": 40,
       "layer": 0,
       "flipX": false,
       "rotation": 0,
@@ -6076,7 +6100,7 @@
     {
       "id": "object-85404237-6bee-4669-99a7-31bc75a28f75",
       "definitionId": "whimsical-forest-props-1-atlas:cut-6",
-      "x": 1380,
+      "x": 1370,
       "y": 490,
       "width": 45,
       "height": 30,
@@ -6088,7 +6112,7 @@
     {
       "id": "object-2dd597ba-91aa-47c8-a9c3-45e6817c4f81",
       "definitionId": "whimsical-forest-props-1-atlas:cut-6",
-      "x": 1380,
+      "x": 1370,
       "y": 345,
       "width": 45,
       "height": 30,
@@ -6100,7 +6124,7 @@
     {
       "id": "object-2fae092b-16cf-4107-9073-8126c7397efb",
       "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
-      "x": 1393.3267556329802,
+      "x": 1383.3267556329802,
       "y": 368.77928973276005,
       "width": 20.01551177051715,
       "height": 125.22071026723995,
@@ -6119,50 +6143,56 @@
     {
       "id": "object-380d17a6-fa89-4063-9c2f-2e63211539ea",
       "definitionId": "whimsical-forest-props-1-atlas:cut-5",
-      "x": 630,
+      "x": 544,
       "y": 400,
       "width": 60,
       "height": 30,
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
-    },
-    {
-      "id": "object-84e8b3da-d56e-4aad-9d87-56afc2207e0e",
-      "definitionId": "whimsical-forest-props-1-atlas:cut-5",
-      "x": 535,
-      "y": 370,
-      "width": 60,
-      "height": 30,
-      "layer": -5,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
+      "settings": {
+        "motion": {
+          "axis": "x",
+          "distance": 80,
+          "periodMs": 4000,
+          "phaseMs": 600
+        },
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 2000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
     },
     {
       "id": "object-8e9ff3ba-b178-4c37-950a-ebb198517ee9",
       "definitionId": "whimsical-forest-props-1-atlas:cut-5",
-      "x": 440,
-      "y": 345,
+      "x": 384,
+      "y": 336,
       "width": 60,
       "height": 30,
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
-    },
-    {
-      "id": "object-483a6d73-444a-424d-ae20-9683f15621a6",
-      "definitionId": "whimsical-forest-props-1-atlas:cut-5",
-      "x": 360,
-      "y": 320,
-      "width": 60,
-      "height": 30,
-      "layer": -5,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1500,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
     },
     {
       "id": "object-58d2412e-b321-4cdb-be06-c7c78e2102a2",
@@ -6171,7 +6201,7 @@
       "y": 240,
       "width": 180,
       "height": 45,
-      "layer": 0,
+      "layer": 1,
       "flipX": false,
       "rotation": 0,
       "settings": {}
@@ -6179,14 +6209,26 @@
     {
       "id": "object-b481181d-6a0f-45d8-bcd5-d30e8c8d3843",
       "definitionId": "whimsical-forest-props-1-atlas:cut-5",
-      "x": 265,
-      "y": 295,
+      "x": 256,
+      "y": 272,
       "width": 60,
       "height": 30,
       "layer": -5,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1500,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
     },
     {
       "id": "object-fc24b73c-afd3-4b68-9f6c-1ed9bc1c773d",
@@ -6195,7 +6237,7 @@
       "y": 345,
       "width": 50,
       "height": 40,
-      "layer": 0,
+      "layer": -1,
       "flipX": false,
       "rotation": 0,
       "settings": {}
@@ -6203,11 +6245,930 @@
     {
       "id": "object-a3637b32-1dc0-4109-816d-542d72965e8c",
       "definitionId": "whimsical-forest-props-1-atlas:cut-15",
-      "x": 30,
-      "y": 475,
+      "x": 40,
+      "y": 470,
       "width": 60,
       "height": 100,
+      "layer": -3,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-c3b23cd2-4c93-4c54-9f1a-ad49967c12ac",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0004",
+      "x": 160,
+      "y": 208,
+      "width": 50,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-c9f3d4c7-d3a9-4745-9be5-0afe629ab267",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 320,
+      "y": 304,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1500,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "object-82ff4f7a-170b-4095-b486-ae7ba9cd6998",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 448,
+      "y": 368,
+      "width": 60,
+      "height": 30,
+      "layer": 1,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1500,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "object-494548b8-9c79-4c00-8e39-0a1b4e22c7dd",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-4",
+      "x": 496,
+      "y": 368,
+      "width": 24,
+      "height": 29,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-68682c51-df19-4ea0-adec-9d729d2c9c1e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-1",
+      "x": 1824,
+      "y": 240,
+      "width": 180,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 3000
+        }
+      }
+    },
+    {
+      "id": "object-5a01e4c4-58fa-4a96-9501-681868c77544",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-1",
+      "x": 1824,
+      "y": 384,
+      "width": 180,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 3000
+        }
+      }
+    },
+    {
+      "id": "object-ee138b73-b222-419f-a8c0-9d23f862dc2f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-8",
+      "x": 1568,
+      "y": 336,
+      "width": 180,
+      "height": 45,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "motion": {
+          "axis": "y",
+          "distance": 100,
+          "periodMs": 4000,
+          "phaseMs": 0
+        }
+      }
+    },
+    {
+      "id": "object-d3e4d09e-a042-40be-a06a-0147d55704fa",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-3",
+      "x": 1843,
+      "y": 74,
+      "width": 40,
+      "height": 30.114537379070356,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-e7d96079-9440-439f-ace1-a8b5f81c9c22",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-3",
+      "x": 1875,
+      "y": 74,
+      "width": 40,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-9977ee31-61dc-48ec-a545-7526f64a206a",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-3",
+      "x": 1907,
+      "y": 74,
+      "width": 40,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-813d6b66-74af-4b81-a04e-da5ad1520389",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-3",
+      "x": 1939,
+      "y": 74,
+      "width": 40,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-15c93b66-cf76-4326-8a1a-2a502b8edf26",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-1",
+      "x": 430,
+      "y": 130,
+      "width": 180,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000
+        }
+      }
+    },
+    {
+      "id": "object-a3fa58be-bb00-4136-afbf-11a4a3f82b94",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-5",
+      "x": 635,
+      "y": 160,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "object-2c5d747d-f7f4-4d7f-b195-023714c32bea",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 720,
+      "y": 195,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "object-637f34fb-3c7d-4af4-a1db-24e3225b783a",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0007",
+      "x": 795,
+      "y": 235,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "motion": {
+          "axis": "y",
+          "distance": 80,
+          "periodMs": 4000,
+          "phaseMs": 300
+        },
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 3000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
+    },
+    {
+      "id": "object-71722811-7929-4e3d-b7cc-d21e49a4cd10",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-18",
+      "x": 1220,
+      "y": 255,
+      "width": 40,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-c8479391-d6fb-4295-86a1-099edd4e700f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 1270,
+      "y": 275,
+      "width": 45,
+      "height": 30,
       "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-66f6868a-0fbc-46b1-88a3-509bb546d4a3",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-6",
+      "x": 1271,
+      "y": 55,
+      "width": 45,
+      "height": 30,
+      "layer": -5,
+      "flipX": false,
+      "rotation": -180,
+      "settings": {}
+    },
+    {
+      "id": "object-ef3b5fb6-2255-45f3-97d5-4cc5c314e4ff",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0008",
+      "x": 1283,
+      "y": 80,
+      "width": 20.622042430229385,
+      "height": 200.7315588615299,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-3c55c323-1f75-4536-8e94-e076fb9e0602",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-2",
+      "x": 2160,
+      "y": 172,
+      "width": 40,
+      "height": 50,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-ec0447af-15c9-4492-8b33-4ed251b544f5",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-2",
+      "x": 2160,
+      "y": 222,
+      "width": 40,
+      "height": 50,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-1c8632e5-b367-4066-839a-c2fbffbc3a97",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-2",
+      "x": 2160,
+      "y": 270,
+      "width": 40,
+      "height": 50,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-8c228990-23ef-4e28-b812-96b3983de92f",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-2",
+      "x": 2160,
+      "y": 319,
+      "width": 40,
+      "height": 50,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-24df6169-ed68-4aaf-8e0c-d2b8a089cc10",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 540,
+      "y": 505,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-176e3a3a-9773-474e-b1d8-6ca61fc9d53d",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 590,
+      "y": 505,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-89003f58-7f87-4269-aa0a-571722680de8",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 645,
+      "y": 505,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-2fe8e2fc-fd5c-4cb4-8773-bc2b8934b8a7",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 175,
+      "y": 170,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-38e1185d-5680-4675-9946-259b6c819536",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 120,
+      "y": 175,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-4fda866b-1fe7-4af8-b34c-5703e4e441cc",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 75,
+      "y": 210,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-e81f9620-9c4e-412a-8e1c-026015738361",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 75,
+      "y": 115,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-1cccb621-412b-48ac-94c5-bcf3d8125f38",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 75,
+      "y": 170,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-24b9124f-5116-4108-9329-0608d4889cfb",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 864,
+      "y": 416,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-59814280-b7b1-46cb-b22e-452242666386",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 448,
+      "y": 96,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-ee9e651e-75e2-4296-8544-5c7691d539c5",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 570,
+      "y": 95,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-ad1151f5-8f31-4db9-98a2-0123a169b704",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 512,
+      "y": 16,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-5a2dd003-cd4d-4129-819a-8cfb46c89c34",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0003",
+      "x": 940,
+      "y": 525,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-40089803-387a-4e5b-bfd6-37f2f3d65aac",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 1232,
+      "y": 416,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-68a4bc62-4102-440b-90d2-e7fc7fbb83de",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 1088,
+      "y": 480,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-62bae39d-8329-42ce-95c3-e2890e9187a4",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 1152,
+      "y": 432,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-b6b29b38-ca4f-4b4f-b9fc-337a54b4e212",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 1344,
+      "y": 480,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-0b858b93-6e02-465f-93ff-521b4c95c25b",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 1296,
+      "y": 448,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-1f603b42-07aa-4944-8b9c-3cecfdf485ec",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 816,
+      "y": 128,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-bb6cd035-d7be-4082-ac4a-7093b61c1ea9",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 816,
+      "y": 192,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-e84313cd-cb76-4ecd-b1be-90abcd7d81b0",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 816,
+      "y": 240,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-2367c7ab-b495-4cc3-9cf5-3dd361a6bf9b",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-7",
+      "x": 5,
+      "y": 530,
+      "width": 46.69440215677571,
+      "height": 41.76109499807171,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-7852f938-1d19-45ea-a429-fee843f6c1f8",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0012",
+      "x": 790,
+      "y": 465,
+      "width": 29.25658335996914,
+      "height": 62.078054326838014,
+      "layer": 1,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-b17741fd-a26d-48b7-9dad-829450911091",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0001",
+      "x": 2112,
+      "y": 544,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-2cfe7131-0655-441e-bf07-2d0a46c49515",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0001",
+      "x": 2272,
+      "y": 544,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-172a23ad-3177-44ef-a3ca-587fdcc16a2b",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0001",
+      "x": 2432,
+      "y": 544,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-92942fa2-eb9f-42cc-b472-7e4937507429",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0001",
+      "x": 2592,
+      "y": 544,
+      "width": 180,
+      "height": 60,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-223eb2a9-319d-42a4-8bbe-abca1fa3516a",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-3",
+      "x": 1744,
+      "y": 544,
+      "width": 77.39876819699066,
+      "height": 56.98273901162827,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-5b03434e-e29d-4383-91b5-b51ada86d0f7",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 1904,
+      "y": 336,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-1d347f31-cbfb-4356-8d7d-7c185fa624ba",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 1900,
+      "y": 190,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-d263a17f-f0f8-41af-a6b3-f256d226b319",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-12",
+      "x": 1225,
+      "y": 210,
+      "width": 25,
+      "height": 25,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-7f2563da-ff7d-42ba-a5cd-7aad62d8ba94",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-13",
+      "x": 1015,
+      "y": 494.3531832207726,
+      "width": 30,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-8c010493-f218-4195-b89e-0f6d0cedc47b",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-23",
+      "x": 995,
+      "y": 490,
+      "width": 32.862645993561955,
+      "height": 34.109566461000156,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-52751515-f852-4bdc-97d4-00536824d179",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-22",
+      "x": 1030,
+      "y": 500,
+      "width": 23,
+      "height": 24.933723752780224,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-54c7ec67-848a-4c78-abda-a08e49bcb847",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-17",
+      "x": 1100,
+      "y": 385,
+      "width": 28,
+      "height": 53,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-48f8acf5-9cd2-411b-a37c-ee3992045eff",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-16",
+      "x": 970,
+      "y": 535,
+      "width": 18,
+      "height": 55,
+      "layer": 6,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-925ea0f5-4846-45eb-8185-f1120eb5eb40",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-25",
+      "x": 85,
+      "y": 540,
+      "width": 48.133619905774,
+      "height": 34.20268327342228,
+      "layer": -4,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-af9614a4-bc1b-495b-bc25-5e5eeefbb401",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-25",
+      "x": 75,
+      "y": 528.2791251090061,
+      "width": 35.60991690628694,
+      "height": 29.720874890993855,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-97704d5f-9cc5-4378-9baa-5d451883adbd",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-21",
+      "x": 130,
+      "y": 515,
+      "width": 35.222188375718616,
+      "height": 54.596655331994384,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-b2cb850e-3ad1-4073-8e46-0e0bd44930cf",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-21",
+      "x": 130,
+      "y": 468.31477619806105,
+      "width": 36.5275919643461,
+      "height": 49.0389513978497,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-e0097372-7be6-451f-90ff-06be82619456",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-20",
+      "x": 135,
+      "y": 420,
+      "width": 47.9479162304994,
+      "height": 50.39420895338117,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-c7495827-a685-4a63-9430-2ff4947ad56b",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-14",
+      "x": 150,
+      "y": 525,
+      "width": 48.90642407737437,
+      "height": 44.68609742082549,
+      "layer": -6,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-8ccd3ddc-935d-4964-9044-ac03562b49bd",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0012",
+      "x": 150,
+      "y": 435,
+      "width": 22.670578801965235,
+      "height": 59.199280124768734,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-ca3484ed-39ae-484c-9452-9248a90bf33b",
+      "definitionId": "whimsical-forest-2-atlas:cut-0001",
+      "x": 2995,
+      "y": 0,
+      "width": 1000,
+      "height": 600,
+      "layer": -20,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-db60898f-2714-4561-ad00-51d44a7c525e",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-18",
+      "x": 1640,
+      "y": 125,
+      "width": 40,
+      "height": 40,
+      "layer": 0,
       "flipX": false,
       "rotation": 0,
       "settings": {}

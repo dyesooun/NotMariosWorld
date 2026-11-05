@@ -37,12 +37,27 @@ test('vanishing preview uses trigger countdown and exposes remaining time', () =
   assert.equal(getPreviewState(d,p,1000,{triggeredAtMs:1000}).vanished,true);
 });
 
+test('timed vanishing preview restores after its hidden interval', () => {
+  const d = doc(); d.definitions.platform.behavior.vanish = { triggerVolume: [-0.25, -1, 1.5, 2], countdownMs: 500, restoreMode: 'timed', restoreMs: 700 };
+  const p = createPlacement(d, 'platform', 0, 0); d.placements.push(p);
+  const hidden = getPreviewState(d, p, 1600, { triggeredAtMs: 1000 });
+  assert.equal(hidden.vanished, true); assert.equal(hidden.restoreRemainingMs, 600);
+  const restored = getPreviewState(d, p, 2200, { triggeredAtMs: 1000 });
+  assert.equal(restored.vanished, false); assert.equal(restored.vanishRestored, true); assert.equal(restored.restoreRemainingMs, 0);
+});
+
 test('timing metadata roundtrips and invalid vanish config is rejected', () => {
   const d = doc(); const p = createPlacement(d, 'platform', 0, 0); p.settings = { vanish: { triggerVolume: [0, 0, 1, 1], countdownMs: 1200 } }; d.placements.push(p);
   const copy = parseDocument(serializeDocument(d));
   assert.equal(copy.placements[0].settings.vanish.countdownMs, 1200);
   copy.definitions.platform.behavior.vanish.triggerVolume = [0, 0, 0, 1];
   assert.ok(validateDocument(copy).some(error => error.includes('triggerVolume')));
+  copy.definitions.platform.behavior.vanish = { triggerVolume: [0, 0, 1, 1], countdownMs: 1, restoreMode: 'timed' };
+  assert.ok(validateDocument(copy).some(error => error.includes('restoreMs')));
+  copy.definitions.platform.behavior.vanish.restoreMs = 3600001;
+  assert.ok(validateDocument(copy).some(error => error.includes('restoreMs')));
+  copy.definitions.platform.behavior.vanish.restoreMode = 'unknown';
+  assert.ok(validateDocument(copy).some(error => error.includes('restoreMode')));
 });
 
 test('state selection and one-shot restart stay outside saved placements',()=>{

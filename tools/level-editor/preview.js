@@ -55,8 +55,14 @@ export function getPreviewState(document, placement, timeMs = 0, runtime = {}) {
   const vanish = behavior.vanish;
   const vanishElapsedMs = !vanish || triggeredAtMs == null || time < triggeredAtMs ? null : time - triggeredAtMs;
   const vanishRemainingMs = vanishElapsedMs == null ? null : Math.max(0, vanish.countdownMs - vanishElapsedMs);
-  const vanished = !!vanish && vanishElapsedMs != null && vanishElapsedMs >= vanish.countdownMs;
-  return { ...resolved, x, y, frameId, assetId: visual.assetId, beamOn, damageActive, vanished, vanishRemainingMs };
+  const restoreMode = vanish?.restoreMode || 'respawn';
+  const restoreMs = restoreMode === 'timed' ? vanish.restoreMs : null;
+  const restoreAtMs = vanishElapsedMs == null || restoreMs == null ? null : vanish.countdownMs + restoreMs;
+  const vanishRestored = !!vanish && restoreMode === 'timed' && vanishElapsedMs != null && vanishElapsedMs >= restoreAtMs;
+  const vanished = !!vanish && ((runtime?.permanentGone === true) || (vanishElapsedMs != null && vanishElapsedMs >= vanish.countdownMs && !vanishRestored));
+  const restoreRemainingMs = vanishElapsedMs == null || restoreMode !== 'timed' || vanishRestored ? (vanishRestored ? 0 : null) : Math.max(0, restoreAtMs - vanishElapsedMs);
+  const physics=resolved.gameplay?.role!=='none'&&resolved.gameplay?.nonblocking===true?{...resolved.physics,mode:'none'}:resolved.physics;
+  return { ...resolved, physics, animation:runtime.animation||resolved.animation, x, y, frameId, assetId: visual.assetId, beamOn, damageActive, vanished, vanishRemainingMs, restoreRemainingMs, vanishRestored: vanishRestored || !!runtime?.vanishRestored };
 }
 
 function shapePath(ctx, shape, width, height) {
@@ -72,8 +78,8 @@ function overlay(ctx, shapes, fallback, color, width, height) {
   for (const shape of geometry) { shapePath(ctx, shape, width, height); ctx.fill(); ctx.stroke(); }
 }
 
-export function drawPlacement(ctx, document, placement, images, { timeMs = 0, collisions = false, selected = false, triggeredAtMs = null, animation, animationTimeMs } = {}) {
-  const state = getPreviewState(document, placement, timeMs, { triggeredAtMs,animation,animationTimeMs });
+export function drawPlacement(ctx, document, placement, images, { timeMs = 0, collisions = false, selected = false, triggeredAtMs = null, animation, animationTimeMs, state: evaluatedState } = {}) {
+  const state = evaluatedState || getPreviewState(document, placement, timeMs, { triggeredAtMs,animation,animationTimeMs });
   const { x, y, width, height, assetId, frameId, physics } = state;
   const frame = document.assets[assetId]?.frames[frameId];
   const image = images.get(assetId);
@@ -99,7 +105,8 @@ export function drawPlacement(ctx, document, placement, images, { timeMs = 0, co
   if (collisions && !state.vanished) {
     if (physics.mode === 'solid') overlay(ctx, physics.solidShapes, physics.collider, '#7ee5ba', width, height);
     else if (physics.mode === 'trigger') overlay(ctx, physics.interactionShapes, physics.collider, '#70c8ff', width, height);
-    if (physics.lethal && state.beamOn !== false) overlay(ctx, physics.hazardShapes, physics.hitbox, '#ff868a', width, height);
+    const damageWindow=state.visual.animations?.[state.animation]?.damage_active_indices;
+    if (physics.lethal && state.beamOn !== false && (!Array.isArray(damageWindow)||state.damageActive)) overlay(ctx, physics.hazardShapes, physics.hitbox, '#ff868a', width, height);
     for (const surface of physics.walkSurfaces || []) {
       ctx.beginPath(); ctx.strokeStyle = '#ffe58c'; ctx.lineWidth = 2;
       ctx.moveTo(surface.x1 * width, surface.y1 * height); ctx.lineTo(surface.x2 * width, surface.y2 * height); ctx.stroke();

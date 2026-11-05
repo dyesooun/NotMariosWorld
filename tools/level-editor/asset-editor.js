@@ -2,6 +2,7 @@ import { updateSourceFrame,setDefinitionGeometry,addSourceFrame,removeSourceFram
 import { estimateFrameGeometry } from './atlas-analysis.js';
 import { readAtlasPixels } from './auto-tileset.js';
 import { getTransformHandles,hitTestHandles,resizePlacement } from './transforms.js';
+import {renderGameplayControls} from './gameplay-controls.js';
 
 export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelectDefinition,onExportLibrary,onAcceptImport,onCancelImport,onEditSequences}) {
   const dialog=document.createElement('dialog');dialog.className='asset-editor';dialog.setAttribute('aria-label','Shared asset metadata editor');document.body.append(dialog);
@@ -11,7 +12,7 @@ export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelec
   const controls=node('div',dialog,null,'asset-editor-controls'),tools=node('div',dialog,null,'asset-editor-tools');
   const canvas=node('canvas',dialog);canvas.tabIndex=0;canvas.setAttribute('aria-label','Asset metadata canvas');const ctx=canvas.getContext('2d');
   const footer=node('div',dialog,null,'asset-editor-footer'),status=node('p',dialog,'','hint');
-  let assetId,frameId,definitionId,mode='cuts',adding=false,gesture=null,draft=null,view={x:0,y:0,zoom:1},space=false,importing=false,importAccepted=false;
+  let assetId,frameId,definitionId,mode='cuts',adding=false,gesture=null,draft=null,view={x:0,y:0,zoom:1},space=false,importing=false,importAccepted=false,gameplayOpen=false;
   const cache=new WeakMap();
   function node(tag,parent,text,className){const el=document.createElement(tag);if(text!=null)el.textContent=text;if(className)el.className=className;parent?.append(el);return el;}
   function action(parent,text,callback){const button=node('button',parent,text);button.onclick=callback;return button;}
@@ -100,6 +101,7 @@ export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelec
     }
     if(definition()){
       const d=definition(),meta=node('div',controls,null,'asset-definition-metadata');
+      const gameplay=node('details',controls,null,'asset-gameplay-controls');node('summary',gameplay,'Gameplay tags');gameplay.open=gameplayOpen;gameplay.ontoggle=()=>{gameplayOpen=gameplay.open;};renderGameplayControls(gameplay,{definition:d,onChange:value=>change(project=>{project.definitions[definitionId].gameplay=value;})});
       const name=node('label',meta);node('span',name,'Definition name');const nameInput=node('input',name);nameInput.value=d.name||'';nameInput.onchange=()=>change(project=>{project.definitions[definitionId].name=nameInput.value});
       select(meta,'Role',[['character','character'],['platform','platform'],['enemy','enemy'],['chest','chest'],['background','background'],['prop','prop'],['beam','beam'],['hazard','hazard'],['projectile','projectile']],d.kind,value=>change(project=>{const pd=project.definitions[definitionId];pd.kind=value;if(value==='beam'){pd.behavior={type:'beam',onMs:1000,offMs:1000,startMs:0,phaseMs:0,startState:'on'};}else if(value!=='enemy')pd.behavior={...pd.behavior,type:'static'};}));
       const tags=node('label',meta);node('span',tags,'Level tags');const tagInput=node('input',tags);tagInput.value=(d.levels||[]).join(', ');tagInput.onchange=()=>change(project=>{project.definitions[definitionId].levels=tagInput.value.split(',').map(v=>v.trim()).filter(Boolean)});

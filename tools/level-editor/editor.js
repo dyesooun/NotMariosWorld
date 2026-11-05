@@ -10,6 +10,8 @@ import { detectAtlasCuts,createGridCuts } from './atlas-analysis.js';
 import { createCharacterCatalog } from './characters.js';
 import { mountSequenceEditor } from './sequence-editor.js';
 import {getGroupBounds,transformGroup} from './group-transforms.js';
+import {GAMEPLAY_ROLES,resolveGameplay,gameplayTriggerPolygons} from './gameplay.js';
+import {renderGameplayControls} from './gameplay-controls.js';
 
 const $ = selector => document.querySelector(selector);
 const stage = $('#stage'), context = stage.getContext('2d'), STORAGE_KEY = 'nmw-level-editor';
@@ -22,6 +24,7 @@ const previewStates = new Map();
 let editingTrigger = false;
 let warnings = [], spaceHeld = false;
 let assetEditor,sequenceEditor,importDraft=null,draftImages=null,levelFilter='all',saveSequence=0;
+let gameplayFilter='all';
 let pendingSave=Promise.resolve();
 
 function element(tag, parent, text, className) {
@@ -99,7 +102,7 @@ function worldPoint(event) {
   const bounds = stage.getBoundingClientRect();
   return { x: view.x + (event.clientX - bounds.left) / view.zoom, y: view.y + (event.clientY - bounds.top) / view.zoom };
 }
-function snap(value) { const size = Math.max(1, Number($('#snap').value) || 1); return Math.round(value / size) * size; }
+function snap(value) { const size = Math.max(1, Number($('#snap').value) || 5); return Math.round(value / size) * size; }
 function zoomAt(factor, screenX, screenY) {
   const bounds = stage.getBoundingClientRect(), x = screenX ?? bounds.width / 2, y = screenY ?? bounds.height / 2;
   const worldX = view.x + x / view.zoom, worldY = view.y + y / view.zoom;
@@ -115,7 +118,7 @@ function draw() {
   context.save(); context.scale(view.zoom, view.zoom); context.translate(-view.x, -view.y);
   context.fillStyle = doc.world.backgroundColor; context.fillRect(0, 0, doc.world.width, doc.world.height);
   if (showGrid) {
-    const grid = Math.max(1, Number($('#snap').value) || 16), stride = grid * Math.max(1, Math.ceil(8 / view.zoom / grid));
+    const grid = Math.max(1, Number($('#snap').value) || 5), stride = grid * Math.max(1, Math.ceil(8 / view.zoom / grid));
     context.beginPath(); context.strokeStyle = '#b5e6cc18'; context.lineWidth = 1 / view.zoom;
     const maxX = Math.min(doc.world.width, view.x + bounds.width / view.zoom), maxY = Math.min(doc.world.height, view.y + bounds.height / view.zoom);
     for (let x = Math.max(0, Math.ceil(view.x / stride) * stride); x <= maxX; x += stride) { context.moveTo(x, 0); context.lineTo(x, doc.world.height); }
@@ -126,6 +129,7 @@ function draw() {
     const state = previewState(placement),box=placementBounds(state);
     if (!selectedIds.has(placement.id)&&(box.x + box.width < view.x || box.x > view.x + bounds.width / view.zoom || box.y + box.height < view.y || box.y > view.y + bounds.height / view.zoom)) continue;
     drawPlacement(context, doc, placement, images, { timeMs, ...previewOptions(placement), collisions: showCollisions, selected: selectedIds.has(placement.id) });
+    if(showCollisions)for(const polygon of gameplayTriggerPolygons(state)){context.beginPath();polygon.forEach((p,i)=>i?context.lineTo(p.x,p.y):context.moveTo(p.x,p.y));context.closePath();context.strokeStyle='#f5d778';context.lineWidth=1/view.zoom;context.stroke();}
   }
   const selected=selectedPlacement();
   if(selected){
@@ -141,21 +145,22 @@ function draw() {
   context.strokeStyle = '#86b6a6'; context.lineWidth = 1 / view.zoom; context.strokeRect(0, 0, doc.world.width, doc.world.height); context.restore();
   $('#timeLabel').textContent = `${(timeMs / 1000).toFixed(2)}s`; $('#scrub').max=Math.max(600000,Math.ceil(timeMs/60000)*60000);$('#scrub').value = timeMs;
   $('#zoomLabel').textContent = `${Math.round(view.zoom * 100)}%`;
-  const status=$('#vanishStatus');if(status&&selected){const state=previewState(selected);status.textContent=state.vanished?'Vanished · Reset to restore':state.vanishRemainingMs!=null?`Vanishes in ${(state.vanishRemainingMs/1000).toFixed(2)}s`:'Waiting for trigger entry';}
+  const status=$('#vanishStatus');if(status&&selected){const state=previewState(selected);status.textContent=state.vanished?(state.restoreRemainingMs!=null?`Restores in ${(state.restoreRemainingMs/1000).toFixed(2)}s`:'Vanished · Reset to restore'):state.vanishRestored?'Restored · Simulate entry to test again':state.vanishRemainingMs!=null?`Vanishes in ${(state.vanishRemainingMs/1000).toFixed(2)}s`:'Waiting for trigger entry';}
   const beamStatus=$('#beamStatus');if(beamStatus&&selected){const state=previewState(selected);beamStatus.textContent=timeMs<(state.behavior.startMs||0)?'OFF · Waiting for start time':state.beamOn?'ON · Beam active':'OFF · Beam inactive';}
 }
 
 function renderPalette() {
   const container = $('#assetList'), scroll = container.parentElement.scrollTop;
   const query = $('#assetSearch').value.toLowerCase(); container.replaceChildren();
-  const definitions = Object.values(doc.definitions).filter(d => (filter === 'all' || d.kind === filter) && (levelFilter==='all'||(d.levels||[]).includes(levelFilter)) && `${d.name} ${d.id}`.toLowerCase().includes(query));
+  const definitions = Object.values(doc.definitions).filter(d => {const gameplay=resolveGameplay(d);return (filter === 'all' || d.kind === filter) && (levelFilter==='all'||(d.levels||[]).includes(levelFilter)) && (gameplayFilter==='all'||gameplay.role===gameplayFilter) && `${d.name} ${d.id} ${gameplay.role} ${gameplay.tags.join(' ')}`.toLowerCase().includes(query);});
   $('#assetCount').textContent = `${definitions.length}/${Object.keys(doc.definitions).length}`;
   $('#deleteAssetBtn').disabled=!doc.definitions[selectedDef];
   for (const definition of definitions) {
     const node = element('button', container, null, `asset-card${selectedDef === definition.id ? ' selected' : ''}`);
-    node.title = `${definition.name} · ${definition.physics.calibration}`;
+    const gameplay=resolveGameplay(definition);node.title = `${definition.name} · ${definition.physics.calibration} · ${gameplay.role} ${gameplay.tags.join(', ')}`;
     const canvas = element('canvas', node); canvas.width = 100; canvas.height = 60;
     element('div', node, definition.name); drawThumbnail(canvas, doc, definition.id, images);
+    if(gameplay.role!=='none')element('small',node,GAMEPLAY_ROLES.find(([role])=>role===gameplay.role)?.[1]||gameplay.role,'gameplay-badge');
     node.onclick = () => { selectedDef = definition.id; setMode('place'); renderPalette(); renderInspector(); };
   }
   container.parentElement.scrollTop = scroll;
@@ -180,6 +185,7 @@ function renderDefinition(parent, definition) {
   button(parent,'Delete asset',()=>deleteSelectedAsset(definition.id),'danger');
   field(parent, 'Definition name', definition.name, value => editDefinition(d => { d.name = value; }));
   field(parent,'Level tags',(definition.levels||[]).join(', '),value=>editDefinition(d=>{d.levels=[...new Set(value.split(',').map(s=>s.trim()).filter(Boolean))];}));
+  const gameplay=section(parent,'Gameplay defaults');renderGameplayControls(gameplay,{definition,onChange:value=>editDefinition(d=>{d.gameplay=value;})});
   field(parent,'Asset role',definition.kind,value=>editDefinition(d=>{
     d.kind=value;
     if(value==='platform')d.behavior={type:'static'};
@@ -229,6 +235,7 @@ function renderPlacement(parent, placement) {
   element('h3', parent, definition.name); element('p', parent, placement.id, 'muted');
   for (const [key, label] of [['x','X'],['y','Y'],['width','Width'],['height','Height'],['rotation','Rotation degrees'],['layer','Layer']]) field(parent, label, placement[key], value => editPlacement(p => { p[key] = value; }), { type: 'number' });
   field(parent, 'Flip horizontally', placement.flipX, value => editPlacement(p => { p.flipX = value; }), { type: 'checkbox' });
+  const gameplay=section(parent,'Gameplay tags');renderGameplayControls(gameplay,{definition,placement,onChange:value=>editPlacement(p=>{p.gameplay=value;})});
   const area = section(parent, 'Placement behavior');
   const number = (label, key, fallback) => field(area, label, behavior[key] ?? fallback, value => editPlacement(p => { p.settings[key] = value; }), { type: 'number' });
   const activeMotion=behavior.motion===undefined?(behavior.type==='moving'?behavior:null):behavior.motion;
@@ -244,6 +251,9 @@ function renderPlacement(parent, placement) {
     if(behavior.vanish){
       const vanish=behavior.vanish;
       field(area,'Vanish countdown seconds',vanish.countdownMs/1000,value=>{triggerTimes.delete(placement.id);editPlacement(p=>{p.settings.vanish={...vanish,countdownMs:value*1000};});},{type:'number'});
+      const restoreMode=vanish.restoreMode||'respawn';
+      field(area,'After vanishing',restoreMode,value=>{triggerTimes.delete(placement.id);editPlacement(p=>{p.settings.vanish={...vanish,restoreMode:value,...(value==='timed'?{restoreMs:vanish.restoreMs||2000}:{})};});},{choices:[['respawn','Restore on respawn'],['timed','Restore after delay'],['permanent','Gone until Restart']]});
+      if(restoreMode==='timed')field(area,'Restore delay seconds',(vanish.restoreMs||2000)/1000,value=>{triggerTimes.delete(placement.id);editPlacement(p=>{p.settings.vanish={...vanish,restoreMs:value*1000};});},{type:'number'});
       const trigger=section(area,'Trigger volume');
       ['X','Y','Width','Height'].forEach((label,index)=>field(trigger,`Trigger ${label} pixels`,vanish.triggerVolume[index]*(index%2?placement.height:placement.width),value=>editPlacement(p=>{
         const rect=[...vanish.triggerVolume];rect[index]=value/(index%2?p.height:p.width);p.settings.vanish={...vanish,triggerVolume:rect};
@@ -252,7 +262,7 @@ function renderPlacement(parent, placement) {
       element('p',trigger,'Blue box moves and rotates with this placement. Drag its center or corners to edit. Coordinates are relative to the platform.','muted');
       button(area,'Simulate trigger entry',()=>{triggerTimes.set(placement.id,timeMs);playing=true;lastFrame=0;$('#playBtn').textContent='Pause';});
       element('p',area,'Waiting for trigger entry','muted').id='vanishStatus';
-      element('p',area,'The preview keeps it vanished until Reset. Trigger simulation is not saved in the level.','muted');
+      element('p',area,'Timed platforms return automatically and also reset on respawn. Permanent platforms stay gone across deaths until Restart. Reset restores all platforms in this editor preview.','muted');
     }
   }
   if (definition.kind === 'beam') {
@@ -330,7 +340,7 @@ function render() {
 }
 function duplicate() {
   const originals=selectedPlacements();if(!originals.length)return;
-  change(project=>{const ids=new Map(originals.map(p=>[p.id,crypto.randomUUID()])),copies=originals.map(p=>{const copy=clone(p);copy.id=ids.get(p.id);copy.x+=Number($('#snap').value)||16;if(ids.has(copy.settings.supportId))copy.settings.supportId=ids.get(copy.settings.supportId);return copy;});project.placements.push(...copies);selectOnly(null);for(const p of copies)selectedIds.add(p.id);selectedId=copies.at(-1).id;});
+  change(project=>{const ids=new Map(originals.map(p=>[p.id,crypto.randomUUID()])),copies=originals.map(p=>{const copy=clone(p);copy.id=ids.get(p.id);copy.x+=Number($('#snap').value)||5;if(ids.has(copy.settings.supportId))copy.settings.supportId=ids.get(copy.settings.supportId);return copy;});project.placements.push(...copies);selectOnly(null);for(const p of copies)selectedIds.add(p.id);selectedId=copies.at(-1).id;});
 }
 function deleteSelectedAsset(id=selectedDef){
   const definition=doc.definitions[id];if(!definition){toast('Choose an asset first.');return;}
@@ -448,8 +458,10 @@ function bind() {
   $('#assetSearch').oninput = renderPalette;
   $('#deleteAssetBtn').onclick=()=>deleteSelectedAsset();
   $('#levelFilter').onchange=event=>{levelFilter=event.target.value;renderPalette();};
+  const gameplaySelect=$('#gameplayFilter');gameplaySelect.replaceChildren(new Option('All gameplay roles','all'),...GAMEPLAY_ROLES.map(([value,label])=>new Option(label,value)));gameplaySelect.onchange=event=>{gameplayFilter=event.target.value;renderPalette();};
   $('#newBtn').onclick = () => { doc = createDocument(doc); history = new History(doc); selectOnly(null); selectedDef = null; playing = true; resetPreview(); editingTrigger=false; view = { x: -32, y: -32, zoom: 1 }; render(); save(); };
   $('#importJson').onchange = e => { if (e.target.files[0]) importProject(e.target.files[0]); }; $('#exportBtn').onclick = exportProject;
+  $('#playtestBtn').onclick=async()=>{try{await pendingSave;await writeStored({playtest:clone(doc)});location.href='viewer.html?source=draft';}catch(error){toast(`Playtest could not open: ${error.message}`,true);}};
   $('#tilesetManifest').onchange = ()=>{$('#importMode').value='manifest';updateImportControls();}; $('#tilesetImage').onchange = updateImportControls; $('#importTilesetBtn').onclick = importTileset;$('#importMode').onchange=updateImportControls;
   $('#characterImage').onchange=updateCharacterControls;$('#characterManifest').onchange=updateCharacterControls;$('#characterMethod').onchange=updateCharacterControls;$('#importCharacterBtn').onclick=importCharacters;
   $('#saveMetadataBtn').onclick=saveAssetMetadata;$('#importMetadata').onchange=e=>{if(e.target.files[0])loadAssetMetadata(e.target.files[0]);};

@@ -1,5 +1,6 @@
 export const DOCUMENT_FORMAT = 'not-marios-world-level';
 export const DOCUMENT_VERSION = 2;
+import { GAMEPLAY_ROLES, resolveGameplay } from './gameplay.js';
 export const clone = value => JSON.parse(JSON.stringify(value));
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const finite = value => typeof value === 'number' && Number.isFinite(value);
@@ -35,6 +36,7 @@ export function resolvePlacement(document, placement) {
     x: placement.x, y: placement.y, width: placement.width, height: placement.height,
     layer: placement.layer, flipX: !!placement.flipX, rotation: Number.isFinite(placement.rotation) ? placement.rotation : 0,
     animation: placement.animation || definition.visual.defaultAnimation || null,
+    gameplay: resolveGameplay(definition, placement),
   };
 }
 
@@ -57,6 +59,7 @@ export function validateDocument(document) {
       if (!finite(document.world[key]) || document.world[key] < 1 || document.world[key] > limit) error(`world.${key}`, `must be between 1 and ${limit} logical pixels`);
     }
     if (!/^#[0-9a-f]{6}$/i.test(document.world.backgroundColor)) error('world.backgroundColor', 'must be a six-digit hex color');
+    if(document.world.spawn!=null&&(!object(document.world.spawn)||!['x','y'].every(key=>finite(document.world.spawn[key])&&Math.abs(document.world.spawn[key])<=2000000)))error('world.spawn','must contain finite x/y coordinates in logical pixels');
   }
   for (const key of ['assets', 'definitions']) if (!object(document[key])) error(key, 'must be an object');
   if (!Array.isArray(document.placements)) error('placements', 'must be an array');
@@ -117,9 +120,26 @@ export function validateDocument(document) {
       else {
         rect(value.vanish.triggerVolume, `${path}.vanish.triggerVolume`);
         if (!finite(value.vanish.countdownMs) || value.vanish.countdownMs < 0 || value.vanish.countdownMs > 3600000) error(`${path}.vanish.countdownMs`, 'must be between 0 and 3600000 milliseconds');
+        if (value.vanish.restoreMode != null && !['respawn', 'timed', 'permanent'].includes(value.vanish.restoreMode)) error(`${path}.vanish.restoreMode`, 'must be respawn, timed, or permanent');
+        if (value.vanish.restoreMode === 'timed' && (!finite(value.vanish.restoreMs) || value.vanish.restoreMs < 1 || value.vanish.restoreMs > 3600000)) error(`${path}.vanish.restoreMs`, 'must be between 1 and 3600000 milliseconds for timed restore');
       }
     }
     for (const key of ['speed','detectRange','fireIntervalMs','lifetimeMs']) if (value[key] != null && (!finite(value[key]) || value[key] < 0)) error(`${path}.${key}`, 'must be a nonnegative finite number');
+  }
+  function gameplay(value, path) {
+    if (value == null) return;
+    if (!object(value)) { error(path, 'must be an object'); return; }
+    for (const key of ['role', 'tags', 'triggerVolume', 'coinValue', 'order', 'anchor', 'priority', 'targetLevelId', 'chestId', 'decoyKind', 'nonblocking']) if (Object.hasOwn(value, key) && value[key] === null) error(`${path}.${key}`, 'must not be null');
+    if (value.role != null && !GAMEPLAY_ROLES.some(([role]) => role === value.role)) error(`${path}.role`, 'invalid gameplay role');
+    if (value.tags != null && (!Array.isArray(value.tags) || value.tags.length > 100 || value.tags.some(tag => typeof tag !== 'string' || !tag.trim() || tag.length > 100))) error(`${path}.tags`, 'must be an array of nonempty strings');
+    if (value.triggerVolume != null && (!Array.isArray(value.triggerVolume) || value.triggerVolume.length !== 4 || !value.triggerVolume.every(finite) || value.triggerVolume[2] <= 0 || value.triggerVolume[3] <= 0 || value.triggerVolume.some(v => Math.abs(v) > 100))) error(`${path}.triggerVolume`, 'must be a finite normalized rectangle within ±100');
+    if (value.coinValue != null && (!Number.isInteger(value.coinValue) || value.coinValue < 1 || value.coinValue > 1000)) error(`${path}.coinValue`, 'must be an integer between 1 and 1000');
+    if (value.order != null && (!Number.isInteger(value.order) || value.order < 1)) error(`${path}.order`, 'must be a positive integer');
+    if (value.anchor != null && (!Array.isArray(value.anchor) || value.anchor.length !== 2 || !value.anchor.every(finite) || value.anchor.some(v => Math.abs(v) > 100))) error(`${path}.anchor`, 'must be a finite normalized point within ±100');
+    if (value.priority != null && (!Number.isInteger(value.priority) || Math.abs(value.priority) > 1000000)) error(`${path}.priority`, 'must be a bounded integer');
+    for (const key of ['targetLevelId', 'chestId']) if (value[key] != null && (typeof value[key] !== 'string' || !value[key].trim() || value[key].length > 200)) error(`${path}.${key}`, 'must be a nonempty string');
+    if (value.decoyKind != null && !['spikes', 'bomb'].includes(value.decoyKind)) error(`${path}.decoyKind`, 'must be spikes or bomb');
+    if (value.nonblocking != null && typeof value.nonblocking !== 'boolean') error(`${path}.nonblocking`, 'must be a boolean');
   }
   for (const [definitionId, definition] of Object.entries(document.definitions)) {
     const path = `definitions.${definitionId}`;
@@ -156,6 +176,7 @@ export function validateDocument(document) {
     }
     behavior(definition.behavior, `${path}.behavior`);
     if (definition.behavior?.projectileDefinitionId && !document.definitions[definition.behavior.projectileDefinitionId]) error(path, 'projectile definition does not exist');
+    gameplay(definition.gameplay, `${path}.gameplay`);
   }
   const placementIds = new Set();
   for (const [i, placement] of document.placements.entries()) {
@@ -170,6 +191,7 @@ export function validateDocument(document) {
     if (!finite(placement.rotation) || placement.rotation < -360000 || placement.rotation > 360000) error(`${path}.rotation`, 'must be finite and between -360000 and 360000 degrees');
     if (placement.animation && !definition.visual.animations?.[placement.animation]) error(path, 'selected animation does not exist');
     behavior({ ...definition.behavior, ...placement.settings }, `${path}.settings`);
+    gameplay(placement.gameplay, `${path}.gameplay`);
     const supportId = placement.settings?.supportId;
     if (supportId && !document.placements.some(p => p.id === supportId && document.definitions[p.definitionId]?.kind === 'platform')) error(path, 'support platform does not exist');
   }
