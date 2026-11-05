@@ -1,0 +1,906 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:platformer:tileset-manifest:1",
+  "title": "Generic Platformer Tileset Manifest",
+  "description": "A generic, authored description of source art in any platformer tileset. This manifest records atlas measurements and semantic geometry seeds for an editor or generator; it does not define runtime collision, damage, rewards, movement paths, timers, or other gameplay decisions. Runtime validation should check crop bounds, referenced frame IDs, and beam-pair integrity. A null value means unknown or not measured; an empty array means the author has confirmed that the collection is empty. Source crop positions are atlas-local; all other frame geometry is crop-local with X right and Y down. Beam-pair offsets instead align into a common assembly origin and may be negative. Additional semantic/image checks must confirm grid consistency, unique component and pair IDs, shape area/self-intersection, walking-surface endpoint ordering/equal Y for horizontal segments, beam alignment and claimed seamless joins.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "name",
+    "units",
+    "coordinateSystem",
+    "atlas",
+    "frames",
+    "measurement",
+    "beamPairs"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional schema URI or identifier supplied by the authoring tool."
+    },
+    "format": {
+      "const": "platformer-tileset-manifest"
+    },
+    "version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "theme": {
+      "type": "string"
+    },
+    "units": {
+      "const": "source-image-pixels"
+    },
+    "coordinateSystem": {
+      "const": "top-left-x-right-y-down"
+    },
+    "atlas": {
+      "$ref": "#/$defs/atlas"
+    },
+    "frames": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Arbitrary stable frame identifiers with source cuts and measured geometry. sourceRectPx is atlas-local. Every other point, rectangle and surface is local to the source crop; component coordinates also use the parent crop origin. Geometry measurements seed separate reusable editor interpretations and never implicitly replace saved logical collision when an image changes.",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/frame"
+      }
+    },
+    "measurement": {
+      "$ref": "#/$defs/measurement"
+    },
+    "beamPairs": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/beamPair"
+          },
+          "uniqueItems": true
+        }
+      ],
+      "description": "Known off/on beam correspondences, or null when pair measurement is unknown. An empty array is a confirmed absence of pairs."
+    }
+  },
+  "$defs": {
+    "positiveInt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "nonNegativeInt": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nonNegativeNumber": {
+      "type": "number",
+      "minimum": 0
+    },
+    "signedInt": {
+      "type": "integer"
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "$ref": "#/$defs/signedInt"
+        },
+        "y": {
+          "$ref": "#/$defs/signedInt"
+        }
+      },
+      "description": "Signed source-pixel offset into a common beam assembly coordinate system. Frame-local geometry uses nonNegativePoint instead."
+    },
+    "nonNegativePoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "y": {
+          "$ref": "#/$defs/nonNegativeInt"
+        }
+      }
+    },
+    "rectangle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "properties": {
+        "x": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "y": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "w": {
+          "$ref": "#/$defs/positiveInt"
+        },
+        "h": {
+          "$ref": "#/$defs/positiveInt"
+        }
+      },
+      "description": "A crop-local rectangle unless explicitly documented otherwise. Source rectangles are atlas-local."
+    },
+    "nullableRectangle": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/rectangle"
+        }
+      ]
+    },
+    "nullablePoint": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/nonNegativePoint"
+        }
+      ]
+    },
+    "sourceRectangle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "properties": {
+        "x": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "y": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "w": {
+          "$ref": "#/$defs/positiveInt"
+        },
+        "h": {
+          "$ref": "#/$defs/positiveInt"
+        }
+      },
+      "description": "Atlas-local crop in source-image pixels. The runtime must verify that it lies within atlas width and height."
+    },
+    "atlas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "image",
+        "width",
+        "height",
+        "transparent",
+        "layout",
+        "rendering"
+      ],
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Arbitrary filename or relative path to the source image."
+        },
+        "width": {
+          "$ref": "#/$defs/positiveInt"
+        },
+        "height": {
+          "$ref": "#/$defs/positiveInt"
+        },
+        "transparent": {
+          "type": "boolean"
+        },
+        "layout": {
+          "enum": [
+            "grid",
+            "irregular",
+            "mixed"
+          ]
+        },
+        "grid": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/grid"
+            }
+          ],
+          "description": "Grid metadata when known; required when layout is grid."
+        },
+        "rendering": {
+          "$ref": "#/$defs/rendering"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "layout": {
+                "const": "grid"
+              }
+            },
+            "required": [
+              "layout"
+            ]
+          },
+          "then": {
+            "required": [
+              "grid"
+            ],
+            "properties": {
+              "grid": {
+                "$ref": "#/$defs/grid"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "grid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "columns",
+        "rows",
+        "cellWidthPx",
+        "cellHeightPx",
+        "paddingPx",
+        "spacingPx"
+      ],
+      "properties": {
+        "columns": {
+          "$ref": "#/$defs/positiveInt"
+        },
+        "rows": {
+          "$ref": "#/$defs/positiveInt"
+        },
+        "cellWidthPx": {
+          "$ref": "#/$defs/positiveInt"
+        },
+        "cellHeightPx": {
+          "$ref": "#/$defs/positiveInt"
+        },
+        "paddingPx": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "spacingPx": {
+          "$ref": "#/$defs/nonNegativeInt"
+        }
+      }
+    },
+    "rendering": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filter",
+        "defaultFacing"
+      ],
+      "properties": {
+        "filter": {
+          "enum": [
+            "nearest",
+            "linear"
+          ]
+        },
+        "defaultFacing": {
+          "enum": [
+            "right",
+            "left",
+            "not_applicable"
+          ]
+        }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "notes"
+      ],
+      "properties": {
+        "method": {
+          "enum": [
+            "manual_pixel_measurement",
+            "image_analysis",
+            "ai_estimate",
+            "mixed"
+          ]
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "measurementStatus": {
+      "type": "string",
+      "enum": [
+        "measured",
+        "estimated",
+        "unresolved"
+      ]
+    },
+    "shape": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/rectShape"
+        },
+        {
+          "$ref": "#/$defs/polygonShape"
+        }
+      ],
+      "description": "Crop-local geometry seed. It is not a runtime collision or damage rule."
+    },
+    "rectShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "rectPx"
+      ],
+      "properties": {
+        "kind": {
+          "const": "rect"
+        },
+        "rectPx": {
+          "$ref": "#/$defs/rectangle"
+        }
+      }
+    },
+    "polygonShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "pointsPx"
+      ],
+      "properties": {
+        "kind": {
+          "const": "polygon"
+        },
+        "pointsPx": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/point"
+          }
+        }
+      },
+      "description": "Polygon points are crop-local. The editor should reject degenerate or self-intersecting polygons."
+    },
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "x1",
+        "y1",
+        "x2",
+        "y2"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "horizontal",
+            "slope"
+          ]
+        },
+        "x1": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "y1": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "x2": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "y2": {
+          "$ref": "#/$defs/nonNegativeInt"
+        }
+      },
+      "description": "Crop-local surface segment. Semantic checks should enforce endpoint order; horizontal requires y1 equal y2, and a usable segment requires distinct endpoints."
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "boundsPx",
+        "pivotPx",
+        "role",
+        "notes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "boundsPx": {
+          "$ref": "#/$defs/nullableRectangle"
+        },
+        "pivotPx": {
+          "$ref": "#/$defs/nullablePoint"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Optional crop-local authored subcomponent. Component coordinates are relative to the parent crop; IDs are not auto-generated split-crop IDs."
+    },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "category",
+        "sourceRectPx",
+        "measurementStatus",
+        "notes",
+        "contentBoundsPx",
+        "pivotPx",
+        "anchorRole",
+        "walkSurfacesPx",
+        "solidShapesPx",
+        "hazardShapesPx",
+        "interactionShapesPx",
+        "components"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "enum": [
+            "platform",
+            "chest",
+            "prop",
+            "hazard",
+            "beam",
+            "background",
+            "foliage",
+            "overhang"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "sourceRectPx": {
+          "$ref": "#/$defs/sourceRectangle"
+        },
+        "measurementStatus": {
+          "$ref": "#/$defs/measurementStatus"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contentBoundsPx": {
+          "$ref": "#/$defs/nullableRectangle"
+        },
+        "pivotPx": {
+          "$ref": "#/$defs/nullablePoint"
+        },
+        "anchorRole": {
+          "enum": [
+            "walking_surface",
+            "ground",
+            "ceiling",
+            "center",
+            "custom",
+            "unresolved"
+          ]
+        },
+        "walkSurfacesPx": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/surface"
+              }
+            }
+          ]
+        },
+        "solidShapesPx": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/shape"
+              }
+            }
+          ]
+        },
+        "hazardShapesPx": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/shape"
+              }
+            }
+          ]
+        },
+        "interactionShapesPx": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/shape"
+              }
+            }
+          ]
+        },
+        "components": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/component"
+              },
+              "uniqueItems": true
+            }
+          ]
+        },
+        "terrain": {
+          "$ref": "#/$defs/terrain"
+        },
+        "background": {
+          "$ref": "#/$defs/background"
+        },
+        "beam": {
+          "$ref": "#/$defs/beam"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "const": "platform"
+              }
+            },
+            "required": [
+              "category"
+            ]
+          },
+          "then": {
+            "required": [
+              "terrain"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "const": "background"
+              }
+            },
+            "required": [
+              "category"
+            ]
+          },
+          "then": {
+            "required": [
+              "background"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "const": "beam"
+              }
+            },
+            "required": [
+              "category"
+            ]
+          },
+          "then": {
+            "required": [
+              "beam"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "const": "beam"
+              },
+              "beam": {
+                "properties": {
+                  "state": {
+                    "const": "off"
+                  }
+                },
+                "required": [
+                  "state"
+                ]
+              }
+            },
+            "required": [
+              "category",
+              "beam"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hazardShapesPx": {
+                "const": []
+              }
+            }
+          }
+        }
+      ],
+      "description": "One authored crop and its measured semantic geometry seeds. Estimated or unresolved fields must be explained in notes; do not invent precise measurements."
+    },
+    "seamStatus": {
+      "enum": [
+        "verified_seamless",
+        "not_seamless",
+        "unverified"
+      ]
+    },
+    "terrain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repeatX",
+        "leftJoinPx",
+        "rightJoinPx",
+        "leftCapPx",
+        "repeatRegionPx",
+        "rightCapPx",
+        "compatibleLeftFrameIds",
+        "compatibleRightFrameIds"
+      ],
+      "properties": {
+        "repeatX": {
+          "$ref": "#/$defs/seamStatus"
+        },
+        "leftJoinPx": {
+          "$ref": "#/$defs/nullablePoint"
+        },
+        "rightJoinPx": {
+          "$ref": "#/$defs/nullablePoint"
+        },
+        "leftCapPx": {
+          "$ref": "#/$defs/nullableRectangle"
+        },
+        "repeatRegionPx": {
+          "$ref": "#/$defs/nullableRectangle"
+        },
+        "rightCapPx": {
+          "$ref": "#/$defs/nullableRectangle"
+        },
+        "compatibleLeftFrameIds": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          ]
+        },
+        "compatibleRightFrameIds": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          ]
+        }
+      }
+    },
+    "background": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repeatX",
+        "repeatY",
+        "horizonYPx",
+        "groundYPx",
+        "composition"
+      ],
+      "properties": {
+        "repeatX": {
+          "$ref": "#/$defs/seamStatus"
+        },
+        "repeatY": {
+          "$ref": "#/$defs/seamStatus"
+        },
+        "horizonYPx": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/nonNegativeNumber"
+            }
+          ]
+        },
+        "groundYPx": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/nonNegativeNumber"
+            }
+          ]
+        },
+        "composition": {
+          "enum": [
+            "opaque_scene",
+            "transparent_layer",
+            "mixed",
+            "unresolved"
+          ]
+        }
+      }
+    },
+    "beam": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "topEmitterPx",
+        "bottomReceiverPx",
+        "corePx",
+        "repeatCorePx",
+        "topMountPx",
+        "bottomMountPx",
+        "coreRepeatY"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "on",
+            "off"
+          ]
+        },
+        "topEmitterPx": {
+          "$ref": "#/$defs/nullableRectangle"
+        },
+        "bottomReceiverPx": {
+          "$ref": "#/$defs/nullableRectangle"
+        },
+        "corePx": {
+          "$ref": "#/$defs/nullableRectangle"
+        },
+        "repeatCorePx": {
+          "$ref": "#/$defs/nullableRectangle"
+        },
+        "topMountPx": {
+          "$ref": "#/$defs/nullablePoint"
+        },
+        "bottomMountPx": {
+          "$ref": "#/$defs/nullablePoint"
+        },
+        "coreRepeatY": {
+          "$ref": "#/$defs/seamStatus"
+        }
+      },
+      "description": "Beam geometry is descriptive. An on-frame core depicts energy; it must not be interpreted as a damaging cap without a separate placement decision."
+    },
+    "beamPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "offFrameId",
+        "onFrameId",
+        "offOffsetPx",
+        "onOffsetPx",
+        "measurementStatus",
+        "notes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "offFrameId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "onFrameId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "offOffsetPx": {
+          "$ref": "#/$defs/point"
+        },
+        "onOffsetPx": {
+          "$ref": "#/$defs/point"
+        },
+        "measurementStatus": {
+          "$ref": "#/$defs/measurementStatus"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "References are arbitrary frame IDs and should be checked against the root frames map by the runtime."
+    }
+  }
+}

@@ -1,7 +1,7 @@
 {
   "format": "whimsical-overgrowth-forest-sprite-atlas/v1",
   "theme": "Whimsical Overgrowth Forest",
-  "asset": "whimsical-overgrowth-forest-enemies.png",
+  "asset": "creatures.png",
   "coordinate_system": "top-left (0,0), x right, y down",
   "pixel_units": "source image pixels",
   "transparent": true,

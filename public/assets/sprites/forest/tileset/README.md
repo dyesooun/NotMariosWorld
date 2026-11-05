@@ -6,9 +6,8 @@ Pixel-art environment atlas for a 2D side-scrolling platformer. The sheet contai
 
 | File | Intended use |
 | --- | --- |
-| `whimsical_overgrown_forest_tileset_atlas.png` | **Existing source RGBA atlas**, **1254 × 1254 px**; keep it in the sprite asset folder alongside these docs. It is not modified or bundled in this documentation-only ZIP. |
-| `manifest.txt` | UTF-8 **JSON** with explicit crop rectangles, sprite names, placement/collision hints and beam behavior; parse as JSON. |
-| `manifest.json` | Identical copy for code/import pipelines requiring `.json`. |
+| `tileset.png` | **Source RGBA atlas**, **1254 × 1254 px**, stored alongside these docs. |
+| `manifest.json` | UTF-8 **JSON** with explicit crop rectangles, sprite names, placement/collision hints and beam behavior. |
 | `README.md` | This integration guide and category index. |
 
 ## Atlas layout (irregular rectangular bands)
@@ -108,10 +107,10 @@ Four wide scenic strips are listed in `parallax_layers[]`. Render **behind** the
 ```js
 // Existing image location; change if your project uses another path.
 const atlas = new Image();
-atlas.src = '/assets/sprites/forest/whimsical_overgrown_forest_tileset_atlas.png';
+atlas.src = '/assets/sprites/forest/tileset/tileset.png';
 
 // Load `manifest.json` with your bundler or fetch it from the assets directory:
-const manifest = await (await fetch('/assets/sprites/forest/manifest.json')).json();
+const manifest = await (await fetch('/assets/sprites/forest/tileset/manifest.json')).json();
 
 function drawSprite(ctx, frameId, x, y, scale = 1) {
   const f = manifest.frames[frameId];
@@ -151,7 +150,7 @@ The example demonstrates the timer only; the actual actor should own collider st
 
 ## Integration checklist for Codex
 
-1. Copy the existing atlas and generated `manifest.json` to `/public/assets/sprites/forest/` (or change the URL in your loader).
+1. Load the atlas and `manifest.json` from `/assets/sprites/forest/tileset/` (or change the URLs in your loader).
 2. Verify `atlas.width === 1254`, `atlas.height === 1254`, and that every `frames` crop is inside bounds.
 3. Register **all 170 explicit rectangles**, grouped via `tile_groups`; do not infer coordinates from an assumed uniform tile size.
 4. Keep cropped regions untrimmed. Choose each sprite's placement anchor from `frames[*].anchor` if your engine supports it.
@@ -167,3 +166,9 @@ The example demonstrates the timer only; the actual actor should own collider st
 - Some mapped cells contain multiple visual elements; do not use alpha-based autodetection to split or trim them.
 - No terrain joins are guaranteed tileable; colliders and terrain topology must be defined in code or level data.
 - There are **no creature or projectile assets** in these files.
+
+## Generic generation schema
+
+The reusable tileset generation contract is [`../../schema.json`](../../schema.json), with instructions in [`../../README.md`](../../README.md). It supports arbitrary tileset images, dimensions, frame IDs, and frame counts. It does not embed this forest manifest or define creature data.
+
+Use the existing PNG and manifest as references when generating a new manifest with measured geometry. The current manifest retains its original format; it has not been converted to the generic schema. Runtime interpretation and level placement remain separate from source-art metadata.

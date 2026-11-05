@@ -6,10 +6,8 @@ Pixel-art enemy sprite pack for a 2D side-scrolling platformer. Inspired by the 
 
 | File | Intended use |
 | --- | --- |
-| `whimsical-overgrowth-forest-enemies.png` | **Production RGBA atlas**, transparent background, **1536 × 1280 px** |
-| `manifest.txt` | UTF-8 JSON manifest with explicit frame rectangles, sequences, and game-behavior hints; parse it as JSON |
-| `manifest.json` | Identical copy for code/import pipelines requiring `.json` |
-| `whimsical-overgrowth-forest-enemies-preview.png` | Optional checkerboard preview only; **not** a source for cropping |
+| `creatures.png` | **Production RGBA atlas**, transparent background, **1536 × 1280 px** |
+| `manifest.json` | UTF-8 JSON manifest with explicit frame rectangles, sequences, and game-behavior hints |
 
 ## Atlas layout (fixed grid)
 
@@ -77,7 +75,7 @@ Each enemy also has a single-frame `hurt` animation (column 6) and `death` anima
 import manifest from './manifest.json' with { type: 'json' };
 
 const atlas = new Image();
-atlas.src = '/assets/sprites/forest/whimsical-overgrowth-forest-enemies.png';
+atlas.src = '/assets/sprites/forest/creatures/creatures.png';
 
 function drawFrame(ctx, frameId, x, y, scale = 1) {
   const f = manifest.frames[frameId];
@@ -95,7 +93,7 @@ To draw around a world-space pivot `(px, py)`, compute the top-left as `x = px -
 
 ## Integration checklist
 
-1. Copy the PNG into your game's assets; load `manifest.json` or parse `manifest.txt` as JSON.
+1. Load the PNG from `/assets/sprites/forest/creatures/creatures.png` and its manifest from `/assets/sprites/forest/creatures/manifest.json`.
 2. Register **40 exact rectangles** from `frames[*]`, never using sprite-content detection.
 3. Register all `enemies[*].animations` and `projectiles[*].animations` with their listed frame IDs, FPS, and loop flags.
 4. Keep a constant per-entity pivot during animation; never re-center individual source frames based on trim.
@@ -108,5 +106,5 @@ To draw around a world-space pivot `(px, py)`, compute the top-left as `x = px -
 
 - Collision boxes and pivots are **recommended first estimates**, not measured physics guarantees.
 - These illustrated frames are visually coordinated, but **not guaranteed** perfectly seamless between every pose.
-- Image background is transparent (RGBA). The preview uses a checkerboard purely for inspection.
+- Image background is transparent (RGBA).
 - Keep the 192 × 256 source rectangle untrimmed in game unless offsets are maintained; optional `trim` is `[left, top, right_exclusive, bottom_exclusive]` within one cell.

@@ -1,7 +1,7 @@
 {
   "format": "whimsical-overgrowth-forest-tileset-atlas/v1",
   "theme": "Whimsical Overgrowth Forest",
-  "asset": "whimsical_overgrown_forest_tileset_atlas.png",
+  "asset": "tileset.png",
   "coordinate_system": "top-left (0,0), x right, y down",
   "pixel_units": "source image pixels",
   "transparent": true,
