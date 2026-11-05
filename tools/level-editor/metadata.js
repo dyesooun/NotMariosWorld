@@ -4,6 +4,17 @@ import { validateTilesetManifest } from './manifest-validation.js';
 const BAD = new Set(['__proto__', 'prototype', 'constructor']);
 const finite = n => typeof n === 'number' && Number.isFinite(n);
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+export function deleteAssetDefinition(doc,definitionId){
+  const definition=doc.definitions[definitionId];if(!definition)throw new Error('Choose an existing asset.');
+  const removedPlacements=new Set(doc.placements.filter(p=>p.definitionId===definitionId).map(p=>p.id));
+  doc.placements=doc.placements.filter(p=>!removedPlacements.has(p.id));
+  delete doc.definitions[definitionId];
+  for(const d of Object.values(doc.definitions))if(d.behavior?.projectileDefinitionId===definitionId)delete d.behavior.projectileDefinitionId;
+  for(const p of doc.placements){if(removedPlacements.has(p.settings?.supportId))delete p.settings.supportId;if(p.settings?.projectileDefinitionId===definitionId)delete p.settings.projectileDefinitionId;}
+  const assetId=definition.visual.assetId;
+  if(!Object.values(doc.definitions).some(d=>d.visual.assetId===assetId))delete doc.assets[assetId];
+  return doc;
+}
 function safe(value, path = '$') {
   if (!value || typeof value !== 'object') return;
   for (const k of Object.keys(value)) { if (BAD.has(k)) throw new Error(`${path}.${k}: unsafe key`); safe(value[k], `${path}.${k}`); }

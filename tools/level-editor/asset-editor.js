@@ -3,15 +3,15 @@ import { estimateFrameGeometry } from './atlas-analysis.js';
 import { readAtlasPixels } from './auto-tileset.js';
 import { getTransformHandles,hitTestHandles,resizePlacement } from './transforms.js';
 
-export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelectDefinition,onExportManifest,onExportLibrary}) {
+export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelectDefinition,onExportLibrary,onAcceptImport,onCancelImport,onEditSequences}) {
   const dialog=document.createElement('dialog');dialog.className='asset-editor';dialog.setAttribute('aria-label','Shared asset metadata editor');document.body.append(dialog);
-  const header=node('div',dialog,null,'asset-editor-header');node('strong',header,'Shared asset metadata');
-  action(header,'Save metadata',onExportLibrary);action(header,'Export tileset manifest',()=>onExportManifest(assetId));action(header,'Close',()=>dialog.close());
+  const header=node('div',dialog,null,'asset-editor-header');const title=node('strong',header,'Shared asset metadata');
+  const saveButton=action(header,'Save metadata',onExportLibrary);const doneImport=action(header,'Done importing',()=>{importAccepted=true;onAcceptImport?.();dialog.close();});doneImport.hidden=true;action(header,'Close',()=>dialog.close());
   node('p',dialog,'Cuts and geometry are shared: correcting them updates every placement using this asset. Placement move, size and rotation remain independent.','hint');
   const controls=node('div',dialog,null,'asset-editor-controls'),tools=node('div',dialog,null,'asset-editor-tools');
   const canvas=node('canvas',dialog);canvas.tabIndex=0;canvas.setAttribute('aria-label','Asset metadata canvas');const ctx=canvas.getContext('2d');
   const footer=node('div',dialog,null,'asset-editor-footer'),status=node('p',dialog,'','hint');
-  let assetId,frameId,definitionId,mode='cuts',adding=false,gesture=null,draft=null,view={x:0,y:0,zoom:1},space=false;
+  let assetId,frameId,definitionId,mode='cuts',adding=false,gesture=null,draft=null,view={x:0,y:0,zoom:1},space=false,importing=false,importAccepted=false;
   const cache=new WeakMap();
   function node(tag,parent,text,className){const el=document.createElement(tag);if(text!=null)el.textContent=text;if(className)el.className=className;parent?.append(el);return el;}
   function action(parent,text,callback){const button=node('button',parent,text);button.onclick=callback;return button;}
@@ -58,12 +58,16 @@ export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelec
     if(!definition())definitionId=related(frameId)?.id;
     controls.replaceChildren();tools.replaceChildren();footer.replaceChildren();
     select(controls,'Atlas',Object.values(doc().assets).map(a=>[a.id,a.name]),assetId,value=>{assetId=value;frameId=Object.keys(asset().frames)[0];definitionId=related(frameId)?.id;mode='cuts';adding=false;refresh();fit();});
-    select(controls,'Source frame',Object.entries(asset().frames).map(([id,f])=>[id,`${f.name||f.display_name||id} · ${id}`]),frameId,value=>{frameId=value;definitionId=related(value)?.id;mode='cuts';adding=false;refresh();fit();});
+    const frames=Object.entries(asset().frames); select(controls,'Source frame',frames.map(([id,f])=>[id,`${f.name||f.display_name||id} · ${id}`]),frameId,value=>{frameId=value;definitionId=related(value)?.id;mode='cuts';adding=false;refresh();fit();});
+    const nav=node('div',controls,null,'asset-frame-nav'),index=Math.max(0,frames.findIndex(([id])=>id===frameId));
+    const prev=action(nav,'Prev frame',()=>{if(index>0){frameId=frames[index-1][0];definitionId=related(frameId)?.id;refresh();fit();}}),next=action(nav,'Next frame',()=>{if(index<frames.length-1){frameId=frames[index+1][0];definitionId=related(frameId)?.id;refresh();fit();}});prev.disabled=index<=0;next.disabled=index>=frames.length-1;
+    const list=node('div',nav,null,'asset-frame-list');list.setAttribute('role','listbox');for(const[id,f]of frames){const b=action(list,`${f.name||id} · ${id}`,()=>{frameId=id;definitionId=related(id)?.id;refresh();fit();});b.setAttribute('role','option');b.setAttribute('aria-selected',String(id===frameId));if(id===frameId)b.classList.add('selected');}
     select(controls,'Edit mode',[['cuts','Atlas cuts'],['body','Body collision'],['damage','Damage hitbox'],['interaction','Interaction trigger']],mode,value=>{
       if(value!=='cuts'&&!definition()){onMessage('This frame has no reusable definition.',true);return;}
       mode=value;adding=false;if(mode!=='cuts')frameId=definition().visual.frameId;refresh();fit();
     });
     action(tools,'Fit',fit);action(tools,'Zoom in',()=>{view.zoom=Math.min(12,view.zoom*1.4);draw();});action(tools,'Zoom out',()=>{view.zoom=Math.max(.02,view.zoom/1.4);draw();});
+    if(definition()?.visual.animations||definition()?.kind==='character')action(tools,'States and sequences',()=>onEditSequences?.(definitionId));
     if(mode==='cuts'){
       const add=action(tools,adding?'Draw the new cut…':'Add cut (drag)',()=>{adding=!adding;add.textContent=adding?'Draw the new cut…':'Add cut (drag)';});
       action(tools,'Remove unused cut',()=>{if(change(project=>removeSourceFrame(project,assetId,frameId))){frameId=Object.keys(asset().frames)[0];definitionId=related(frameId)?.id;refresh();draw();}});
@@ -78,6 +82,7 @@ export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelec
           if(!r){onMessage('No visible pixels found in this cut.',true);return;}
           if(change(project=>{
             setDefinitionGeometry(project,definitionId,mode,[r.x/f.w,r.y/f.h,r.w/f.w,r.h/f.h]);
+            project.definitions[definitionId].physics.calibration='estimated';
             const target=project.assets[assetId].frames[frameId];target.contentBoundsPx=estimate.contentBoundsPx;target.pivotPx=estimate.pivotPx;
             if(project.definitions[definitionId].kind==='platform')project.definitions[definitionId].physics.walkSurfaces=estimate.walkSurfacesPx.map(s=>({...s,x1:s.x1/f.w,y1:s.y1/f.h,x2:s.x2/f.w,y2:s.y2/f.h}));
           }))onMessage('Automatic geometry applied to this shared definition. Review and adjust the box.');
@@ -93,6 +98,14 @@ export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelec
       const apply=()=>{try{const value=Object.fromEntries(Object.entries(inputs).map(([k,i])=>[k,Number(i.value)]));commitRect(value);}catch(error){onMessage(error.message,true);refresh();}};
       input.onchange=apply;input.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();apply();}};
     }
+    if(definition()){
+      const d=definition(),meta=node('div',controls,null,'asset-definition-metadata');
+      const name=node('label',meta);node('span',name,'Definition name');const nameInput=node('input',name);nameInput.value=d.name||'';nameInput.onchange=()=>change(project=>{project.definitions[definitionId].name=nameInput.value});
+      select(meta,'Role',[['character','character'],['platform','platform'],['enemy','enemy'],['chest','chest'],['background','background'],['prop','prop'],['beam','beam'],['hazard','hazard'],['projectile','projectile']],d.kind,value=>change(project=>{const pd=project.definitions[definitionId];pd.kind=value;if(value==='beam'){pd.behavior={type:'beam',onMs:1000,offMs:1000,startMs:0,phaseMs:0,startState:'on'};}else if(value!=='enemy')pd.behavior={...pd.behavior,type:'static'};}));
+      const tags=node('label',meta);node('span',tags,'Level tags');const tagInput=node('input',tags);tagInput.value=(d.levels||[]).join(', ');tagInput.onchange=()=>change(project=>{project.definitions[definitionId].levels=tagInput.value.split(',').map(v=>v.trim()).filter(Boolean)});
+      for(const[key,label]of [['width','Default width'],['height','Default height']]){const w=node('label',meta);node('span',w,label);const input=node('input',w);input.type='number';input.min='1';input.value=d.size?.[key]||'';input.onchange=()=>change(project=>{project.definitions[definitionId].size[key]=Math.max(1,Number(input.value)||1)});}
+    }
+    controls.querySelectorAll('input').forEach(input=>{input.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();input.onchange?.();refresh();draw();}};});
     const count=doc().placements.filter(p=>p.definitionId===definitionId).length;
     status.textContent=mode==='cuts'?`Shared source cut. Pixel measurements are cleared after a crop correction; existing logical collision and placed transforms stay intact. ${asset().width} × ${asset().height} source pixels.`:`${definition()?.name||''} · ${count} placed instances share this geometry. Green: body; red: damage. Coordinates shown here are source-crop pixels.`;
   }
@@ -143,9 +156,10 @@ export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelec
   canvas.onwheel=event=>{event.preventDefault();const point=local(event),bounds=canvas.getBoundingClientRect();view.zoom=Math.max(.02,Math.min(20,view.zoom*Math.exp(-event.deltaY*.001)));view.x=point.x-(event.clientX-bounds.left)/view.zoom;view.y=point.y-(event.clientY-bounds.top)/view.zoom;draw();};
   dialog.addEventListener('keydown',event=>{if(event.code==='Space'&&event.target===canvas){space=true;event.preventDefault();}if(event.key==='Escape'){gesture=null;draft=null;dialog.close();}event.stopPropagation();});
   dialog.addEventListener('keyup',event=>{if(event.code==='Space')space=false;event.stopPropagation();});
-  dialog.addEventListener('close',()=>{gesture=null;draft=null;space=false;});
+  dialog.addEventListener('close',()=>{gesture=null;draft=null;space=false;if(importing&&!importAccepted)onCancelImport?.();});
   window.addEventListener('resize',draw);
-  return {open(id){
+  return {open(id,{importing:reviewImport=false}={}){
+    importing=reviewImport;importAccepted=false;title.textContent=importing?'Review imported assets':'Shared asset metadata';doneImport.hidden=!importing;saveButton.hidden=importing;
     const d=doc().definitions[id]||Object.values(doc().definitions)[0];if(!d)return;
     definitionId=d.id;assetId=d.visual.assetId;frameId=d.visual.frameId;mode='cuts';adding=false;gesture=null;draft=null;
     if(!dialog.open)dialog.showModal();refresh();fit();

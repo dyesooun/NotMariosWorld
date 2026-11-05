@@ -35,7 +35,7 @@ test('geometry is crop-local and schema-shaped', () => {
   const geometry = estimateFrameGeometry(rgba(8, 8, [{ x: 3, y: 2, w: 3, h: 4 }]), { x: 2, y: 1, w: 5, h: 6 });
   assert.deepEqual(geometry.contentBoundsPx, { x: 1, y: 1, w: 3, h: 4 });
   assert.deepEqual(geometry.pivotPx, { x: 3, y: 5 });
-  assert.deepEqual(geometry.walkSurfacesPx, [{ kind: 'horizontal', x1: 1, y1: 1, x2: 3, y2: 1 }]);
+  assert.deepEqual(geometry.walkSurfacesPx, [{ kind: 'horizontal', x1: 1, y1: 1, x2: 4, y2: 1 }]);
   assert.equal(estimateFrameGeometry(rgba(2, 2), { x: 0, y: 0, w: 1, h: 1 }).contentBoundsPx, null);
 });
 

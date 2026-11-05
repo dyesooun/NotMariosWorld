@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import {existsSync}from'node:fs';
 import { createTilesetCatalog, adaptLegacyForestTileset } from '../catalog.js';
 import { validateTilesetManifest } from '../manifest-validation.js';
 import { validateSchema } from '../manifest-validation.js';
@@ -40,7 +41,7 @@ test('unknown geometry has estimates while confirmed empty geometry stays empty'
 });
 
 test('new packs reject legacy input and use independent namespaces', async () => {
-  await assert.rejects(createTilesetCatalog({format:'legacy'},'data:image/png;base64,x',{schema}),/generic/);
+  await assert.rejects(createTilesetCatalog({format:'legacy'},'data:image/png;base64,x',{schema}),/Unsupported/);
   const first=await createTilesetCatalog(base,'data:image/png;base64,x',{schema});
   const second=await createTilesetCatalog(base,'data:image/png;base64,x',{schema,existingIds:Object.keys(first.assets)});
   assert.notEqual(Object.keys(first.assets)[0],Object.keys(second.assets)[0]);
@@ -65,7 +66,7 @@ test('validator preserves array order and rejects unsupported future constraints
   assert.ok(validateSchema({}, {type:'object',properties:{unused:{pattern:'x'}}}).some(e=>e.includes('unsupported')));
 });
 
-test('real bundled forest catalog is browser-loadable and exports valid definitions', async () => {
+test('real bundled forest catalog is browser-loadable and exports valid definitions', {skip:!existsSync(new URL('../../../public/assets/sprites/forest/tileset/manifest.json',import.meta.url))}, async () => {
   const originalFetch=globalThis.fetch;
   globalThis.fetch=async url=>({ok:true,json:async()=>JSON.parse(await readFile(new URL('../../../public'+url,import.meta.url),'utf8'))});
   try {

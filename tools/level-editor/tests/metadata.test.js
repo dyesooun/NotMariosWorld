@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createDocument, createPlacement, parseDocument, serializeDocument } from '../document.js';
-import { updateSourceFrame, setDefinitionGeometry, addSourceFrame, removeSourceFrame, exportTilesetManifest, exportAssetLibrary, importAssetLibrary } from '../metadata.js';
+import { createDocument, createPlacement, parseDocument, serializeDocument,validateDocument,History } from '../document.js';
+import { updateSourceFrame, setDefinitionGeometry, addSourceFrame, removeSourceFrame, exportTilesetManifest, exportAssetLibrary, importAssetLibrary,deleteAssetDefinition } from '../metadata.js';
 import { validateTilesetManifest } from '../manifest-validation.js';
 
 const schema = JSON.parse(readFileSync(new URL('../../../public/assets/sprites/schema.json', import.meta.url)));
@@ -14,3 +14,13 @@ test('off beam crop keeps confirmed empty hazard geometry', () => { const d=doc(
 test('new cuts and unused definitions can be removed', () => { const d=doc(); const id=addSourceFrame(d,'atlas',{x:40,y:16,w:12,h:12},{name:'Cut',kind:'prop'}); assert.ok(d.definitions[id]); assert.equal(validateTilesetManifest(exportTilesetManifest(d,'atlas',schema),schema).length,0); removeSourceFrame(d,'atlas','cut-1'); assert.equal(d.definitions[id],undefined); });
 test('asset library roundtrip applies corrected shared definitions to placements', () => { const d=doc(); d.placements.push(createPlacement(d,'floor',1,2),createPlacement(d,'floor',3,4)); setDefinitionGeometry(d,'floor','body',[0,0,.5,1]); const lib=exportAssetLibrary(d,['atlas']); const copy=importAssetLibrary(doc(),lib,schema); assert.deepEqual(copy.definitions.floor.physics, d.definitions.floor.physics); assert.equal(copy.placements.length,0); });
 test('version one documents migrate while preserving fields and IDs', () => { const d=doc(); const p=createPlacement(d,'floor',4,5); p.settings={phaseMs:9}; d.placements.push(p); const raw=JSON.parse(serializeDocument(d)); raw.version=1; delete raw.placements[0].rotation; const migrated=parseDocument(JSON.stringify(raw)); assert.equal(migrated.version,2); assert.equal(migrated.placements[0].rotation,0); assert.equal(migrated.placements[0].id,p.id); assert.equal(migrated.placements[0].settings.phaseMs,9); });
+
+test('deleting a shared asset removes its placements and broken support links with undo',()=>{
+  const d=doc(),floor=createPlacement(d,'floor',20,40),other=createPlacement(d,'off',60,40);
+  other.settings.supportId=floor.id;d.placements.push(floor,other);const history=new History(d);
+  deleteAssetDefinition(d,'floor');history.commit(d);
+  assert.equal(d.definitions.floor,undefined);assert.equal(d.placements.length,1);assert.equal(other.settings.supportId,undefined);
+  assert.ok(d.assets.atlas);assert.deepEqual(validateDocument(d),[]);
+  const restored=history.undo();assert.ok(restored.definitions.floor);assert.equal(restored.placements.length,2);
+  deleteAssetDefinition(d,'off');assert.deepEqual(d.assets,{});assert.deepEqual(exportAssetLibrary(d).definitions,{});
+});

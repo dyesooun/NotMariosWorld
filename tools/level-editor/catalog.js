@@ -1,6 +1,5 @@
 import { validateTilesetManifest } from './manifest-validation.js';
 
-let schemaPromise;
 const clone = value => JSON.parse(JSON.stringify(value));
 const slug = value => String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'tileset';
 async function json(url) {
@@ -8,7 +7,6 @@ async function json(url) {
   if (!response.ok) throw new Error(`Cannot load ${url} (${response.status}).`);
   return response.json();
 }
-const schema = () => schemaPromise ||= json('/assets/sprites/schema.json');
 const rectangle = (rect, width, height) => rect && [rect.x / width, rect.y / height, rect.w / width, rect.h / height];
 function shapes(value, width, height) {
   if (value == null) return null;
@@ -60,8 +58,8 @@ function tileDefinition(id, frameId, frame, assetId) {
 }
 
 export async function createTilesetCatalog(manifest, imageSrc, { existingIds = [], schema: suppliedSchema } = {}) {
-  if (manifest?.format !== 'platformer-tileset-manifest') throw new Error('New tilesets must follow the generic tileset schema.');
-  const errors = validateTilesetManifest(manifest, suppliedSchema || await schema());
+  if (manifest?.format !== 'platformer-tileset-manifest') throw new Error('Unsupported internal atlas metadata.');
+  const errors = validateTilesetManifest(manifest, suppliedSchema);
   if (errors.length) throw new Error(errors.slice(0, 8).join('\n'));
   const used = new Set(existingIds), base = `${slug(manifest.name)}-atlas`;
   let assetId = base, suffix = 2;
@@ -149,16 +147,16 @@ export function createCreatureCatalog(manifest) {
 }
 
 export async function loadForestCatalog() {
-  const [tileset, creatures, tilesetSchema] = await Promise.all([
-    json('/assets/sprites/forest/tileset/manifest.json'), json('/assets/sprites/forest/creatures/manifest.json'), schema(),
+  const [tileset, creatures] = await Promise.all([
+    json('/assets/sprites/forest/tileset/manifest.json'), json('/assets/sprites/forest/creatures/manifest.json'),
   ]);
   const current = tileset.format === 'platformer-tileset-manifest';
   if (!current && tileset.format !== 'whimsical-overgrowth-forest-tileset-atlas/v1') throw new Error('The bundled forest tileset has an unsupported format.');
   const sourceImage = new URL(current ? tileset.atlas.image : tileset.asset, 'http://editor.local/assets/sprites/forest/tileset/');
   if (sourceImage.origin !== 'http://editor.local' || !sourceImage.pathname.startsWith('/assets/sprites/')) throw new Error('Bundled tileset images must use a local sprite path.');
-  const result = await createTilesetCatalog(current ? tileset : adaptLegacyForestTileset(tileset), sourceImage.pathname, { schema: tilesetSchema });
+  const result = await createTilesetCatalog(current ? tileset : adaptLegacyForestTileset(tileset), sourceImage.pathname);
   const creatureCatalog = createCreatureCatalog(creatures);
   Object.assign(result.assets, creatureCatalog.assets); Object.assign(result.definitions, creatureCatalog.definitions);
-  if (!current) result.warnings.unshift('Bundled forest uses legacy crop metadata with editable geometry estimates. Future tilesets must use the generic schema.');
+  if (!current) result.warnings.unshift('Bundled forest is a sample library. Import any atlas image and review its cuts and geometry.');
   return result;
 }

@@ -4,12 +4,12 @@ export const clone = value => JSON.parse(JSON.stringify(value));
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 const id = prefix => `${prefix}-${globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}`;
-const KINDS = ['platform', 'enemy', 'chest', 'background', 'prop', 'beam', 'hazard', 'projectile'];
+const KINDS = ['platform', 'enemy', 'character', 'chest', 'background', 'prop', 'beam', 'hazard', 'projectile'];
 
 export function createDocument(catalog) {
   return {
     format: DOCUMENT_FORMAT, version: DOCUMENT_VERSION, id: id('level'),
-    name: 'Untitled forest', biome: 'forest',
+    name: 'Untitled level', biome: 'custom',
     world: { width: 14200, height: 600, backgroundColor: '#183c38' },
     assets: clone(catalog.assets), definitions: clone(catalog.definitions), placements: [],
   };
@@ -101,7 +101,24 @@ export function validateDocument(document) {
       for (const key of ['onMs','offMs']) if (!finite(value[key]) || value[key] < 1 || value[key] > 3600000) error(`${path}.${key}`, 'must be between 1 and 3600000 milliseconds');
       if (!['on','off'].includes(value.startState)) error(path, 'beam startState must be on or off');
     }
+    if (value.motion !== undefined && value.motion !== null) {
+      if (!object(value.motion)) error(`${path}.motion`, 'motion must be null or an object');
+      else {
+        if (!['x', 'y'].includes(value.motion.axis)) error(`${path}.motion.axis`, 'motion axis must be x or y');
+        if (!finite(value.motion.distance) || value.motion.distance < 0 || value.motion.distance > 100000) error(`${path}.motion.distance`, 'motion distance must be between 0 and 100000');
+        if (!finite(value.motion.periodMs) || value.motion.periodMs < 1 || value.motion.periodMs > 3600000) error(`${path}.motion.periodMs`, 'motion periodMs must be between 1 and 3600000');
+        if (value.motion.phaseMs != null && (!finite(value.motion.phaseMs) || Math.abs(value.motion.phaseMs) > 3600000)) error(`${path}.motion.phaseMs`, 'motion phaseMs must be finite and within one hour');
+      }
+    }
     if (value.phaseMs != null && (!finite(value.phaseMs) || Math.abs(value.phaseMs) > 3600000)) error(path, 'phaseMs must be finite and within one hour');
+    if (value.startMs != null && (!finite(value.startMs) || value.startMs < 0 || value.startMs > 3600000)) error(path, 'startMs must be between 0 and 3600000 milliseconds');
+    if (value.vanish != null) {
+      if (!object(value.vanish)) error(path, 'vanish must be an object');
+      else {
+        rect(value.vanish.triggerVolume, `${path}.vanish.triggerVolume`);
+        if (!finite(value.vanish.countdownMs) || value.vanish.countdownMs < 0 || value.vanish.countdownMs > 3600000) error(`${path}.vanish.countdownMs`, 'must be between 0 and 3600000 milliseconds');
+      }
+    }
     for (const key of ['speed','detectRange','fireIntervalMs','lifetimeMs']) if (value[key] != null && (!finite(value[key]) || value[key] < 0)) error(`${path}.${key}`, 'must be a nonnegative finite number');
   }
   for (const [definitionId, definition] of Object.entries(document.definitions)) {
@@ -109,6 +126,7 @@ export function validateDocument(document) {
     if (!object(definition)) { error(path, 'must be an object'); continue; }
     if (definition.id !== definitionId) error(path, 'id must match its map key');
     if (typeof definition.name !== 'string' || !definition.name.trim()) error(path, 'name is required');
+    if(definition.levels!=null&&(!Array.isArray(definition.levels)||definition.levels.length>100||definition.levels.some(level=>typeof level!=='string'||!level.trim()||level.length>100)))error(path,'level tags must be an array of nonempty strings');
     if (!KINDS.includes(definition.kind)) error(path, 'invalid object kind');
     if (!object(definition.size) || !finite(definition.size.width) || !finite(definition.size.height) || definition.size.width <= 0 || definition.size.height <= 0) error(path, 'default display size must be positive');
     const visual = definition.visual;
