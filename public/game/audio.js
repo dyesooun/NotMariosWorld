@@ -1,27 +1,6 @@
-/* Dependency-free original Web Audio soundtrack and effects. */
-const NOTE = { C: 261.63, D: 293.66, E: 329.63, F: 349.23, Fs: 369.99, G: 392, A: 440, B: 493.88 };
-const n = (name, beats, octave = 4) => ({ frequency: NOTE[name] * 2 ** (octave - 4), beats });
-// Original woodland theme: a lilting bell/flute lead over plucked arpeggios.
-const forestMelody=[
-  n('G',.5),n('A',.5),n('B',.5),n('D',.5,5),n('E',1,5),n('D',1,5),
-  n('B',.5),n('A',.5),n('G',1),n('E',.5),n('G',.5),n('A',1),
-  n('C',.5,5),n('E',.5,5),n('G',.5,5),n('E',.5,5),n('D',1,5),n('B',1),
-  n('A',.5),n('B',.5),n('D',1,5),n('B',.5),n('A',.5),n('G',1),
-  n('E',.5,5),n('Fs',.5,5),n('G',1,5),n('D',.5,5),n('B',.5),n('A',1),
-  n('C',.5,5),n('B',.5),n('A',.5),n('G',.5),n('E',1),n('G',1),
-  n('A',.5),n('C',.5,5),n('B',.5),n('D',.5,5),n('E',.5,5),n('D',.5,5),n('B',1),
-  n('A',.5),n('G',.5),n('D',.5),n('Fs',.5),n('G',2)
-];
-const forestChords=[['G','B','D'],['E','G','B'],['C','E','G'],['D','Fs','A'],['E','G','B'],['C','E','G'],['D','Fs','A'],['G','B','D']];
-const forestHarmony=forestChords.flatMap(([root,third,fifth])=>[n(root,.5,3),n(third,.5,3),n(fifth,.5,4),n(third,.5,3),n(root,.5,3),n(third,.5,3),n(fifth,.5,4),n(third,.5,3)]);
-export const MUSIC_TRACKS = Object.freeze({
-  lobby: Object.freeze({ id: 'lobby', tempo: 112, waveform: 'square', melody: [n('C', .5), n('E', .5), n('G', 1), n('E', 1), n('A', .5), n('G', .5), n('E', 1), n('D', 1), n('G', 2), n('F', 1), n('A', .5), n('C', .5, 5), n('B', .5), n('A', .5), n('G', 1), n('E', 1), n('D', 1), n('C', 2)], bass: [n('C', 4, 3), n('F', 4, 3), n('G', 4, 3), n('C', 4, 3)] }),
-  forest: Object.freeze({ id:'forest',title:'Mosslight Mountain',tempo:112,waveform:'triangle',articulation:.68,bellOvertone:true,melody:forestMelody,harmony:forestHarmony,bass:forestChords.flatMap(([root,,fifth])=>[n(root,2,2),n(fifth,2,3)]) }),
-  ocean: Object.freeze({ id: 'ocean', tempo: 92, waveform: 'sine', melody: [n('E', 1), n('G', 1), n('A', 2), n('G', 1), n('E', 1), n('D', 2), n('C', 1), n('E', 1), n('G', 2), n('B', 1), n('A', 1), n('G', 2)], bass: [n('C', 4, 3), n('A', 4, 3), n('F', 4, 3), n('G', 4, 3)] }),
-  hell: Object.freeze({ id: 'hell', tempo: 146, waveform: 'sawtooth', melody: [n('E', .5), n('F', .5), n('E', 1), n('B', 1, 3), n('E', 1), n('G', 1), n('F', 1), n('E', 2), n('D', 1), n('C', .5), n('B', .5, 3), n('E', 1), n('F', 1), n('G', 1), n('F', 1), n('E', 2)], bass: [n('E', 4, 3), n('C', 4, 3), n('F', 4, 3), n('B', 4, 2)] }),
-  results: Object.freeze({ id: 'results', tempo: 118, waveform: 'square', melody: [n('C', .5), n('E', .5), n('G', 1), n('C', 2, 5), n('B', 1), n('A', 1), n('G', 2), n('E', 1), n('G', 1), n('A', 1), n('G', 1), n('F', .5), n('E', .5), n('D', 1), n('C', 2)], bass: [n('C', 4, 3), n('G', 4, 3), n('F', 4, 3), n('C', 4, 3)] })
-});
-const CORE_EFFECTS = ['coin', 'death', 'clear', 'start', 'jump', 'finish', 'respawn', 'checkpoint', 'broadcast', 'countdown', 'teleport', 'stomp'];
+/* Shipped WAV music; FX palettes remain procedural below. */
+import { MUSIC_TRACKS, VICTORY_TRACKS } from './audio-tracks.js';
+export { MUSIC_TRACKS, VICTORY_TRACKS } from './audio-tracks.js';
 const freezePalette = palette => Object.freeze(Object.fromEntries(Object.entries(palette).map(([name, effect]) => [name, Object.freeze({ ...effect, notes: Object.freeze(effect.notes) })])));
 
 // Each level has its own small, original Web Audio vocabulary.  The musical
@@ -45,109 +24,75 @@ export const EFFECT_PALETTES = Object.freeze({
 });
 
 export class GameAudio {
-  constructor({ AudioContext, setInterval: timer = globalThis.setInterval, clearInterval: clearTimer = globalThis.clearInterval } = {}) {
+  constructor({ AudioContext, fetch: fetchImpl = globalThis.fetch, setTimeout: timeout = globalThis.setTimeout, clearTimeout: clearTimeoutImpl = globalThis.clearTimeout, clock = () => Date.now() } = {}) {
     this._AudioContext = AudioContext || globalThis.AudioContext || globalThis.webkitAudioContext;
-    this._setInterval = timer.bind(globalThis);
-    this._clearInterval = clearTimer.bind(globalThis);
-    this.enabled = true;
-    this.scene = 'lobby';
-    this.hidden = false;
-    this.context = null;
-    this._master = this._musicGain = this._fxGain = null;
-    this._timer = null;
-    this._musicVoices = new Set();
-    this._fxVoices = new Set();
-    this._nextMelodyTime = this._nextBassTime = this._nextHarmonyTime = 0;
-    this._noteIndex = this._bassIndex = this._harmonyIndex = 0;
-    this._disposed = false;
+    this._fetch = typeof fetchImpl === 'function' ? fetchImpl.bind(globalThis) : fetchImpl; this._setTimeout = timeout.bind(globalThis); this._clearTimeout = clearTimeoutImpl.bind(globalThis); this._clock = clock;
+    this.enabled = true; this.scene = 'lobby'; this.hidden = false; this.context = null; this._master = this._musicGain = this._fxGain = null;
+    this._musicSource = null; this._victorySource = null; this._victoryTimer = null; this._victoryToken = 0; this._victoryDeadline = 0; this._victoryRemaining = 0; this._victoryScene = null; this._victoryHasStarted = false; this._victorySilent = false;
+    this._bufferPromises = new Map(); this._fxVoices = new Set(); this._disposed = false;
   }
   async unlock() {
     if (this._disposed || !this._AudioContext || !this.enabled || this.hidden) return false;
-    if (!this.context) {
-      try {
-        this.context = new this._AudioContext();
-        this._master = this.context.createGain();
-        this._musicGain = this.context.createGain();
-        this._fxGain = this.context.createGain();
-        this._musicGain.gain.value = .62;
-        this._fxGain.gain.value = 1;
-        this._master.gain.value = .72;
-        this._musicGain.connect(this._master);
-        this._fxGain.connect(this._master);
-        this._master.connect(this.context.destination);
-      } catch (_) {
-        try { Promise.resolve(this.context?.close?.()).catch(() => {}); } catch (_) {}
-        this.context = null;
-        return false;
-      }
-    }
-    try {
-      if (this.context.state === 'suspended' && typeof this.context.resume === 'function') await this.context.resume();
-    } catch (_) { return false; }
-    if (this.context.state && this.context.state !== 'running') return false;
-    this._startScheduler();
-    return true;
+    if (!this.context) try {
+      this.context = new this._AudioContext(); this._master = this.context.createGain(); this._musicGain = this.context.createGain(); this._fxGain = this.context.createGain();
+      this._musicGain.gain.value = .62; this._fxGain.gain.value = 1; this._master.gain.value = .72; this._musicGain.connect(this._master); this._fxGain.connect(this._master); this._master.connect(this.context.destination);
+    } catch (_) { this.context = null; return false; }
+    try { if (this.context.state === 'suspended' && this.context.resume) await this.context.resume(); } catch (_) { return false; }
+    if (this._disposed || !this.enabled || this.hidden || (this.context.state && this.context.state !== 'running')) return false;
+    this._startMusic(this.scene); this._resumeVictory(); this._preloadScene(this.scene); return true;
   }
-  setEnabled(enabled) { this.enabled = Boolean(enabled); const gain = this._master?.gain; const now = this.context?.currentTime || 0; if (gain) { gain.cancelScheduledValues?.(now); gain.setValueAtTime?.(this.enabled ? .72 : 0, now); gain.value = this.enabled ? .72 : 0; } if (!this.enabled) { this._stopScheduler(); this._cancelAllVoices(); } else if (this._canSchedule()) this._startScheduler(); return this.enabled; }
+  setEnabled(enabled) { this.enabled = Boolean(enabled); const gain = this._master?.gain; if (gain) { gain.value = this.enabled ? .72 : 0; } if (!this.enabled) { this._stopMusic(); this._pauseVictory(); this._cancelSet(this._fxVoices); } else if (this._canPlay()) { this._startMusic(this.scene); this._resumeVictory(); } return this.enabled; }
   setScene(scene) {
     if (!Object.hasOwn(MUSIC_TRACKS, scene)) return false;
-    if (this.scene === scene) return true;
-    this.scene = scene;
-    this._cancelMusic();
-    this._noteIndex = this._bassIndex = this._harmonyIndex = 0;
-    this._nextMelodyTime = this._nextBassTime = this._nextHarmonyTime = this.context?.currentTime || 0;
-    if (this._canSchedule()) { this._schedule(); this._startScheduler(); }
-    return true;
+    if (this.scene === scene) { if (!this._victoryResolve && !this._musicSource) this._startMusic(scene); return true; }
+    this.scene = scene; this.cancelVictory(); this._stopMusic(); this._startMusic(scene); this._preloadScene(scene); return true;
   }
-  playEffect(name, scene = this.scene) {
-    const effect = EFFECT_PALETTES[scene]?.[name];
-    if (!effect || !this._canSchedule()) return false;
-    const start = this.context.currentTime + .005;
-    effect.notes.forEach((frequency, index) => this._tone(frequency, start + index * effect.step, effect.length, effect.type, .18, 'fx', { frequencyEnd: effect.glide?.[index] }));
-    return true;
+  playVictory(scene = this.scene) {
+    const track = VICTORY_TRACKS[scene]; if (!track || this._disposed) return Promise.resolve(false);
+    this.cancelVictory(); this._stopMusic(); const token = ++this._victoryToken; this._victoryScene = scene; this._victoryDeadline = this._clock() + track.durationSeconds * 1000; this._victoryRemaining = track.durationSeconds; this._victoryHasStarted = false; this._victorySilent = !this._canPlay();
+    const done = new Promise(resolve => { this._victoryResolve = resolve; });
+    this._loadBuffer(track.src).then(() => { if (token === this._victoryToken) this._startVictorySource(track, token); }).catch(() => { if (token === this._victoryToken) this._armVictoryFallback(token); });
+    this._armVictoryFallback(token); return done;
   }
-  setHidden(hidden) {
-    this.hidden = Boolean(hidden);
-    if (this.hidden) { this._stopScheduler(); this._cancelAllVoices(); return; }
-    if (this.context && this.enabled) {
+  cancelVictory() { if (!this._victoryResolve && !this._victorySource && this._victoryTimer === null) return; const resolve = this._victoryResolve; this._victoryToken++; this._stopVictorySource(); this._clearVictoryTimer(); this._victoryResolve = null; this._victoryRemaining = 0; this._victoryDeadline = 0; this._victoryScene = null; resolve?.(false); }
+  playEffect(name, scene = this.scene) { const effect = EFFECT_PALETTES[scene]?.[name]; if (!effect || !this._canPlay()) return false; const start = this.context.currentTime + .005; effect.notes.forEach((frequency, index) => this._tone(frequency, start + index * effect.step, effect.length, effect.type, .18, { frequencyEnd: effect.glide?.[index] })); return true; }
+  setHidden(hidden) { this.hidden = Boolean(hidden); if (this.hidden) { this._stopMusic(); this._pauseVictory(); this._cancelSet(this._fxVoices); } else if (this.context && this.enabled) { Promise.resolve(this.context.state === 'suspended' && this.context.resume ? this.context.resume() : null).then(() => { if (this._canPlay()) { this._startMusic(this.scene); this._resumeVictory(); } }).catch(() => {}); } }
+  dispose() { this._disposed = true; this.cancelVictory(); this._stopMusic(); this._cancelSet(this._fxVoices); try { this._master?.disconnect(); this._musicGain?.disconnect(); this._fxGain?.disconnect(); Promise.resolve(this.context?.close?.()).catch(() => {}); } catch (_) {} this.context = null; }
+  _canPlay() { return Boolean(!this._disposed && this.context && this.enabled && !this.hidden && (!this.context.state || this.context.state === 'running')); }
+  _preloadScene(scene) { const loop = MUSIC_TRACKS[scene], victory = VICTORY_TRACKS[scene]; return Promise.all([this._loadBuffer(loop?.src), victory && this._loadBuffer(victory.src)]); }
+  _loadBuffer(src) { const context = this.context; if (!src || !context || !this._fetch || !context.decodeAudioData) return Promise.resolve(null); if (!this._bufferPromises.has(src)) this._bufferPromises.set(src, Promise.resolve().then(() => this._fetch(src)).then(r => { if (!r?.ok && r?.ok !== undefined) throw new Error('audio fetch failed'); return r.arrayBuffer(); }).then(data => context.decodeAudioData(data)).catch(() => null)); return this._bufferPromises.get(src); }
+  _startMusic(scene) { if (!this._canPlay() || this._musicSource || this._victorySource || this._victoryRemaining > 0) return; const track = MUSIC_TRACKS[scene]; this._loadBuffer(track.src).then(buffer => { if (!buffer || this.scene !== scene || !this._canPlay() || this._musicSource || this._victorySource || this._victoryRemaining > 0) return; try { const source = this.context.createBufferSource(); source.buffer = buffer; source.loop = true; source.connect(this._musicGain || this._master); source.start(); this._musicSource = source; source.onended = () => { if (this._musicSource === source) this._musicSource = null; }; } catch (_) {} }); }
+  _stopMusic() { const source = this._musicSource; this._musicSource = null; if (source) try { source.stop(); source.disconnect?.(); } catch (_) {} }
+  _startVictorySource(track, token) {
+    if (!track || !this._canPlay() || token !== this._victoryToken || this._victorySource || !this._victoryResolve) return;
+    this._loadBuffer(track.src).then(buffer => {
+      if (token !== this._victoryToken || this._victorySource || !this._victoryResolve || !buffer || !this._canPlay()) return;
+      const remaining = Math.max(0, this._victoryDeadline - this._clock()) / 1000;
+      if (!remaining) { this._finishVictory(token); return; }
+      // Allow a first, audible cue its entire duration after decoding. Once
+      // muted/hidden, the silent timeline owns the remaining duration instead.
+      const playFullCue = !this._victoryHasStarted && !this._victorySilent;
+      this._victoryRemaining = playFullCue ? track.durationSeconds : remaining;
+      let source;
       try {
-        const resume = this.context.state === 'suspended' && this.context.resume ? this.context.resume() : null;
-        Promise.resolve(resume).then(() => { if (this._canSchedule()) this._startScheduler(); }).catch(() => {});
-      } catch (_) { /* A later user gesture can retry playback. */ }
-    }
+        source = this.context.createBufferSource(); source.buffer = buffer;
+        source.connect(this._musicGain || this._master);
+        source.onended = () => { if (this._victorySource === source) this._finishVictory(token); };
+        source.start(0, Math.max(0, track.durationSeconds - this._victoryRemaining));
+        this._victorySource = source;
+        if (playFullCue) this._victoryDeadline = this._clock() + track.durationSeconds * 1000;
+        this._victoryHasStarted = true;
+        this._armVictoryFallback(token);
+      } catch (_) { try { source?.disconnect(); } catch (_) {} }
+    });
   }
-  dispose() { this._disposed = true; this._stopScheduler(); this._cancelAllVoices(); try { this._master?.disconnect(); this._musicGain?.disconnect(); this._fxGain?.disconnect(); } catch (_) {} try { Promise.resolve(this.context?.close?.()).catch(() => {}); } catch (_) {} this.context = null; }
-  _canSchedule() { return Boolean(this.context && this.enabled && !this.hidden && (!this.context.state || this.context.state === 'running')); }
-  _startScheduler() { if (!this._canSchedule() || this._timer !== null) return; const now = this.context.currentTime || 0; this._nextMelodyTime = Math.max(this._nextMelodyTime, now); this._nextBassTime = Math.max(this._nextBassTime, now); this._nextHarmonyTime=Math.max(this._nextHarmonyTime,now);this._schedule(); this._timer = this._setInterval(() => this._schedule(), 25); }
-  _stopScheduler() { if (this._timer !== null) { try { this._clearInterval(this._timer); } catch (_) {} this._timer = null; } }
-  _schedule() {
-    if (!this._canSchedule()) return;
-    const now = this.context.currentTime || 0;
-    if (this._nextMelodyTime < now) this._nextMelodyTime = now;
-    if (this._nextBassTime < now) this._nextBassTime = now;
-    if (this._nextHarmonyTime < now) this._nextHarmonyTime = now;
-    const track = MUSIC_TRACKS[this.scene], beat = 60 / track.tempo;
-    let guard = 0;
-    while (this._nextMelodyTime < now + .15 && guard++ < 32) {
-      const note = track.melody[this._noteIndex++ % track.melody.length];
-      this._tone(note.frequency, this._nextMelodyTime, Math.min(note.beats * beat * (track.articulation??.88), 1.2), track.waveform, track.waveform === 'sawtooth' ? .045 : .065);
-      if(track.bellOvertone)this._tone(note.frequency*2,this._nextMelodyTime+.012,.16,'sine',.012);
-      this._nextMelodyTime += note.beats * beat;
-    }
-    while (this._nextBassTime < now + .15 && guard++ < 48) {
-      const note = track.bass[this._bassIndex++ % track.bass.length];
-      this._tone(note.frequency, this._nextBassTime, Math.min(note.beats * beat * .86, track.harmony?.length ? .34 : 1.5), 'triangle', .035);
-      this._nextBassTime += note.beats * beat;
-    }
-    while(track.harmony?.length&&this._nextHarmonyTime<now+.15&&guard++<80){
-      const note=track.harmony[this._harmonyIndex++%track.harmony.length];
-      this._tone(note.frequency,this._nextHarmonyTime,note.beats*beat*.55,'square',.013);
-      this._nextHarmonyTime+=note.beats*beat;
-    }
-  }
-  _tone(frequency, when, duration, type, volume, bus = 'music', options = {}) { try { const oscillator = this.context.createOscillator(); const gain = this.context.createGain(); oscillator.type = type; oscillator.frequency.setValueAtTime?.(frequency, when); oscillator.frequency.value = frequency; if (options.frequencyEnd != null) oscillator.frequency.linearRampToValueAtTime?.(options.frequencyEnd, when + duration * .8); gain.gain.setValueAtTime?.(0, when); gain.gain.linearRampToValueAtTime?.(volume, when + .008); gain.gain.exponentialRampToValueAtTime?.(.0001, when + duration); oscillator.connect(gain); gain.connect(bus === 'fx' ? (this._fxGain || this._master) : (this._musicGain || this._master)); const voices = bus === 'fx' ? this._fxVoices : this._musicVoices; const voice = { oscillator, gain }; voices.add(voice); oscillator.onended = () => { voices.delete(voice); try { oscillator.disconnect(); gain.disconnect(); } catch (_) {} }; oscillator.start(when); oscillator.stop(when + duration + .01); } catch (_) {} }
-  _cancelMusic() { this._cancelSet(this._musicVoices); }
-  _cancelAllVoices() { this._cancelMusic(); this._cancelSet(this._fxVoices); }
+  _pauseVictory() { if (!this._victoryResolve) return; this._victorySilent = true; this._victoryRemaining = Math.max(0, this._victoryDeadline - this._clock()) / 1000; this._stopVictorySource(); this._clearVictoryTimer(); this._armVictoryFallback(this._victoryToken); }
+  _resumeVictory() { if (!this._victoryResolve) return; this._victoryRemaining = Math.max(0, this._victoryDeadline - this._clock()) / 1000; if (this._victoryRemaining <= 0) return this._finishVictory(this._victoryToken); this._startVictorySource(VICTORY_TRACKS[this._victoryScene], this._victoryToken); this._armVictoryFallback(this._victoryToken); }
+  _armVictoryFallback(token) { this._clearVictoryTimer(); if (!this._victoryResolve) return; const delay = Math.max(0, this._victoryDeadline - this._clock()); if (delay <= 0) return this._finishVictory(token); this._victoryTimer = this._setTimeout(() => this._finishVictory(token), delay + (this._victorySource ? 250 : 0)); }
+  _finishVictory(token) { if (token !== this._victoryToken || !this._victoryResolve) return; this._stopVictorySource(); this._clearVictoryTimer(); this._victoryRemaining = 0; this._victoryDeadline = 0; const resolve = this._victoryResolve; this._victoryResolve = null; this._victoryToken++; resolve(true); }
+  _stopVictorySource() { const source = this._victorySource; this._victorySource = null; if (source) try { source.onended = null; source.stop(); source.disconnect?.(); } catch (_) {} }
+  _clearVictoryTimer() { if (this._victoryTimer !== null) { this._clearTimeout(this._victoryTimer); this._victoryTimer = null; } }
+  _tone(frequency, when, duration, type, volume, options = {}) { try { const oscillator = this.context.createOscillator(), gain = this.context.createGain(); oscillator.type = type; oscillator.frequency.setValueAtTime?.(frequency, when); oscillator.frequency.value = frequency; if (options.frequencyEnd != null) oscillator.frequency.linearRampToValueAtTime?.(options.frequencyEnd, when + duration * .8); gain.gain.setValueAtTime?.(0, when); gain.gain.linearRampToValueAtTime?.(volume, when + .008); gain.gain.exponentialRampToValueAtTime?.(.0001, when + duration); oscillator.connect(gain); gain.connect(this._fxGain || this._master); const voice = { oscillator, gain }; this._fxVoices.add(voice); oscillator.onended = () => { this._fxVoices.delete(voice); try { oscillator.disconnect(); gain.disconnect(); } catch (_) {} }; oscillator.start(when); oscillator.stop(when + duration + .01); } catch (_) {} }
   _cancelSet(voices) { for (const voice of voices) { try { voice.oscillator.stop(); voice.oscillator.disconnect(); voice.gain.disconnect(); } catch (_) {} } voices.clear(); }
 }
 export default GameAudio;

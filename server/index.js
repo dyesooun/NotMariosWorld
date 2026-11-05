@@ -15,7 +15,7 @@ import { PROTOCOL_VERSION, FINAL_REPORT_WINDOW_MS, emptyRunSummary, validateRunS
 const { WebSocketServer } = createRequire(import.meta.url)('ws');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MAX_PLAYERS = 25, MAX_ROOMS = 500, MAX_PAYLOAD = 16384, ROOM_TTL = 3600000;
-const MIME = { '.html':'text/html; charset=utf-8', '.js':'application/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.svg':'image/svg+xml', '.webp':'image/webp', '.ico':'image/x-icon' };
+const MIME = { '.html':'text/html; charset=utf-8', '.js':'application/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.svg':'image/svg+xml', '.webp':'image/webp', '.ico':'image/x-icon', '.wav':'audio/wav' };
 const clean = (value, length, fallback = '') => typeof value === 'string' ? value.trim().slice(0, length) || fallback : fallback;
 const clamp = (value, low, high) => Math.max(low, Math.min(high, Number.isFinite(Number(value)) ? Number(value) : low));
 const send = (ws, value) => ws?.readyState === 1 && ws.send(JSON.stringify(value));
@@ -37,7 +37,7 @@ function settings(input = {}) {
 }
 
 export function createGameServer({ port=Number(process.env.PORT)||10000, host='0.0.0.0', staticRoot=path.join(ROOT,'public'), now=()=>Date.now(), tickMs=50 } = {}) {
-  const versionFiles = ['server/index.js','server/power-duels.js','server/power-questions.js','public/app.js','public/game/engine.js','public/game/local-run.js','public/game/run-protocol.js','public/game/client-state.js','public/game/levels.js','public/game/world-order.js','public/game/projectiles.js','public/game/powers.js','public/game/default-questions.js'];
+  const versionFiles = ['server/index.js','server/power-duels.js','server/power-questions.js','public/app.js','public/game/audio.js','public/game/audio-tracks.js','public/game/engine.js','public/game/local-run.js','public/game/run-protocol.js','public/game/client-state.js','public/game/levels.js','public/game/world-order.js','public/game/projectiles.js','public/game/powers.js','public/game/default-questions.js'];
   const fingerprint = () => { const hash=createHash('sha256'); for (const file of versionFiles) { const full=path.join(ROOT,file); if (existsSync(full)) hash.update(readFileSync(full)); } return hash.digest('hex'); };
   const runtimeVersion = fingerprint(), rooms = new Map();
   const ranked = room => [...room.players.values()].sort((a,b) => b.score-a.score || (a.finishTime??Infinity)-(b.finishTime??Infinity) || a.joinedAt-b.joinedAt);

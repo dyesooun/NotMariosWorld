@@ -1,138 +1,155 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { GameAudio, MUSIC_TRACKS, EFFECT_PALETTES } from '../public/game/audio.js';
+import fs from 'node:fs';
+import { GameAudio, MUSIC_TRACKS, VICTORY_TRACKS, EFFECT_PALETTES } from '../public/game/audio.js';
+
 class Param { constructor(value = 0) { this.value = value; } setValueAtTime(v) { this.value = v; } linearRampToValueAtTime(v) { this.value = v; } exponentialRampToValueAtTime(v) { this.value = v; } cancelScheduledValues() {} }
-class FakeNode { constructor() { this.gain = new Param(); this.frequency = new Param(); this.startedAt = null; this.stopAt = null; this.stopped = false; this.disconnected = false; } connect() {} disconnect() { this.disconnected = true; } start(t) { this.startedAt = t; } stop(t) { if (t === undefined) this.stopped = true; else this.stopAt = t; } advanceTo(t) { if (this.stopAt !== null && t >= this.stopAt) { this.stopped = true; this.onended?.(); } } }
-class FakeContext { static instances = []; constructor() { this.state = 'suspended'; this.currentTime = 0; this.destination = new FakeNode(); this.oscillators = []; this.resumeFailures = 0; FakeContext.instances.push(this); } createGain() { return new FakeNode(); } createOscillator() { const n = new FakeNode(); this.oscillators.push(n); return n; } async resume() { if (this.resumeFailures-- > 0) throw new Error('blocked'); this.state = 'running'; } close() { this.state = 'closed'; } advanceTo(t) { this.currentTime = t; this.oscillators.forEach(n => n.advanceTo(t)); } }
-function timers() { const callbacks = new Map(); let id = 0; return { setInterval(fn) { callbacks.set(++id, fn); return id; }, clearInterval(i) { callbacks.delete(i); }, tick() { callbacks.forEach(fn => fn()); }, get size() { return callbacks.size; } }; }
+class Node { constructor() { this.gain = new Param(); this.frequency = new Param(); this.started = false; this.stopped = false; } connect() {} disconnect() {} start(when=0,offset=0) { this.started = true; this.offset=offset; } stop(when) { if(when!=null)return;this.stopped = true; this.onended?.(); } }
+class BufferSource extends Node { constructor() { super(); this.loop = false; this.buffer = null; } }
+class Context { static instances = []; constructor() { this.state = 'suspended'; this.currentTime = 0; this.destination = new Node(); this.sources = []; this.oscillators=[];Context.instances.push(this); } createGain() { return new Node(); } createBufferSource() { const n = new BufferSource(); this.sources.push(n); return n; } createOscillator(){const node=new Node();this.oscillators.push(node);return node;} decodeAudioData() { return Promise.resolve({ duration: 30 }); } async resume() { this.state = 'running'; } close() { this.state = 'closed'; } }
+const fakeFetch = async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) });
+const timers = () => ({ setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: id => clearTimeout(id) });
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+const wavDuration = path => { const data = fs.readFileSync(`public${path}`); return data.readUInt32LE(40) / (data.readUInt32LE(24) * data.readUInt16LE(22) * data.readUInt16LE(34) / 8); };
 
-test('default enabled, lazy unlock, distinct 16-beat tracks', async () => { const t = timers(); const a = new GameAudio({ AudioContext: FakeContext, setInterval: t.setInterval.bind(t), clearInterval: t.clearInterval.bind(t) }); assert.equal(a.enabled, true); assert.equal(FakeContext.instances.length, 0); assert.deepEqual(Object.keys(MUSIC_TRACKS), ['lobby', 'forest', 'ocean', 'hell', 'results']); assert.ok(Object.values(MUSIC_TRACKS).every(x => x.melody.reduce((s, n) => s + n.beats, 0) >= 16)); assert.equal(await a.unlock(), true); assert.ok(a.context.oscillators.length > 0); a.dispose(); });
-test('repeated unlock does not stack; scene switch stops music but preserves FX', async () => { const t = timers(); const a = new GameAudio({ AudioContext: FakeContext, setInterval: t.setInterval.bind(t), clearInterval: t.clearInterval.bind(t) }); await a.unlock(); const c = a.context; const oldMusic = [...a._musicVoices]; assert.equal(a.playEffect('clear'), true); const fx = [...a._fxVoices]; await a.unlock(); assert.equal(t.size, 1); a.setScene('forest'); oldMusic.forEach(v => assert.equal(v.oscillator.stopped, true)); fx.forEach(v => assert.equal(v.oscillator.stopped, false)); a.dispose(); });
-test('mute cancels future music and FX; unmute resumes', async () => { const t = timers(); const a = new GameAudio({ AudioContext: FakeContext, setInterval: t.setInterval.bind(t), clearInterval: t.clearInterval.bind(t) }); await a.unlock(); a.playEffect('coin'); const c = a.context; a.setEnabled(false); assert.equal(t.size, 0); assert.ok(c.oscillators.every(n => n.stopped)); assert.equal(a.playEffect('coin'), false); a.setEnabled(true); assert.equal(t.size, 1); a.dispose(); });
-test('hidden pauses and rejected resume can retry on unlock', async () => { const t = timers(); const a = new GameAudio({ AudioContext: FakeContext, setInterval: t.setInterval.bind(t), clearInterval: t.clearInterval.bind(t) }); await a.unlock(); const c = a.context; a.setHidden(true); assert.equal(t.size, 0); c.state = 'suspended'; c.resumeFailures = 1; a.setHidden(false); await Promise.resolve(); await Promise.resolve(); assert.equal(t.size, 0); assert.equal(await a.unlock(), true); assert.equal(t.size, 1); a.dispose(); });
-test('throttled scheduler rebases without starting notes in the past', async () => { const t = timers(); const a = new GameAudio({ AudioContext: FakeContext, setInterval: t.setInterval.bind(t), clearInterval: t.clearInterval.bind(t) }); await a.unlock(); const c = a.context; const before = c.oscillators.length; c.advanceTo(10); t.tick(); assert.ok(c.oscillators.slice(before).every(n => n.startedAt >= 10)); a.dispose(); });
+test('shipped WAV maps and durations are exact', () => {
+  assert.deepEqual(Object.keys(MUSIC_TRACKS), ['lobby', 'forest', 'ocean', 'hell', 'results']);
+  assert.equal(VICTORY_TRACKS.forest.durationSeconds, 4.3); assert.equal(VICTORY_TRACKS.ocean.durationSeconds, 4.4); assert.equal(VICTORY_TRACKS.hell.durationSeconds, 4.4);
+  for (const track of Object.values(MUSIC_TRACKS)) { assert.equal(fs.existsSync(`public${track.src}`), true, track.src); assert.equal(wavDuration(track.src), 30); }
+  for (const track of Object.values(VICTORY_TRACKS)) { assert.equal(fs.existsSync(`public${track.src}`), true, track.src); assert.equal(wavDuration(track.src), track.durationSeconds); }
+});
+test('unlock starts one looping WAV source and repeated unlock does not duplicate', async () => {
+  const audio = new GameAudio({ AudioContext: Context, fetch: fakeFetch, ...timers() }); assert.equal(await audio.unlock(), true); await flush(); await flush();
+  assert.equal(Context.instances.at(-1).sources.length, 1); assert.equal(Context.instances.at(-1).sources[0].loop, true); await audio.unlock(); await Promise.resolve(); assert.equal(Context.instances.at(-1).sources.length, 1); audio.dispose();
+});
+test('victory stops background, resolves on source end, and does not duplicate loads', async () => {
+  const audio = new GameAudio({ AudioContext: Context, fetch: fakeFetch, ...timers() }); await audio.unlock(); await flush(); await flush(); const promise = audio.playVictory('forest');
+  await flush(); await flush(); await flush(); assert.equal(audio._musicSource, null); const context = Context.instances.at(-1); assert.equal(context.sources.length, 2); context.sources[1].onended(); assert.equal(await promise, true); audio.dispose();
+});
+test('scene change cancels an active victory and allows new music', async () => { const audio = new GameAudio({ AudioContext: Context, fetch: fakeFetch, ...timers() }); await audio.unlock(); const pending = audio.playVictory('forest'); audio.setScene('results'); assert.equal(await pending, false); audio.dispose(); });
+test('mute/hidden pauses timeline and never traps completion', async () => { let now = 0; const audio = new GameAudio({ AudioContext: Context, fetch: fakeFetch, clock: () => now, ...timers() }); await audio.unlock(); const pending = audio.playVictory('hell'); await Promise.resolve(); await Promise.resolve(); now = 5000; audio.setHidden(true); assert.equal(await pending, true); audio.dispose(); });
+test('FX palettes remain available and biome-specific', () => { for (const biome of ['forest', 'ocean', 'hell']) for (const cue of ['coin', 'death', 'finish', 'checkpoint', 'teleport']) assert.ok(EFFECT_PALETTES[biome][cue]); });
 
-test('music keeps looping and a muted scene change starts the new arrangement', async () => {
-  const t = timers();
-  const a = new GameAudio({ AudioContext: FakeContext, setInterval: t.setInterval.bind(t), clearInterval: t.clearInterval.bind(t) });
-  await a.unlock();
-  for (let i = 1; i <= 1000; i++) { a.context.advanceTo(i * .025); t.tick(); }
-  assert.ok(a._noteIndex > MUSIC_TRACKS.lobby.melody.length * 2);
-  assert.ok(a._bassIndex > MUSIC_TRACKS.lobby.bass.length * 2);
-  a.setEnabled(false);
-  a.setScene('ocean');
-  const count = a.context.oscillators.length;
-  a.setEnabled(true);
-  assert.equal(a.context.oscillators[count].frequency.value, MUSIC_TRACKS.ocean.melody[0].frequency);
-  assert.equal(t.size, 1);
-  a.dispose();
+// Controlled wall time lets fallback/race tests run without waiting for audio.
+function fixture(t,options={}){
+  let now=0,id=0;const pending=new Map(),loads=[];
+  const clock={
+    now:()=>now,
+    setTimeout(fn,delay){const key=++id;pending.set(key,{at:now+delay,fn});return key;},
+    clearTimeout(key){pending.delete(key);},
+    advance(ms){now+=ms;for(const [key,item] of [...pending])if(item.at<=now){pending.delete(key);item.fn();}},
+    get size(){return pending.size;},
+  };
+  const audio=new GameAudio({AudioContext:Context,clock:clock.now,setTimeout:clock.setTimeout,clearTimeout:clock.clearTimeout,fetch:async src=>{loads.push(src);return fakeFetch(src);},...options});
+  t.after(()=>audio.dispose());return{audio,clock,loads};
+}
+function deferred(){let resolve;const promise=new Promise(done=>{resolve=done;});return{promise,resolve};}
+
+test('buffer cache and scene switches prevent duplicate or stale background sources',async t=>{
+  const slow=deferred();let oceanLoads=0;
+  const {audio}=fixture(t,{fetch:src=>{if(src===MUSIC_TRACKS.ocean.src){oceanLoads++;return slow.promise;}return fakeFetch(src);}});
+  await audio.unlock();await flush();
+  const lobby=audio._musicSource;
+  audio.playEffect('coin');const fx=[...audio._fxVoices];
+  audio.setScene('ocean');audio.setScene('ocean');await audio.unlock();
+  audio.setScene('hell');await flush();
+  assert.equal(lobby.stopped,true);assert.ok(fx.every(voice=>!voice.oscillator.stopped));
+  const inferno=audio._musicSource;
+  slow.resolve(await fakeFetch());await flush();
+  assert.equal(audio._musicSource,inferno);assert.equal(oceanLoads,1);
+  assert.equal(audio.context.sources.filter(source=>!source.stopped).length,1);
 });
 
-test('hidden tabs cancel effects too, and muting before unlock creates no context', async () => {
-  const t = timers();
-  const a = new GameAudio({ AudioContext: FakeContext, setInterval: t.setInterval.bind(t), clearInterval: t.clearInterval.bind(t) });
-  a.setEnabled(false);
-  assert.equal(await a.unlock(), false);
-  assert.equal(a.context, null);
-  a.setEnabled(true);
-  await a.unlock();
-  a.playEffect('finish');
-  const effects = [...a._fxVoices];
-  assert.ok(effects.length > 0);
-  a.setHidden(true);
-  assert.ok(effects.every(voice => voice.oscillator.stopped && voice.oscillator.disconnected));
-  assert.equal(a.playEffect('coin'), false);
-  a.dispose();
+test('late background loads cannot overlap a loading victory cue',async t=>{
+  const background=deferred(),victory=deferred();
+  const {audio}=fixture(t,{fetch:src=>src===MUSIC_TRACKS.forest.src?background.promise:src===VICTORY_TRACKS.forest.src?victory.promise:fakeFetch(src)});
+  await audio.unlock();await flush();audio.setScene('forest');
+  const done=audio.playVictory('forest');await flush();
+  background.resolve(await fakeFetch());await flush();
+  assert.equal(audio._musicSource,null);
+  victory.resolve(await fakeFetch());await flush();
+  const source=audio._victorySource;assert.ok(source);assert.equal(source.loop,false);
+  await audio.unlock();audio.setScene('forest');await audio.unlock();await flush();
+  assert.equal(audio.context.sources.filter(source=>!source.stopped).length,1);
+  source.onended();assert.equal(await done,true);
+  audio.setScene('forest');await flush();assert.equal(audio._musicSource?.loop,true);
 });
 
-test('browser timer functions receive their required global receiver', async () => {
-  const a = new GameAudio({
-    AudioContext: FakeContext,
-    setInterval() { assert.equal(this, globalThis); return 99; },
-    clearInterval(id) { assert.equal(this, globalThis); assert.equal(id, 99); },
+test('a ready stinger does not wait for a hanging background download',async t=>{
+  const {audio}=fixture(t,{fetch:src=>src===MUSIC_TRACKS.forest.src?new Promise(()=>{}):fakeFetch(src)});
+  await audio.unlock();audio.setScene('forest');const done=audio.playVictory('forest');await flush();
+  assert.ok(audio._victorySource);audio._victorySource.onended();assert.equal(await done,true);
+});
+
+test('stalled victory loads finish on the silent deadline and cannot play late',async t=>{
+  const slow=deferred();const {audio,clock}=fixture(t,{fetch:src=>src===VICTORY_TRACKS.forest.src?slow.promise:fakeFetch(src)});
+  await audio.unlock();await flush();audio.setScene('forest');
+  let finished=false;const done=audio.playVictory('forest').then(value=>{finished=true;return value;});
+  await flush();clock.advance(4299);await flush();assert.equal(finished,false);
+  clock.advance(1);assert.equal(await done,true);assert.equal(clock.size,0);
+  const count=audio.context.sources.length;slow.resolve(await fakeFetch());await flush();
+  assert.equal(audio.context.sources.length,count);assert.equal(audio._victorySource,null);
+});
+
+test('decode latency preserves the entire first audible stinger',async t=>{
+  const slow=deferred();const {audio,clock}=fixture(t,{fetch:src=>src===VICTORY_TRACKS.forest.src?slow.promise:fakeFetch(src)});
+  await audio.unlock();await flush();audio.setScene('forest');const done=audio.playVictory('forest');
+  clock.advance(1000);slow.resolve(await fakeFetch());await flush();
+  assert.equal(audio._victorySource.offset,0);assert.equal(audio._victoryDeadline,5300);
+  clock.advance(3299);assert.ok(audio._victorySource);
+  audio._victorySource.onended();assert.equal(await done,true);assert.equal(clock.size,0);
+});
+
+for(const mode of ['muted','hidden']){
+  const setUnavailable=(audio,value)=>mode==='muted'?audio.setEnabled(!value):audio.setHidden(value);
+  test(`${mode} stingers finish silently and repeated state changes keep their original deadline`,async t=>{
+    const {audio,clock}=fixture(t);await audio.unlock();await flush();audio.setScene('forest');
+    setUnavailable(audio,true);const done=audio.playVictory('forest');await flush();
+    clock.advance(1000);setUnavailable(audio,true);setUnavailable(audio,true);
+    assert.equal(audio._victoryDeadline,4300);
+    clock.advance(3300);assert.equal(await done,true);assert.equal(audio._victorySource,null);
   });
-  assert.equal(await a.unlock(), true);
-  a.setEnabled(false);
-  a.dispose();
-});
+  test(`${mode} stingers resume only the remaining portion without duplicate sources`,async t=>{
+    const {audio,clock}=fixture(t);await audio.unlock();await flush();audio.setScene('forest');
+    setUnavailable(audio,true);const done=audio.playVictory('forest');await flush();clock.advance(1000);
+    setUnavailable(audio,false);setUnavailable(audio,false);await audio.unlock();await flush();
+    assert.equal(audio._victoryDeadline,4300);assert.equal(audio._victorySource.offset,1);
+    assert.equal(audio.context.sources.filter(source=>!source.stopped).length,1);
+    clock.advance(1000);setUnavailable(audio,true);setUnavailable(audio,true);
+    setUnavailable(audio,false);await flush();
+    assert.equal(audio._victorySource.offset,2);assert.equal(audio._victoryDeadline,4300);
+    setUnavailable(audio,true);clock.advance(2300);assert.equal(await done,true);
+  });
+}
 
-test('each theme has a different melody and both parts loop on the same bar', () => {
-  const tracks = Object.values(MUSIC_TRACKS);
-  assert.equal(new Set(tracks.map(track => JSON.stringify(track.melody))).size, tracks.length);
-  for (const track of tracks) {
-    const beats = part => part.reduce((sum, note) => sum + note.beats, 0);
-    assert.equal(beats(track.melody), beats(track.bass));
+test('unavailable playback or failed downloads use a bounded silent victory',async t=>{
+  for(const options of [{AudioContext:null},{fetch:()=>{throw new Error('offline');}}]){
+    const {audio,clock}=fixture(t,options);await audio.unlock();
+    const done=audio.playVictory('hell');await flush();clock.advance(4400);assert.equal(await done,true);
+    assert.equal(audio._victorySource,null);assert.equal(clock.size,0);
   }
 });
 
-test('the forest arrangement loops its melody, plucked harmony, and bass together',async()=>{
-  const track=MUSIC_TRACKS.forest,total=part=>part.reduce((sum,note)=>sum+note.beats,0);
-  assert.equal(total(track.melody),32);assert.equal(total(track.harmony),32);assert.equal(total(track.bass),32);
-  assert.ok(track.bellOvertone);assert.ok([...track.melody,...track.harmony,...track.bass].every(note=>Number.isFinite(note.frequency)&&note.frequency>0));
-  const timer=timers(),audio=new GameAudio({AudioContext:FakeContext,setInterval:timer.setInterval,clearInterval:timer.clearInterval});
-  await audio.unlock();audio.setScene('forest');
-  for(let i=1;i<=1600;i++){audio.context.advanceTo(i*.025);timer.tick();}
-  assert.ok(audio._harmonyIndex>track.harmony.length);assert.ok(audio._noteIndex>track.melody.length);
-  audio.setHidden(true);assert.equal(timer.size,0);assert.equal(audio._musicVoices.size,0);audio.dispose();
+test('cancellation and disposal ignore late loads and old ended handlers',async t=>{
+  const {audio}=fixture(t);await audio.unlock();await flush();audio.setScene('forest');
+  const first=audio.playVictory('forest');await flush();const oldEnded=audio._victorySource.onended;
+  audio.setScene('hell');assert.equal(await first,false);
+  const second=audio.playVictory('hell');await flush();const current=audio._victorySource;
+  oldEnded();assert.equal(audio._victorySource,current);
+  audio.dispose();assert.equal(await second,false);assert.equal(await audio.unlock(),false);
+  assert.equal(await audio.playVictory('forest'),false);
 });
 
-test('biome palettes contain every core cue and differ in musical character', () => {
-  const biomes = ['forest', 'ocean', 'hell'];
-  const events = ['coin', 'death', 'clear', 'start', 'jump', 'finish', 'respawn', 'checkpoint', 'broadcast', 'countdown', 'teleport'];
-  for (const biome of biomes) {
-    assert.ok(Object.isFrozen(EFFECT_PALETTES[biome]));
-    for (const event of events) {
-      const effect = EFFECT_PALETTES[biome][event];
-      assert.ok(effect, `${biome} is missing ${event}`);
-      assert.ok(effect.notes.length > 0);
-      assert.ok(Object.isFrozen(effect.notes));
-    }
+test('default-on audio stays lazy and all biome FX stop on mute and hide',async t=>{
+  const {audio}=fixture(t);assert.equal(audio.enabled,true);assert.equal(audio.context,null);
+  audio.setEnabled(false);assert.equal(await audio.unlock(),false);assert.equal(audio.context,null);
+  audio.setEnabled(true);await audio.unlock();
+  for(const scene of ['lobby','forest','ocean','hell','results']){
+    const before=audio.context.oscillators.length;assert.equal(audio.playEffect('coin',scene),true);
+    assert.equal(audio.context.oscillators.length-before,EFFECT_PALETTES[scene].coin.notes.length);
   }
-  for (const event of events) {
-    const signatures = biomes.map(biome => {
-      const effect = EFFECT_PALETTES[biome][event];
-      return JSON.stringify([effect.notes, effect.step, effect.length, effect.type, effect.glide]);
-    });
-    assert.equal(new Set(signatures).size, biomes.length, `${event} should have three biome signatures`);
-  }
-});
-
-test('scene override chooses biome FX without changing the music scene', async () => {
-  const t = timers();
-  const a = new GameAudio({ AudioContext: FakeContext, setInterval: t.setInterval.bind(t), clearInterval: t.clearInterval.bind(t) });
-  await a.unlock();
-  a.setScene('forest');
-  const beforeMusic = [...a._musicVoices];
-  const counts = [];
-  for (const biome of ['forest', 'ocean', 'hell']) {
-    const before = a.context.oscillators.length;
-    assert.equal(a.playEffect('coin', biome), true);
-    const cue = a.context.oscillators.slice(before);
-    counts.push(cue.length);
-    assert.equal(cue.length, EFFECT_PALETTES[biome].coin.notes.length);
-    assert.equal(cue[0].type, EFFECT_PALETTES[biome].coin.type);
-  }
-  assert.deepEqual(counts, [3, 3, 3]);
-  assert.equal(a.scene, 'forest');
-  assert.ok(beforeMusic.some(voice => !voice.oscillator.stopped));
-  a.dispose();
-});
-
-test('new one-shot cues schedule bounded voices, while mute and hidden block every biome', async () => {
-  const t = timers();
-  const a = new GameAudio({ AudioContext: FakeContext, setInterval: t.setInterval.bind(t), clearInterval: t.clearInterval.bind(t) });
-  await a.unlock();
-  for (const biome of ['forest', 'ocean', 'hell']) {
-    for (const event of ['checkpoint', 'broadcast', 'countdown', 'teleport']) {
-      const before = a._fxVoices.size;
-      assert.equal(a.playEffect(event, biome), true);
-      assert.ok(a._fxVoices.size > before, `${biome}/${event} did not create a cue`);
-    }
-  }
-  a.setEnabled(false);
-  for (const biome of ['forest', 'ocean', 'hell']) for (const event of ['coin', 'checkpoint', 'broadcast', 'countdown', 'teleport']) assert.equal(a.playEffect(event, biome), false);
-  a.setEnabled(true);
-  a.setHidden(true);
-  for (const biome of ['forest', 'ocean', 'hell']) for (const event of ['coin', 'checkpoint', 'broadcast', 'countdown', 'teleport']) assert.equal(a.playEffect(event, biome), false);
-  a.dispose();
+  assert.ok(audio._fxVoices.size>0);audio.setEnabled(false);
+  assert.equal(audio._fxVoices.size,0);assert.ok(audio.context.oscillators.every(node=>node.stopped));
+  audio.setEnabled(true);audio.playEffect('jump','forest');audio.setHidden(true);
+  assert.equal(audio._fxVoices.size,0);assert.equal(audio.playEffect('jump','forest'),false);
 });

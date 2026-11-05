@@ -37,6 +37,28 @@ test('health, cache protection, defaults, and explicitly disabled icebreakers',a
   for(const endpoint of ['/server/power-questions.js','/../server/power-questions.js'])assert.equal((await fetch(f.origin+endpoint)).status,404);
 });
 
+test('supplied background WAV files are served as audio',async t=>{
+  const f=await fixture(t);
+  const response=await fetch(f.origin+'/assets/audio/lobby/lobby_main_loop_30s.wav');
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('content-type'),'audio/wav');
+  assert.equal(Buffer.from(await response.arrayBuffer()).subarray(0,4).toString(),'RIFF');
+});
+
+test('a victory hold reports its banked score and settles without entering the next world',async t=>{
+  const f=await fixture(t,{settings:{worldOrder:[3,1,2]}});
+  await f.start();
+  const cleared={level:3,completedWorlds:[3],current:0,distanceMax:0,banked:500,progress:1};
+  assert.equal((await f.report(0,cleared)).type,'reportAck');
+  assert.equal(f.players[0].score,500);
+  assert.equal(f.players[0].summary.level,3);
+  await f.end();
+  assert.equal((await f.report(0,cleared,{final:true})).type,'reportAck');
+  await wait(()=>f.room.status==='ended');
+  assert.equal(f.room.results[0].score,500);
+  assert.equal(f.room.results[0].finishTime,null);
+});
+
 test('host authorization, room creation, spawn, and manual start remain separate',async t=>{
   const f=await fixture(t);assert.equal(f.room.status,'lobby');send(f.clients[0],'start');assert.equal((await receive(f.clients[0],m=>m.type==='error')).code,'AUTH');
   const intruder=await open(f.url);send(intruder,'hostJoin',{code:f.room.code,token:'wrong'});assert.equal((await receive(intruder,m=>m.type==='error')).code,'AUTH');intruder.close();

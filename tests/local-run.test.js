@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LocalRunRuntime, FIXED_STEP_SECONDS, MAX_CATCHUP_STEPS } from '../public/game/local-run.js';
 import { LEVELS } from '../public/game/levels.js';
+import { validateRunSummary, summaryScore } from '../public/game/run-protocol.js';
 
 const make = (extra = {}) => {
   const reports = [];
@@ -151,4 +152,60 @@ test('local runtime follows the shared engine through all ordered worlds', () =>
   }
   assert.equal(runtime.state.finished, true);
   assert.deepEqual(runtime.state.completedWorlds, [1, 2, 3]);
+});
+
+test('victory holds bank once, stay safe, and release into the correct next biome in all orders', () => {
+  for (const order of [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]) {
+    const events=[];
+    const {runtime,reports}=make({deferStageTransition:true,onEvent:event=>events.push(event)});
+    runtime.begin(order);
+    for (const [position,level] of order.entries()) {
+      Object.assign(runtime.state,{x:LEVELS[level].endX+1,y:400,current:20});
+      runtime.tick(FIXED_STEP_SECONDS,{serverNow:position*10000+1000});
+      assert.equal(runtime.state.level,level,'cleared biome remains visible');
+      assert.deepEqual(runtime.state.completedWorlds,order.slice(0,position+1));
+      const banked=runtime.state.banked, x=runtime.state.x, deaths=runtime.state.deaths;
+      assert.equal(summaryScore(reports.at(-1).summary),banked);
+      assert.ok(validateRunSummary(reports.at(-1).summary,order));
+      const count=reports.length;
+      runtime.setInput({left:true,jump:true});
+      for(let i=0;i<60;i++)runtime.tick(FIXED_STEP_SECONDS,{serverNow:position*10000+1100+i*20});
+      assert.equal(runtime.state.x,x);
+      assert.equal(runtime.state.deaths,deaths);
+      assert.equal(runtime.state.banked,banked);
+      assert.equal(reports.length,count,'no repeated exit reports or score banking');
+      if(position<2){
+        assert.equal(runtime.state.finished,false);
+        assert.equal(runtime.advanceStage({serverNow:position*10000+4000}),true);
+        assert.equal(runtime.state.level,order[position+1]);
+        assert.equal(runtime.state.x,90);
+        assert.equal(runtime.state.checkpoint,null);
+        assert.deepEqual(runtime.input,{left:false,right:false,jump:false});
+        assert.ok(validateRunSummary(reports.at(-1).summary,order));
+        assert.equal(runtime.advanceStage(),false,'duplicate completion is ignored');
+      }else{
+        assert.equal(runtime.state.finished,true);
+        assert.equal(runtime.finishedAt,position*10000+1000,'finish time is exit contact, before stinger');
+        assert.equal(runtime.advanceStage(),false);
+      }
+    }
+    assert.equal(events.filter(event=>event.type==='levelComplete').length,3);
+  }
+});
+
+test('cutoff and reset during a victory hold cannot launch an old next stage', () => {
+  let now=1000;
+  const {runtime}=make({deferStageTransition:true,now:()=>now});
+  Object.assign(runtime.state,{x:LEVELS[1].endX+1,y:400,current:20});
+  runtime.tick(FIXED_STEP_SECONDS,{serverNow:now});
+  now=2000;
+  const final=runtime.finalReport(now);
+  assert.equal(summaryScore(final.summary),runtime.state.banked);
+  assert.ok(validateRunSummary(final.summary,[1,2,3]));
+  assert.equal(runtime.advanceStage(),false);
+  runtime.reset({roundId:'new-round',runId:'new-run'});
+  runtime.begin([3,2,1]);
+  assert.equal(runtime.advanceStage(),false);
+  assert.equal(runtime.state.level,3);
+  assert.equal(runtime.state.banked,0);
 });

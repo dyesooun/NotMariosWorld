@@ -1,4 +1,4 @@
-import { createState, startRun, step } from './engine.js';
+import { createState, startRun, step, advanceStage } from './engine.js';
 import { LEVELS } from './levels.js';
 import { summarizeRun } from './run-protocol.js';
 
@@ -13,7 +13,7 @@ const copy = value => typeof structuredClone === 'function' ? structuredClone(va
 export const runSummary = (state, options = {}) => summarizeRun(state, options);
 
 function chestAt(state) {
-  if (!state || state.deadUntil > 0 || state.finished) return null;
+  if (!state || state.deadUntil > 0 || state.finished || state.stageTransition) return null;
   const level = LEVELS[state?.level];
   if (!level?.powerChests) return null;
   return level.powerChests.find(chest => {
@@ -25,13 +25,14 @@ function chestAt(state) {
 
 export class LocalRunRuntime {
   constructor({ state = null, profile = {}, settings = {}, roundId = null, runId = null,
-    sendReport = null, onEvent = null, now = () => Date.now() } = {}) {
+    sendReport = null, onEvent = null, deferStageTransition = false, now = () => Date.now() } = {}) {
     this.state = state || createState(profile);
     this.settings = settings;
     this.roundId = roundId;
     this.runId = runId;
     this.sendReport = sendReport;
     this.onEvent = onEvent;
+    this.deferStageTransition = deferStageTransition;
     this.now = now;
     this.input = { left: false, right: false, jump: false };
     this.accumulator = 0;
@@ -93,6 +94,17 @@ export class LocalRunRuntime {
   pause(value = true) { this.paused = !!value; if (value) this.setInput({}); }
   setFrozen(value = true) { this.frozen = !!value; if (value) this.state.vx = 0; }
 
+  advanceStage({ serverNow = this.now() } = {}) {
+    if (this.paused || this.finalReportValue || !this.state.stageTransition) return false;
+    const before = runSummary(this.state);
+    if (!advanceStage(this.state)) return false;
+    this.accumulator = 0;
+    this.setInput({});
+    this.lastProgressBucket = 0;
+    this._events(before, [{ type: 'stageStarted', level: this.state.level }], serverNow);
+    return true;
+  }
+
   // Restore a wall-clock respawn that expired between local simulation slices.
   advanceLifecycle(deltaSeconds, { serverNow = this.now() } = {}) {
     const delta = Math.max(0, Number(deltaSeconds) || 0);
@@ -123,7 +135,7 @@ export class LocalRunRuntime {
     while (this.accumulator >= FIXED_STEP_SECONDS && steps++ < MAX_CATCHUP_STEPS) {
       const stepAt = serverNow - (unconsumed + (plannedSteps - steps) * FIXED_STEP_SECONDS) * 1000;
       const before = runSummary(this.state);
-      const result = step(this.state, this.frozen ? {} : this.input, FIXED_STEP_SECONDS, this.settings);
+      const result = step(this.state, this.frozen ? {} : this.input, FIXED_STEP_SECONDS, { ...this.settings, deferStageTransition: this.deferStageTransition });
       events.push(...result);
       this.accumulator -= FIXED_STEP_SECONDS;
       this._events(before, result, stepAt);
@@ -155,7 +167,7 @@ export class LocalRunRuntime {
     this._chest(at, false);
     this._recordLocalSummary(at);
     if (eventType || respawned || this.lastChestId!==previousChest || after.deaths !== before.deaths || after.checkpoint?.id !== before.checkpoint?.id || after.level !== before.level || (after.finished && !before.finished)) {
-      if (after.progress < before.progress) this.lastProgressBucket = bucket;
+      this.lastProgressBucket = bucket;
       this.report(eventType || 'state', true, at);
     } else if (bucket > this.lastProgressBucket) {
       this.lastProgressBucket = bucket;

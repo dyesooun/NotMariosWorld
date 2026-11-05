@@ -17,7 +17,7 @@ const hazardBox = h => {
 };
 
 export function createState({ avatar = 'explorer', color = '#b7ef51', name = '', level = 0, worldOrder = DEFAULT_WORLD_ORDER, completedWorlds = [] } = {}) {
-  return { avatar, color, name, level, worldOrder: normalizeWorldOrder(worldOrder), completedWorlds: [...new Set(completedWorlds.filter(v => Number.isInteger(v) && v >= 1 && v <= 3))], x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], enemyKills: 0, _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
+  return { avatar, color, name, level, worldOrder: normalizeWorldOrder(worldOrder), completedWorlds: [...new Set(completedWorlds.filter(v => Number.isInteger(v) && v >= 1 && v <= 3))], x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, stageTransition: null, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], enemyKills: 0, _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
 }
 export function startRun(s, config = {}) {
   const profile = s.profile;
@@ -32,6 +32,13 @@ function levelStart(s) {
   Object.assign(s, createState({ name, avatar, color, level, worldOrder, completedWorlds }), { banked, deaths, elapsed, enemyKills, started });
   if (profile !== undefined) s.profile = clone(profile);
   initializeEnemies(s, LEVELS[s.level] || LEVELS[0]);
+}
+// The browser releases this hold when the cleared biome's victory cue ends.
+export function advanceStage(s) {
+  if (!s.stageTransition || s.finished) return false;
+  s.level = s.stageTransition.to;
+  levelStart(s);
+  return true;
 }
 function restoreCheckpoint(s) {
   if (!s.checkpoint) {
@@ -102,7 +109,7 @@ function die(s, h, now, cfg) {
 
 export function step(s, input = {}, dt = 1 / 60, config = {}) {
   const cfg = { ...DEFAULT, ...config }, events = []; dt = Math.min(Math.max(Number(dt) || 0, 0), .05); s.events = events; s.elapsed += dt;
-  if (s.finished) return events;
+  if (s.finished || s.stageTransition) return events;
   const lobby = !s.started && s.level === 0;
   if (!lobby && s.deadUntil > 0) { s.respawnRemaining = Math.max(0, s.deadUntil - s.elapsed); for (const p of s._particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 600 * dt; p.life -= dt; } if (s.elapsed + 1e-6 >= s.deadUntil) respawn(s); return events; }
   const level = LEVELS[s.level] || LEVELS[0]; s._levelTime += dt; s._enemyPhase += dt; initializeEnemies(s, level); updateProjectiles(s, dt);
@@ -145,12 +152,14 @@ export function step(s, input = {}, dt = 1 / 60, config = {}) {
     const completedLevel = s.level;
     const clearScore = s.current + Math.floor(s.distanceMax / 32) * cfg.distancePoints;
     s.banked += clearScore;
+    s.current = 0; s.distanceMax = 0;
     if (!s.completedWorlds.includes(completedLevel)) s.completedWorlds.push(completedLevel);
     events.push({ type: 'levelComplete', level: completedLevel, score: clearScore });
     const order = normalizeWorldOrder(s.worldOrder);
     const position = order.indexOf(completedLevel);
     const isLast = position < 0 || position >= order.length - 1;
-    if (isLast) { s.current = 0; s.distanceMax = 0; s.finished = true; events.push({ type: 'finished', score: score(s, cfg) }); }
+    if (isLast) { s.finished = true; events.push({ type: 'finished', score: score(s, cfg) }); }
+    else if (cfg.deferStageTransition) { s.stageTransition = { from: completedLevel, to: order[position + 1] }; s.vx = 0; s.vy = 0; s.jumpBuffer = 0; }
     else { s.level = order[position + 1]; levelStart(s); }
   }
   return events;

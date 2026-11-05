@@ -46,7 +46,13 @@ export function validateRunSummary(value, worldOrder) {
   if (value.finished !== (completed.length === 3)) return null;
   if (value.level === 0) {
     if (completed.length || value.finished) return null;
-  } else if (value.level !== order[Math.min(completed.length, 2)]) return null;
+  } else if (value.level !== order[Math.min(completed.length, 2)]) {
+    // A cleared world remains visible until its victory stinger ends. Its
+    // points have already been banked, so no current points remain to count.
+    const clearing = !value.finished && completed.length > 0 && value.level === completed.at(-1)
+      && value.progress === 1 && value.current === 0 && value.distanceMax === 0 && value.respawnRemaining === 0;
+    if (!clearing) return null;
+  }
   for (const key of ['coins', 'current', 'banked', 'distanceMax', 'progress', 'deaths', 'respawnRemaining']) {
     if (!nonnegative(value[key])) return null;
   }

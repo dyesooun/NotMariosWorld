@@ -43,6 +43,14 @@ test('invalid reports fail shape checks without reconstructing physics', () => {
   assert.equal(validateRunSummary(null, [1, 2, 3]), null);
 });
 
+test('a banked victory hold accepts only the just-cleared biome with no unbanked points', () => {
+  const clearing={...emptyRunSummary(3),completedWorlds:[3],banked:500,progress:1};
+  assert.ok(validateRunSummary(clearing,[3,1,2]));
+  for(const patch of [{level:2},{progress:.99},{current:1},{distanceMax:32},{respawnRemaining:1}]){
+    assert.equal(validateRunSummary({...clearing,...patch},[3,1,2]),null);
+  }
+});
+
 test('leaderboard totals include unbanked points and the last partial reporting milestone', () => {
   const summary = { ...emptyRunSummary(2), banked: 900, current: 70, distanceMax: 337 };
   assert.equal(summaryScore(summary, { distancePoints: 3 }), 1000);
