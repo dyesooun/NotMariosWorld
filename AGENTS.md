@@ -78,7 +78,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Place vines as canopy-attached scenery, flowers and mushrooms on supported ground, and carved decorations behind gameplay actors. Vines are decorative; no climbing mechanic has been requested.
 - Add harmless animated glow moths alongside birds. Forest enemies include mushlings and acorn beetles alongside slimes; all retain platform-bound patrol/chase, instant-kill collision, and existing shooter behavior where configured.
 - Forest reward and decoy chest artwork uses the living-wood chest. Reward chests retain the cyan marker, per-chest claims, and normal Attack / Replace rules.
-- Forest music is the original 32-beat **Mosslight Mountain** arrangement: lilting retro bell/flute lead, plucked arpeggios, and short bass notes. Preserve default-on audio, biome effects, and mute/visibility behavior.
+- Forest background music uses the supplied `public/assets/audio/forest/music/forest_danger_full_loop_30s.wav`; its stage-clear cue is `forest_victory_stinger.wav` from the same directory. Preserve default-on audio, biome effects, and mute/visibility behavior.
 
 ## Death, checkpoints, and scoring
 
@@ -97,6 +97,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Current total score is `banked + current coin points + floor(farthest current-level distance / 32) * distancePoints`.
 - Distance uses the farthest point reached, so walking backward and forward cannot farm points.
 - Completing a level banks its full current score **once**, including checkpoint-protected points, then starts the next level with a fresh checkpoint state. Death in a later level never removes earlier banked points.
+- On reaching an exit, stop the background loop and play that biome's complete victory stinger once. Hold the player safely in the cleared biome until the stinger ends before entering the next selected world. Bank score and announce the escape immediately; final-course completion time remains the exit-contact time. The shared clock continues, and round expiry/manual end takes precedence over the cue. Muted, hidden, or unavailable audio uses the cue's duration without blocking progression indefinitely.
 - Completing the third world in the selected sequence banks the final level and waits for the shared room timer and ceremony; it does not immediately end the round for everyone.
 - At time expiry, include **banked points plus current unbanked points** in the final result.
 - Highest score wins. Ties favor earlier full-course completion measured from the **room's start**, then join order for remaining ties. An unfinished player has no completion time.
@@ -192,7 +193,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 - Background music **and sound effects are enabled by default**. Preserve the single speaker control that mutes/enables both.
 - Unlock playback on the first user click/key press to comply with browser autoplay behavior; do not silently change the default preference to muted.
-- Original looping chiptune music changes between lobby, forest, ocean, inferno, and podium.
+- Use the supplied WAV loops under `public/assets/audio`: `lobby/lobby_main_loop_30s.wav` for the lobby, the respective `forest`, `tide`, and `hell` `music/*_danger_full_loop_30s.wav` for race biomes, and `lobby/podium_main_loop_30s.wav` for the podium. Loop each complete file. Use each race biome's matching `*_victory_stinger.wav` once on its stage clear; do not layer the old synthesized music or clear/finish jingles over it. After the final stage's stinger, use the podium loop while waiting for the shared timer.
 - Effects are appropriate to the current world: light plucks/chirps in the forest, bubbles/glides at sea, and low crunchy tones in the inferno.
 - Include feedback for jumping, coins, death, respawn, checkpoints, broadcasts, countdowns, race start, level clear, and the final teleport.
 - Pause audio in hidden tabs and resume when visible. Keep audio from multiplying on rerenders, reconnects, or repeated phase snapshots.
@@ -247,7 +248,8 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 | `public/game/power-quiz-controls.js` | Actual player's DOM question/input/submit card |
 | `public/game/world-ui.js` | In-world votes, announcements, quiz phase notices, countdown |
 | `public/game/podium.js` | Ranked ceremony world |
-| `public/game/audio.js` | Original music, biome effects, audio lifecycle |
+| `public/game/audio.js` | Supplied music/stinger playback, biome effects, audio lifecycle |
+| `public/game/audio-tracks.js` | Biome WAV paths and measured victory-cue durations |
 | `public/game/default-questions.js` | Five default lobby icebreakers |
 | `public/game/client-state.js` | World progress models, quiz movement restrictions, runtime compatibility guards |
 | `public/assets/`, `docs/ASSETS.md` | Original assets and provenance |

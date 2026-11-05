@@ -1,0 +1,200 @@
+CREATURES TILESET ATLAS MANIFEST
+================================
+Image: forest_creatures.png
+Dimensions: 1774x887px
+Grid: 8 columns x 4 rows
+Coordinate system: origin at top-left, x increases right, y increases downward.
+Coordinates below are inclusive start positions with width/height cut sizes derived from equal grid division of the generated atlas.
+Recommended usage: row 0 = boar, row 1 = mushroom brute, row 2 = hornet, row 3 = plant turret + seed projectile.
+
+[000] id=boar_frame_01_idle
+  row=0 col=0
+  x=0 y=0 width=222 height=222
+  cut_rect=(0,0,222,222)
+  use=Land enemy type 1 sequence frame 1/8. Patrol/idle.
+
+[001] id=boar_frame_02_step
+  row=0 col=1
+  x=222 y=0 width=222 height=222
+  cut_rect=(222,0,222,222)
+  use=Land enemy type 1 sequence frame 2/8. Patrol advance.
+
+[002] id=boar_frame_03_crouch
+  row=0 col=2
+  x=444 y=0 width=221 height=222
+  cut_rect=(444,0,221,222)
+  use=Land enemy type 1 sequence frame 3/8. Charge prep.
+
+[003] id=boar_frame_04_windup
+  row=0 col=3
+  x=665 y=0 width=222 height=222
+  cut_rect=(665,0,222,222)
+  use=Land enemy type 1 sequence frame 4/8. Charge windup.
+
+[004] id=boar_frame_05_burst
+  row=0 col=4
+  x=887 y=0 width=222 height=222
+  cut_rect=(887,0,222,222)
+  use=Land enemy type 1 sequence frame 5/8. Start of charge burst.
+
+[005] id=boar_frame_06_charge
+  row=0 col=5
+  x=1109 y=0 width=221 height=222
+  cut_rect=(1109,0,221,222)
+  use=Land enemy type 1 sequence frame 6/8. Full charge.
+
+[006] id=boar_frame_07_lunge
+  row=0 col=6
+  x=1330 y=0 width=222 height=222
+  cut_rect=(1330,0,222,222)
+  use=Land enemy type 1 sequence frame 7/8. Aggressive lunge.
+
+[007] id=boar_frame_08_recover
+  row=0 col=7
+  x=1552 y=0 width=222 height=222
+  cut_rect=(1552,0,222,222)
+  use=Land enemy type 1 sequence frame 8/8. Recover / loop back.
+
+[008] id=mushroom_brute_frame_01_idle
+  row=1 col=0
+  x=0 y=222 width=222 height=222
+  cut_rect=(0,222,222,222)
+  use=Land enemy type 2 sequence frame 1/8. Idle stance.
+
+[009] id=mushroom_brute_frame_02_ready
+  row=1 col=1
+  x=222 y=222 width=222 height=222
+  cut_rect=(222,222,222,222)
+  use=Land enemy type 2 sequence frame 2/8. Readying movement.
+
+[010] id=mushroom_brute_frame_03_windup
+  row=1 col=2
+  x=444 y=222 width=221 height=222
+  cut_rect=(444,222,221,222)
+  use=Land enemy type 2 sequence frame 3/8. Attack windup.
+
+[011] id=mushroom_brute_frame_04_raise
+  row=1 col=3
+  x=665 y=222 width=222 height=222
+  cut_rect=(665,222,222,222)
+  use=Land enemy type 2 sequence frame 4/8. Strong windup pose.
+
+[012] id=mushroom_brute_frame_05_swing_start
+  row=1 col=4
+  x=887 y=222 width=222 height=222
+  cut_rect=(887,222,222,222)
+  use=Land enemy type 2 sequence frame 5/8. Attack swing begins.
+
+[013] id=mushroom_brute_frame_06_impact
+  row=1 col=5
+  x=1109 y=222 width=221 height=222
+  cut_rect=(1109,222,221,222)
+  use=Land enemy type 2 sequence frame 6/8. Heavy strike / impact.
+
+[014] id=mushroom_brute_frame_07_followthrough
+  row=1 col=6
+  x=1330 y=222 width=222 height=222
+  cut_rect=(1330,222,222,222)
+  use=Land enemy type 2 sequence frame 7/8. Follow-through.
+
+[015] id=mushroom_brute_frame_08_recover
+  row=1 col=7
+  x=1552 y=222 width=222 height=222
+  cut_rect=(1552,222,222,222)
+  use=Land enemy type 2 sequence frame 8/8. Recover / loop back.
+
+[016] id=hornet_frame_01_hover_up
+  row=2 col=0
+  x=0 y=444 width=222 height=221
+  cut_rect=(0,444,222,221)
+  use=Flying enemy sequence frame 1/8. Wings high.
+
+[017] id=hornet_frame_02_hover_mid
+  row=2 col=1
+  x=222 y=444 width=222 height=221
+  cut_rect=(222,444,222,221)
+  use=Flying enemy sequence frame 2/8. Hover transition.
+
+[018] id=hornet_frame_03_downstroke
+  row=2 col=2
+  x=444 y=444 width=221 height=221
+  cut_rect=(444,444,221,221)
+  use=Flying enemy sequence frame 3/8. Wing downstroke.
+
+[019] id=hornet_frame_04_attack_prep
+  row=2 col=3
+  x=665 y=444 width=222 height=221
+  cut_rect=(665,444,222,221)
+  use=Flying enemy sequence frame 4/8. Attack prep.
+
+[020] id=hornet_frame_05_lunge_prep
+  row=2 col=4
+  x=887 y=444 width=222 height=221
+  cut_rect=(887,444,222,221)
+  use=Flying enemy sequence frame 5/8. Lunge setup.
+
+[021] id=hornet_frame_06_lunge
+  row=2 col=5
+  x=1109 y=444 width=221 height=221
+  cut_rect=(1109,444,221,221)
+  use=Flying enemy sequence frame 6/8. Forward lunge.
+
+[022] id=hornet_frame_07_sting_attack
+  row=2 col=6
+  x=1330 y=444 width=222 height=221
+  cut_rect=(1330,444,222,221)
+  use=Flying enemy sequence frame 7/8. Strongest attack frame.
+
+[023] id=hornet_frame_08_recover
+  row=2 col=7
+  x=1552 y=444 width=222 height=221
+  cut_rect=(1552,444,222,221)
+  use=Flying enemy sequence frame 8/8. Recover / hover loop.
+
+[024] id=plant_turret_frame_01_idle
+  row=3 col=0
+  x=0 y=665 width=222 height=222
+  cut_rect=(0,665,222,222)
+  use=Projectile-based enemy sequence frame 1/4. Idle state.
+
+[025] id=plant_turret_frame_02_charge
+  row=3 col=1
+  x=222 y=665 width=222 height=222
+  cut_rect=(222,665,222,222)
+  use=Projectile-based enemy sequence frame 2/4. Charge-up state.
+
+[026] id=plant_turret_frame_03_fire
+  row=3 col=2
+  x=444 y=665 width=221 height=222
+  cut_rect=(444,665,221,222)
+  use=Projectile-based enemy sequence frame 3/4. Firing state.
+
+[027] id=plant_turret_frame_04_recover
+  row=3 col=3
+  x=665 y=665 width=222 height=222
+  cut_rect=(665,665,222,222)
+  use=Projectile-based enemy sequence frame 4/4. Recovery state.
+
+[028] id=seed_projectile_frame_01_spawn
+  row=3 col=4
+  x=887 y=665 width=222 height=222
+  cut_rect=(887,665,222,222)
+  use=Projectile sequence frame 1/4. Spawn / early travel.
+
+[029] id=seed_projectile_frame_02_travel
+  row=3 col=5
+  x=1109 y=665 width=221 height=222
+  cut_rect=(1109,665,221,222)
+  use=Projectile sequence frame 2/4. In flight.
+
+[030] id=seed_projectile_frame_03_fast_travel
+  row=3 col=6
+  x=1330 y=665 width=222 height=222
+  cut_rect=(1330,665,222,222)
+  use=Projectile sequence frame 3/4. Faster travel.
+
+[031] id=seed_projectile_frame_04_fastest_travel
+  row=3 col=7
+  x=1552 y=665 width=222 height=222
+  cut_rect=(1552,665,222,222)
+  use=Projectile sequence frame 4/4. Fastest travel / exit frame.

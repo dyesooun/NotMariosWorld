@@ -1,0 +1,912 @@
+{
+  "format": "hell-express-sprite-atlas/v1",
+  "theme": "Hell Express",
+  "asset": "hell-express-enemies.png",
+  "coordinate_system": "top-left (0,0), x right, y down",
+  "pixel_units": "source image pixels",
+  "transparent": true,
+  "atlas": {
+    "width": 1536,
+    "height": 1280,
+    "columns": 8,
+    "rows": 5,
+    "cell_width": 192,
+    "cell_height": 256,
+    "padding": 0,
+    "extrusion": 0,
+    "frame_count": 40
+  },
+  "rendering": {
+    "filter": "nearest",
+    "antialias": false,
+    "texture_wrap": "clamp-to-edge",
+    "recommended_scale": "scale the whole atlas consistently; avoid fractional pixel scaling",
+    "default_facing": "right",
+    "flip_for_left": true
+  },
+  "instructions": "All sprites use an untrimmed 192x256 frame. Use frames[*].x/y/w/h to crop. Animation frames are ordered; arrays can repeat frames. Visual trims are optional only. Do not treat the preview PNG as the atlas.",
+  "enemies": [
+    {
+      "id": "ember_hound",
+      "type": "land",
+      "role": "fast_chaser",
+      "description": "Four-legged volcanic hound; patrols/charges along platforms and damages by body contact or short-range lunge.",
+      "frame_row": 0,
+      "pivot_px": [
+        96,
+        220
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -63,
+        -106,
+        126,
+        101
+      ],
+      "gravity": true,
+      "damage_sources": [
+        "body_contact",
+        "lunge"
+      ],
+      "animations": {
+        "idle": {
+          "frames": [
+            "ember_hound_00",
+            "ember_hound_01"
+          ],
+          "fps": 3,
+          "loop": true
+        },
+        "run": {
+          "frames": [
+            "ember_hound_01",
+            "ember_hound_02",
+            "ember_hound_03",
+            "ember_hound_04"
+          ],
+          "fps": 10,
+          "loop": true
+        },
+        "lunge": {
+          "frames": [
+            "ember_hound_04",
+            "ember_hound_05"
+          ],
+          "fps": 7,
+          "loop": false,
+          "damage_active_indices": [
+            1
+          ]
+        },
+        "hurt": {
+          "frames": [
+            "ember_hound_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "death": {
+          "frames": [
+            "ember_hound_07"
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      }
+    },
+    {
+      "id": "slag_minotaur",
+      "type": "land",
+      "role": "heavy_melee",
+      "description": "Slow armored horned brute; patrols, winds up a hammer, and strikes the ground in a short frontal area.",
+      "frame_row": 1,
+      "pivot_px": [
+        96,
+        226
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -52,
+        -157,
+        104,
+        148
+      ],
+      "gravity": true,
+      "damage_sources": [
+        "body_contact",
+        "hammer_slam"
+      ],
+      "animations": {
+        "idle": {
+          "frames": [
+            "slag_minotaur_00",
+            "slag_minotaur_01"
+          ],
+          "fps": 3,
+          "loop": true
+        },
+        "walk": {
+          "frames": [
+            "slag_minotaur_01",
+            "slag_minotaur_02",
+            "slag_minotaur_03",
+            "slag_minotaur_00"
+          ],
+          "fps": 5,
+          "loop": true
+        },
+        "slam": {
+          "frames": [
+            "slag_minotaur_04",
+            "slag_minotaur_05",
+            "slag_minotaur_06"
+          ],
+          "fps": 5,
+          "loop": false,
+          "damage_active_indices": [
+            1
+          ]
+        },
+        "hurt": {
+          "frames": [
+            "slag_minotaur_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "death": {
+          "frames": [
+            "slag_minotaur_07"
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      }
+    },
+    {
+      "id": "cinder_imp",
+      "type": "flying",
+      "role": "aerial_chaser",
+      "description": "Winged horned imp; hovers overhead, tracks the player and occasionally dives with an ember trail.",
+      "frame_row": 2,
+      "pivot_px": [
+        96,
+        136
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -47,
+        -47,
+        94,
+        88
+      ],
+      "gravity": false,
+      "damage_sources": [
+        "body_contact",
+        "dive"
+      ],
+      "animations": {
+        "hover": {
+          "frames": [
+            "cinder_imp_00",
+            "cinder_imp_01",
+            "cinder_imp_02",
+            "cinder_imp_03",
+            "cinder_imp_04"
+          ],
+          "fps": 9,
+          "loop": true
+        },
+        "dive": {
+          "frames": [
+            "cinder_imp_04",
+            "cinder_imp_05",
+            "cinder_imp_06"
+          ],
+          "fps": 9,
+          "loop": false,
+          "damage_active_indices": [
+            1
+          ]
+        },
+        "hurt": {
+          "frames": [
+            "cinder_imp_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "death": {
+          "frames": [
+            "cinder_imp_07"
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      }
+    },
+    {
+      "id": "infernal_cannon",
+      "type": "projectile",
+      "role": "stationary_ranged",
+      "description": "Infernal wheeled cannon; aims horizontally and fires a separate fireball entity toward the player.",
+      "frame_row": 3,
+      "pivot_px": [
+        96,
+        207
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -55,
+        -110,
+        110,
+        102
+      ],
+      "gravity": true,
+      "damage_sources": [
+        "fireball_projectile"
+      ],
+      "projectile_id": "fireball",
+      "spawn_offset_from_pivot_px": [
+        75,
+        -83
+      ],
+      "animations": {
+        "idle": {
+          "frames": [
+            "infernal_cannon_00",
+            "infernal_cannon_01",
+            "infernal_cannon_02"
+          ],
+          "fps": 3,
+          "loop": true
+        },
+        "fire": {
+          "frames": [
+            "infernal_cannon_03",
+            "infernal_cannon_04",
+            "infernal_cannon_05"
+          ],
+          "fps": 8,
+          "loop": false,
+          "spawn_projectile_at_index": 1
+        },
+        "hurt": {
+          "frames": [
+            "infernal_cannon_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "death": {
+          "frames": [
+            "infernal_cannon_07"
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      }
+    }
+  ],
+  "projectiles": [
+    {
+      "id": "fireball",
+      "description": "Enemy projectile; damaging while active, not upon explosion unless your game explicitly enables area damage.",
+      "frame_row": 4,
+      "pivot_px": [
+        96,
+        128
+      ],
+      "velocity_direction": "facing",
+      "collision_box_relative_to_pivot_px": [
+        -17,
+        -17,
+        34,
+        34
+      ],
+      "gravity": false,
+      "animations": {
+        "flight": {
+          "frames": [
+            "fireball_fx_00",
+            "fireball_fx_01",
+            "fireball_fx_02",
+            "fireball_fx_03"
+          ],
+          "fps": 12,
+          "loop": true
+        },
+        "impact": {
+          "frames": [
+            "fireball_fx_04",
+            "fireball_fx_05",
+            "fireball_fx_06",
+            "fireball_fx_07"
+          ],
+          "fps": 12,
+          "loop": false,
+          "despawn_on_complete": true
+        }
+      }
+    }
+  ],
+  "frames": {
+    "ember_hound_00": {
+      "x": 0,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 0,
+      "trim": [
+        26,
+        102,
+        170,
+        208
+      ]
+    },
+    "ember_hound_01": {
+      "x": 192,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 1,
+      "trim": [
+        28,
+        102,
+        172,
+        208
+      ]
+    },
+    "ember_hound_02": {
+      "x": 384,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 2,
+      "trim": [
+        19,
+        106,
+        178,
+        208
+      ]
+    },
+    "ember_hound_03": {
+      "x": 576,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 3,
+      "trim": [
+        20,
+        112,
+        181,
+        208
+      ]
+    },
+    "ember_hound_04": {
+      "x": 768,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 4,
+      "trim": [
+        16,
+        98,
+        178,
+        208
+      ]
+    },
+    "ember_hound_05": {
+      "x": 960,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 5,
+      "trim": [
+        14,
+        100,
+        163,
+        208
+      ]
+    },
+    "ember_hound_06": {
+      "x": 1152,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 6,
+      "trim": [
+        21,
+        77,
+        172,
+        208
+      ]
+    },
+    "ember_hound_07": {
+      "x": 1344,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 7,
+      "trim": [
+        16,
+        99,
+        176,
+        202
+      ]
+    },
+    "slag_minotaur_00": {
+      "x": 0,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 0,
+      "trim": [
+        23,
+        49,
+        173,
+        210
+      ]
+    },
+    "slag_minotaur_01": {
+      "x": 192,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 1,
+      "trim": [
+        24,
+        48,
+        167,
+        210
+      ]
+    },
+    "slag_minotaur_02": {
+      "x": 384,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 2,
+      "trim": [
+        23,
+        50,
+        166,
+        210
+      ]
+    },
+    "slag_minotaur_03": {
+      "x": 576,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 3,
+      "trim": [
+        23,
+        53,
+        165,
+        210
+      ]
+    },
+    "slag_minotaur_04": {
+      "x": 768,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 4,
+      "trim": [
+        33,
+        18,
+        160,
+        211
+      ]
+    },
+    "slag_minotaur_05": {
+      "x": 960,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 5,
+      "trim": [
+        19,
+        95,
+        177,
+        226
+      ]
+    },
+    "slag_minotaur_06": {
+      "x": 1152,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 6,
+      "trim": [
+        24,
+        51,
+        165,
+        210
+      ]
+    },
+    "slag_minotaur_07": {
+      "x": 1344,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 7,
+      "trim": [
+        14,
+        89,
+        179,
+        211
+      ]
+    },
+    "cinder_imp_00": {
+      "x": 0,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 0,
+      "trim": [
+        16,
+        69,
+        177,
+        181
+      ]
+    },
+    "cinder_imp_01": {
+      "x": 192,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 1,
+      "trim": [
+        17,
+        66,
+        177,
+        175
+      ]
+    },
+    "cinder_imp_02": {
+      "x": 384,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 2,
+      "trim": [
+        23,
+        66,
+        174,
+        178
+      ]
+    },
+    "cinder_imp_03": {
+      "x": 576,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 3,
+      "trim": [
+        24,
+        55,
+        173,
+        190
+      ]
+    },
+    "cinder_imp_04": {
+      "x": 768,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 4,
+      "trim": [
+        21,
+        63,
+        174,
+        192
+      ]
+    },
+    "cinder_imp_05": {
+      "x": 960,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 5,
+      "trim": [
+        26,
+        46,
+        184,
+        206
+      ]
+    },
+    "cinder_imp_06": {
+      "x": 1152,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 6,
+      "trim": [
+        24,
+        63,
+        172,
+        196
+      ]
+    },
+    "cinder_imp_07": {
+      "x": 1344,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 7,
+      "trim": [
+        20,
+        73,
+        171,
+        194
+      ]
+    },
+    "infernal_cannon_00": {
+      "x": 0,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 0,
+      "trim": [
+        26,
+        39,
+        158,
+        180
+      ]
+    },
+    "infernal_cannon_01": {
+      "x": 192,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 1,
+      "trim": [
+        33,
+        41,
+        161,
+        180
+      ]
+    },
+    "infernal_cannon_02": {
+      "x": 384,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 2,
+      "trim": [
+        29,
+        42,
+        160,
+        180
+      ]
+    },
+    "infernal_cannon_03": {
+      "x": 576,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 3,
+      "trim": [
+        30,
+        34,
+        180,
+        180
+      ]
+    },
+    "infernal_cannon_04": {
+      "x": 768,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 4,
+      "trim": [
+        19,
+        55,
+        179,
+        175
+      ]
+    },
+    "infernal_cannon_05": {
+      "x": 960,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 5,
+      "trim": [
+        34,
+        49,
+        160,
+        180
+      ]
+    },
+    "infernal_cannon_06": {
+      "x": 1152,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 6,
+      "trim": [
+        32,
+        45,
+        159,
+        180
+      ]
+    },
+    "infernal_cannon_07": {
+      "x": 1344,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 7,
+      "trim": [
+        14,
+        14,
+        180,
+        176
+      ]
+    },
+    "fireball_fx_00": {
+      "x": 0,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 0,
+      "trim": [
+        28,
+        100,
+        140,
+        180
+      ]
+    },
+    "fireball_fx_01": {
+      "x": 192,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 1,
+      "trim": [
+        28,
+        84,
+        136,
+        188
+      ]
+    },
+    "fireball_fx_02": {
+      "x": 384,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 2,
+      "trim": [
+        32,
+        84,
+        144,
+        160
+      ]
+    },
+    "fireball_fx_03": {
+      "x": 576,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 3,
+      "trim": [
+        28,
+        100,
+        140,
+        180
+      ]
+    },
+    "fireball_fx_04": {
+      "x": 768,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 4,
+      "trim": [
+        80,
+        108,
+        128,
+        164
+      ]
+    },
+    "fireball_fx_05": {
+      "x": 960,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 5,
+      "trim": [
+        72,
+        96,
+        136,
+        176
+      ]
+    },
+    "fireball_fx_06": {
+      "x": 1152,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 6,
+      "trim": [
+        56,
+        84,
+        148,
+        184
+      ]
+    },
+    "fireball_fx_07": {
+      "x": 1344,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 7,
+      "trim": [
+        40,
+        76,
+        164,
+        192
+      ]
+    }
+  },
+  "recommended_states": {
+    "enemies": [
+      "idle/patrol",
+      "chase",
+      "windup/attack",
+      "hurt",
+      "death"
+    ],
+    "projectile": [
+      "spawn",
+      "flight",
+      "impact",
+      "despawn"
+    ]
+  },
+  "notes": [
+    "Animation indices and per-enemy hitboxes are starting recommendations, not engine-validated gameplay values.",
+    "For seamless animations, render all frames untrimmed with the shared pivot per entity.",
+    "The cannon fire animation draws a projectile in one cell as muzzle feedback; only the separate fireball entity should move and collide.",
+    "Do not make dying enemies deal contact damage after death begins."
+  ]
+}

@@ -17,7 +17,21 @@ The row-major sprite order is:
 
 The generation brief requested an isolated 4×4 production sprite atlas, true transparency, crisp chunky 16-bit pixels, dark outlines, emerald/teal moss, golden wood, coral/violet flowers, and no text or franchise characters. It specified leafy vines, four flower varieties, two mushroom clusters, a moss-roofed wooden chest with a cyan crystal latch, turquoise/lilac moth, walking coral mushroom, acorn-armored green beetle, original carved woodland faces, and a flat-topped grass/soil platform with hanging roots.
 
-The forest music, **Mosslight Mountain**, is an original score synthesized in `public/game/audio.js`: a 32-beat melody, plucked square-wave arpeggios, triangle bass, and quiet bell overtones. No sampled soundtrack is required.
+The previous synthesized **Mosslight Mountain** forest arrangement has been replaced by the user-supplied forest WAV pack described below. Existing synthesized biome sound effects remain in `public/game/audio.js`.
+
+## Supplied audio packs
+
+The user supplied the WAV files under `public/assets/audio/`. Their bundled README/manifest files describe original procedural chiptune synthesis without third-party samples. The integrated files are 16-bit PCM at 32 kHz. Lobby, podium, and tides background loops are stereo; forest/inferno loops and all three victory stingers are mono. Every background loop is 30 seconds; victory stingers are 4.3 seconds for forest and 4.4 seconds for tides/inferno, measured from the WAV headers.
+
+| Scene | Full background loop | Stage-clear one-shot |
+| --- | --- | --- |
+| Lobby | `lobby/lobby_main_loop_30s.wav` | — |
+| Forest | `forest/music/forest_danger_full_loop_30s.wav` | `forest/music/forest_victory_stinger.wav` |
+| Tides | `tide/music/tides_danger_full_loop_30s.wav` | `tide/music/tides_victory_stinger.wav` |
+| Inferno | `hell/music/hell_danger_full_loop_30s.wav` | `hell/music/hell_victory_stinger.wav` |
+| Podium / course-finished waiting | `lobby/podium_main_loop_30s.wav` | — |
+
+Paths in this table are relative to `public/assets/audio/`. Each entire loop repeats without layering a separate danger track. A race loop stops at its exit; its matching stinger plays once before the next world starts. The shared room cutoff overrides the transition. Bundled references to separate main/danger-layer files describe pack variants that are not present in this checkout; runtime uses only the supplied full loops. The shared files in `audio/sfx/` are retained as supplied assets; replacing existing biome effects is outside this music integration.
 
 ## Shared avatar and creature atlas
 

@@ -48,6 +48,7 @@ let hostReportsOpen = true;
 let localRun = null, input = {left:false,right:false,jump:false};
 let localFinalizing = false, simulationCursor = null, finalPending = false;
 const audio = new GameAudio();
+let stageVictory = null;
 let podiumArrivedAt=0,lastCountdownSecond=null,lastCountdownRoom=null,finalSentRound=null;
 let playerQuizControls=null,playerQuizViewport=null;
 let playerChestControls=null,playerChestViewport=null;
@@ -73,12 +74,14 @@ function ensureLocalRun(me) {
   if (role !== 'player' || !me) return null;
   const roundId = room?.roundId || null, runId = me.runId || null;
   if (!localRun || localRun.roundId !== roundId || localRun.runId !== runId) {
+    cancelStageVictory();
     localFinalizing=false; finalPending=false; finalSentRound=null; simulationCursor=serverNow();
-    localRun = new LocalRunRuntime({ profile:{name:me.name,avatar:me.avatar,color:me.color}, settings: room?.settings || DEFAULTS, roundId, runId, now:serverNow,
+    localRun = new LocalRunRuntime({ profile:{name:me.name,avatar:me.avatar,color:me.color}, settings: room?.settings || DEFAULTS, roundId, runId, now:serverNow, deferStageTransition:true,
       sendReport: report => sendRaw('runReport', report),
       onEvent: event => {
         const scene=sceneForLevel(event.level??localRun.state.level);
-        const tone={death:'death',checkpoint:'checkpoint',finished:'finish',levelComplete:'clear',enemyKill:'stomp',coin:'coin',respawn:'respawn'}[event.type];
+        if(event.type==='levelComplete')playStageVictory(event.level);
+        const tone={death:'death',checkpoint:'checkpoint',enemyKill:'stomp',coin:'coin',respawn:'respawn'}[event.type];
         if(tone)playTone(tone,scene);
         if(event.type==='checkpoint')toast('Checkpoint saved! Your score and collected coins are protected.');
       } });
@@ -93,6 +96,7 @@ const serverNow=()=>Date.now()+clockOffset;
 const ceremony=()=>localFinalizing||room?.status==='settling'||room?.status==='ended';
 function finalizeLocal(cutoffAt){
   if(!localRun||!room?.players.find(p=>p.id===you)?.spawned)return;
+  cancelStageVictory();
   localRun.pause(true);localFinalizing=true;zeroInput();
   if(finalSentRound!==room.roundId){const retry=!!localRun.finalReportValue;finalSentRound=room.roundId;finalPending=true;localRun.finalReport(cutoffAt,{retry});}
 }
@@ -121,6 +125,7 @@ async function connect() {
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`);
   ws.addEventListener('message', e => { try { onMessage(JSON.parse(e.data)); } catch (err) { console.error('Room update failed', err); toast('A room update could not be displayed.',true); } });
   ws.addEventListener('close', () => {
+    cancelStageVictory();
     connected = false; pending = false; localRun?.pause(true); zeroInput(); updateConnection();
     if (intentionalClose || screen === 'entry') return;
     if (role === 'host' && hostSession) {
@@ -182,6 +187,7 @@ function header(content = '') {
   return `<header class="site-header">${brand()}<div class="nav-actions">${content}<button class="link-button" data-action="help">HOW TO PLAY</button><button class="button square ghost" data-action="sound" aria-pressed="${audio.enabled}" aria-label="${audio.enabled?'Mute':'Enable'} music and sound effects" title="${audio.enabled?'Mute':'Enable'} music and sound effects">${icon(audio.enabled?'volume':'mute')}</button></div></header>`;
 }
 function renderEntry() {
+  cancelStageVictory();
   screen='entry'; screenKey='entry'; role=null; rosterKey=scoreKey=questionKey='';
   updateMusicScene();
   const code = new URLSearchParams(location.search).get('room') || '';
@@ -489,9 +495,37 @@ function currentEffectScene(){
   return sceneForLevel(player?.spawned?player.state?.level:0);
 }
 function playTone(kind,scene=currentEffectScene()) { audio.playEffect(kind,scene); }
+function cancelStageVictory() {
+  stageVictory=null;
+  audio.cancelVictory();
+}
+function playStageVictory(level) {
+  cancelStageVictory();
+  zeroInput();
+  const token={run:localRun,level};
+  stageVictory=token;
+  const scene=sceneForLevel(level);
+  audio.setScene(scene);
+  const complete=()=>{
+    if(stageVictory!==token)return;
+    // Consume time spent at the exit before allowing the new world to move.
+    advanceLocalSimulation();
+    if(stageVictory!==token)return;
+    stageVictory=null;
+    const now=serverNow();
+    if(localRun===token.run&&connected&&!runtimeError&&room?.status==='running'&&!ceremony()&&now<room.endsAt){
+      zeroInput();
+      localRun.advanceStage({serverNow:now});
+      simulationCursor=now;
+    }
+    updateMusicScene();
+  };
+  void audio.playVictory(scene).then(complete,complete);
+}
 function updateMusicScene() {
   if(screen==='entry'||!room){audio.setScene('lobby');return;}
   if(ceremony()){audio.setScene('results');return;}
+  if(stageVictory)return;
   if(role==='host'){audio.setScene('lobby');return;}
   const player=room.players.find(p=>p.id===you);
   if(player?.state?.finished){audio.setScene('results');return;}
@@ -585,7 +619,7 @@ function keyboard(e,pressed){
   if(!room.players.find(p=>p.id===you)?.spawned)return;
   e.preventDefault();if(input[k]===pressed)return;
   const state=localRun?.state;
-  if(k==='jump'&&pressed&&state&&!state.respawnRemaining&&!state.finished&&(state.grounded||state.coyote>0))playTone('jump');
+  if(k==='jump'&&pressed&&state&&!state.respawnRemaining&&!state.finished&&!state.stageTransition&&(state.grounded||state.coyote>0))playTone('jump');
   input[k]=pressed;localRun?.setInput(input);
 }
 document.addEventListener('keydown',e=>keyboard(e,true));document.addEventListener('keyup',e=>keyboard(e,false));
