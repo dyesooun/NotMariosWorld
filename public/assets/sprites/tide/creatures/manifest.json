@@ -1,0 +1,1479 @@
+{
+  "format": "troubled-tides-sprite-atlas/v1",
+  "theme": "Troubled Tides",
+  "asset": "troubled-tides-enemies.png",
+  "coordinate_system": "top-left (0,0), x right, y down",
+  "pixel_units": "source image pixels",
+  "transparent": true,
+  "atlas": {
+    "width": 1536,
+    "height": 1280,
+    "columns": 8,
+    "rows": 5,
+    "cell_width": 192,
+    "cell_height": 256,
+    "padding": 0,
+    "extrusion": 0,
+    "frame_count": 40
+  },
+  "rendering": {
+    "filter": "nearest",
+    "antialias": false,
+    "texture_wrap": "clamp-to-edge",
+    "recommended_scale": "Scale all atlas cells uniformly; prefer integer scaling. Turn off image smoothing.",
+    "default_facing": "right",
+    "flip_for_left": true
+  },
+  "instructions": "Read frames[id].x/y/w/h for exact untrimmed 192x256 cropping. Coordinates are final atlas pixel positions (not generation-source positions). Each row holds one enemy or effect, ordered left to right. Trim coordinates are [left,top,right,bottom] EXCLUSIVE, relative to cell; use only if compensating pivot offsets. Do not crop from the checkerboard preview.",
+  "enemies": [
+    {
+      "id": "reef_crab",
+      "display_name": "Reef Crab",
+      "type": "land",
+      "role": "fast_patrol_claw_attacker",
+      "description": "Armored, barnacled shore crab. Patrols tidal platforms, quick-scuttles toward the player, and pinches at close range.",
+      "frame_row": 0,
+      "pivot_px": [
+        96,
+        211
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -67,
+        -93,
+        134,
+        91
+      ],
+      "gravity": true,
+      "damage_sources": [
+        "body_contact",
+        "claw_strike"
+      ],
+      "attack_hitbox_relative_to_pivot_px": [
+        22,
+        -76,
+        86,
+        60
+      ],
+      "animations": {
+        "idle": {
+          "frames": [
+            "reef_crab_00",
+            "reef_crab_01"
+          ],
+          "fps": 3,
+          "loop": true
+        },
+        "run": {
+          "frames": [
+            "reef_crab_01",
+            "reef_crab_02",
+            "reef_crab_03",
+            "reef_crab_02"
+          ],
+          "fps": 9,
+          "loop": true
+        },
+        "charge": {
+          "frames": [
+            "reef_crab_03",
+            "reef_crab_04"
+          ],
+          "fps": 7,
+          "loop": false
+        },
+        "claw_strike": {
+          "frames": [
+            "reef_crab_04",
+            "reef_crab_05"
+          ],
+          "fps": 8,
+          "loop": false,
+          "damage_active_indices": [
+            1
+          ]
+        },
+        "hurt": {
+          "frames": [
+            "reef_crab_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "death": {
+          "frames": [
+            "reef_crab_07"
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      }
+    },
+    {
+      "id": "drowned_anchorite",
+      "display_name": "Drowned Anchorite",
+      "type": "land",
+      "role": "heavy_melee_anchor_slam",
+      "description": "Slow drowned sailor burdened with a hooked anchor. Winds up dramatically, smashes the ground, and generates a close-range impact hitbox.",
+      "frame_row": 1,
+      "pivot_px": [
+        96,
+        217
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -47,
+        -162,
+        94,
+        155
+      ],
+      "gravity": true,
+      "damage_sources": [
+        "body_contact",
+        "anchor_slam"
+      ],
+      "attack_hitbox_relative_to_pivot_px": [
+        -14,
+        -53,
+        117,
+        52
+      ],
+      "animations": {
+        "idle": {
+          "frames": [
+            "drowned_anchorite_00",
+            "drowned_anchorite_01"
+          ],
+          "fps": 3,
+          "loop": true
+        },
+        "walk": {
+          "frames": [
+            "drowned_anchorite_01",
+            "drowned_anchorite_02",
+            "drowned_anchorite_03",
+            "drowned_anchorite_02"
+          ],
+          "fps": 5,
+          "loop": true
+        },
+        "slam": {
+          "frames": [
+            "drowned_anchorite_04",
+            "drowned_anchorite_05",
+            "drowned_anchorite_06"
+          ],
+          "fps": 6,
+          "loop": false,
+          "damage_active_indices": [
+            1
+          ]
+        },
+        "hurt": {
+          "frames": [
+            "drowned_anchorite_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "death": {
+          "frames": [
+            "drowned_anchorite_07"
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      }
+    },
+    {
+      "id": "stormwing",
+      "display_name": "Stormwing",
+      "type": "flying",
+      "role": "aerial_swooper",
+      "description": "Winged sea gargoyle that circles overhead, tracks the player, and executes a steep swoop with briny spray.",
+      "frame_row": 2,
+      "pivot_px": [
+        96,
+        132
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -49,
+        -53,
+        98,
+        96
+      ],
+      "gravity": false,
+      "damage_sources": [
+        "body_contact",
+        "dive"
+      ],
+      "attack_hitbox_relative_to_pivot_px": [
+        -42,
+        -14,
+        96,
+        77
+      ],
+      "death_sprite_available": false,
+      "animations": {
+        "hover": {
+          "frames": [
+            "stormwing_00",
+            "stormwing_01",
+            "stormwing_02",
+            "stormwing_03",
+            "stormwing_04",
+            "stormwing_03",
+            "stormwing_02",
+            "stormwing_01"
+          ],
+          "fps": 10,
+          "loop": true
+        },
+        "dive": {
+          "frames": [
+            "stormwing_03",
+            "stormwing_04",
+            "stormwing_05"
+          ],
+          "fps": 9,
+          "loop": false,
+          "damage_active_indices": [
+            2
+          ]
+        },
+        "hurt": {
+          "frames": [
+            "stormwing_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "recover": {
+          "frames": [
+            "stormwing_06",
+            "stormwing_07",
+            "stormwing_00"
+          ],
+          "fps": 7,
+          "loop": false
+        }
+      }
+    },
+    {
+      "id": "brine_cannon",
+      "display_name": "Brine Cannon",
+      "type": "projectile",
+      "role": "stationary_ranged",
+      "description": "Barnacle-encrusted coastal cannon. Charges and launches a separate water orb toward the player from a fixed emplacement.",
+      "frame_row": 3,
+      "pivot_px": [
+        96,
+        182
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -71,
+        -116,
+        142,
+        110
+      ],
+      "gravity": true,
+      "damage_sources": [
+        "brine_orb_projectile"
+      ],
+      "projectile_id": "brine_orb",
+      "spawn_offset_from_pivot_px": [
+        72,
+        -74
+      ],
+      "animations": {
+        "idle": {
+          "frames": [
+            "brine_cannon_00",
+            "brine_cannon_01",
+            "brine_cannon_02"
+          ],
+          "fps": 3,
+          "loop": true
+        },
+        "fire": {
+          "frames": [
+            "brine_cannon_03",
+            "brine_cannon_04",
+            "brine_cannon_05"
+          ],
+          "fps": 8,
+          "loop": false,
+          "spawn_projectile_at_index": 1
+        },
+        "hurt": {
+          "frames": [
+            "brine_cannon_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "death": {
+          "frames": [
+            "brine_cannon_07"
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      }
+    }
+  ],
+  "projectiles": [
+    {
+      "id": "brine_orb",
+      "display_name": "Brine Orb",
+      "description": "A bright turquoise water projectile. Flight damages on collision; splash impact is visual-only unless configured otherwise.",
+      "frame_row": 4,
+      "pivot_px": [
+        96,
+        122
+      ],
+      "velocity_direction": "facing",
+      "collision_box_relative_to_pivot_px": [
+        -25,
+        -22,
+        50,
+        44
+      ],
+      "gravity": false,
+      "animations": {
+        "flight": {
+          "frames": [
+            "brine_orb_00",
+            "brine_orb_01",
+            "brine_orb_02",
+            "brine_orb_03"
+          ],
+          "fps": 12,
+          "loop": true
+        },
+        "impact": {
+          "frames": [
+            "brine_orb_04",
+            "brine_orb_05",
+            "brine_orb_06",
+            "brine_orb_07"
+          ],
+          "fps": 12,
+          "loop": false,
+          "despawn_on_complete": true
+        }
+      }
+    }
+  ],
+  "frames": {
+    "reef_crab_00": {
+      "x": 0,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 0,
+      "trim": [
+        24,
+        90,
+        176,
+        206
+      ],
+      "state_hint": "idle",
+      "description": "Resting claw and shell stance",
+      "when_to_use": "Use for the idle action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "idle",
+          "sequence_index": 0,
+          "fps": 3,
+          "loop": true
+        }
+      ]
+    },
+    "reef_crab_01": {
+      "x": 192,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 1,
+      "trim": [
+        20,
+        90,
+        178,
+        207
+      ],
+      "state_hint": "idle",
+      "description": "Idle variation; claws gently repositioned",
+      "when_to_use": "Use for the idle action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "idle",
+          "sequence_index": 1,
+          "fps": 3,
+          "loop": true
+        },
+        {
+          "sequence": "run",
+          "sequence_index": 0,
+          "fps": 9,
+          "loop": true
+        }
+      ]
+    },
+    "reef_crab_02": {
+      "x": 384,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 2,
+      "trim": [
+        11,
+        92,
+        183,
+        206
+      ],
+      "state_hint": "run",
+      "description": "Shuffling forward; front claws moving",
+      "when_to_use": "Use for the run action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "run",
+          "sequence_index": 1,
+          "fps": 9,
+          "loop": true
+        },
+        {
+          "sequence": "run",
+          "sequence_index": 3,
+          "fps": 9,
+          "loop": true
+        }
+      ]
+    },
+    "reef_crab_03": {
+      "x": 576,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 3,
+      "trim": [
+        10,
+        94,
+        186,
+        207
+      ],
+      "state_hint": "run",
+      "description": "Fast sideways scuttle; low forward stance",
+      "when_to_use": "Use for the run action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "run",
+          "sequence_index": 2,
+          "fps": 9,
+          "loop": true
+        },
+        {
+          "sequence": "charge",
+          "sequence_index": 0,
+          "fps": 7,
+          "loop": false
+        }
+      ]
+    },
+    "reef_crab_04": {
+      "x": 768,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 4,
+      "trim": [
+        15,
+        94,
+        192,
+        207
+      ],
+      "state_hint": "charge",
+      "description": "Leans forward with the striking claw raised",
+      "when_to_use": "Use for the charge action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "charge",
+          "sequence_index": 1,
+          "fps": 7,
+          "loop": false
+        },
+        {
+          "sequence": "claw_strike",
+          "sequence_index": 0,
+          "fps": 8,
+          "loop": false
+        }
+      ]
+    },
+    "reef_crab_05": {
+      "x": 960,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 5,
+      "trim": [
+        0,
+        92,
+        180,
+        207
+      ],
+      "state_hint": "claw_strike",
+      "description": "Extended claw pinch / forward attack",
+      "when_to_use": "Use for the claw strike action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "claw_strike",
+          "sequence_index": 1,
+          "fps": 8,
+          "loop": false
+        }
+      ]
+    },
+    "reef_crab_06": {
+      "x": 1152,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 6,
+      "trim": [
+        11,
+        68,
+        177,
+        207
+      ],
+      "state_hint": "hurt",
+      "description": "Rears back with salt-spray hit reaction",
+      "when_to_use": "Use for the hurt action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "hurt",
+          "sequence_index": 0,
+          "fps": 1,
+          "loop": false
+        }
+      ]
+    },
+    "reef_crab_07": {
+      "x": 1344,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 7,
+      "trim": [
+        7,
+        125,
+        182,
+        204
+      ],
+      "state_hint": "death",
+      "description": "Collapsed shell and claws; defeated",
+      "when_to_use": "Use for the death action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "death",
+          "sequence_index": 0,
+          "fps": 1,
+          "loop": false
+        }
+      ]
+    },
+    "drowned_anchorite_00": {
+      "x": 0,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 0,
+      "trim": [
+        15,
+        36,
+        186,
+        215
+      ],
+      "state_hint": "idle",
+      "description": "Standing drowned sailor with hooked anchor lowered",
+      "when_to_use": "Use for the idle action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "idle",
+          "sequence_index": 0,
+          "fps": 3,
+          "loop": true
+        }
+      ]
+    },
+    "drowned_anchorite_01": {
+      "x": 192,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 1,
+      "trim": [
+        25,
+        39,
+        175,
+        215
+      ],
+      "state_hint": "idle",
+      "description": "Standing idle with shoulder sway",
+      "when_to_use": "Use for the idle action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "idle",
+          "sequence_index": 1,
+          "fps": 3,
+          "loop": true
+        },
+        {
+          "sequence": "walk",
+          "sequence_index": 0,
+          "fps": 5,
+          "loop": true
+        }
+      ]
+    },
+    "drowned_anchorite_02": {
+      "x": 384,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 2,
+      "trim": [
+        28,
+        41,
+        170,
+        212
+      ],
+      "state_hint": "walk",
+      "description": "Steps forward bearing the anchor",
+      "when_to_use": "Use for the walk action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "walk",
+          "sequence_index": 1,
+          "fps": 5,
+          "loop": true
+        },
+        {
+          "sequence": "walk",
+          "sequence_index": 3,
+          "fps": 5,
+          "loop": true
+        }
+      ]
+    },
+    "drowned_anchorite_03": {
+      "x": 576,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 3,
+      "trim": [
+        26,
+        40,
+        157,
+        211
+      ],
+      "state_hint": "walk",
+      "description": "Advancing with anchor brought forward",
+      "when_to_use": "Use for the walk action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "walk",
+          "sequence_index": 2,
+          "fps": 5,
+          "loop": true
+        }
+      ]
+    },
+    "drowned_anchorite_04": {
+      "x": 768,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 4,
+      "trim": [
+        21,
+        6,
+        158,
+        213
+      ],
+      "state_hint": "slam",
+      "description": "Raises the hooked anchor overhead for a heavy windup",
+      "when_to_use": "Use for the slam action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "slam",
+          "sequence_index": 0,
+          "fps": 6,
+          "loop": false
+        }
+      ]
+    },
+    "drowned_anchorite_05": {
+      "x": 960,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 5,
+      "trim": [
+        17,
+        78,
+        192,
+        220
+      ],
+      "state_hint": "slam",
+      "description": "Slams the anchor into the ground; surf bursts at impact",
+      "when_to_use": "Use for the slam action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "slam",
+          "sequence_index": 1,
+          "fps": 6,
+          "loop": false
+        }
+      ]
+    },
+    "drowned_anchorite_06": {
+      "x": 1152,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 6,
+      "trim": [
+        18,
+        44,
+        164,
+        216
+      ],
+      "state_hint": "recovery",
+      "description": "Pulls the anchor free with droplets falling",
+      "when_to_use": "Use for the recovery action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "slam",
+          "sequence_index": 2,
+          "fps": 6,
+          "loop": false
+        },
+        {
+          "sequence": "hurt",
+          "sequence_index": 0,
+          "fps": 1,
+          "loop": false
+        }
+      ]
+    },
+    "drowned_anchorite_07": {
+      "x": 1344,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 7,
+      "trim": [
+        8,
+        97,
+        175,
+        216
+      ],
+      "state_hint": "death",
+      "description": "Slumped drowned sailor lying on the ground",
+      "when_to_use": "Use for the death action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "death",
+          "sequence_index": 0,
+          "fps": 1,
+          "loop": false
+        }
+      ]
+    },
+    "stormwing_00": {
+      "x": 0,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 0,
+      "trim": [
+        8,
+        59,
+        185,
+        180
+      ],
+      "state_hint": "hover",
+      "description": "Hover flap with wings spread wide",
+      "when_to_use": "Use for the hover action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "hover",
+          "sequence_index": 0,
+          "fps": 10,
+          "loop": true
+        },
+        {
+          "sequence": "recover",
+          "sequence_index": 2,
+          "fps": 7,
+          "loop": false
+        }
+      ]
+    },
+    "stormwing_01": {
+      "x": 192,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 1,
+      "trim": [
+        9,
+        46,
+        186,
+        175
+      ],
+      "state_hint": "hover",
+      "description": "Wings rise into an upstroke",
+      "when_to_use": "Use for the hover action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "hover",
+          "sequence_index": 1,
+          "fps": 10,
+          "loop": true
+        },
+        {
+          "sequence": "hover",
+          "sequence_index": 7,
+          "fps": 10,
+          "loop": true
+        }
+      ]
+    },
+    "stormwing_02": {
+      "x": 384,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 2,
+      "trim": [
+        11,
+        52,
+        181,
+        178
+      ],
+      "state_hint": "hover",
+      "description": "Forward traveling flap with wings halfway spread",
+      "when_to_use": "Use for the hover action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "hover",
+          "sequence_index": 2,
+          "fps": 10,
+          "loop": true
+        },
+        {
+          "sequence": "hover",
+          "sequence_index": 6,
+          "fps": 10,
+          "loop": true
+        }
+      ]
+    },
+    "stormwing_03": {
+      "x": 576,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 3,
+      "trim": [
+        15,
+        41,
+        172,
+        196
+      ],
+      "state_hint": "hover",
+      "description": "Tall upstroke while banking downward",
+      "when_to_use": "Use for the hover action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "hover",
+          "sequence_index": 3,
+          "fps": 10,
+          "loop": true
+        },
+        {
+          "sequence": "hover",
+          "sequence_index": 5,
+          "fps": 10,
+          "loop": true
+        },
+        {
+          "sequence": "dive",
+          "sequence_index": 0,
+          "fps": 9,
+          "loop": false
+        }
+      ]
+    },
+    "stormwing_04": {
+      "x": 768,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 4,
+      "trim": [
+        12,
+        45,
+        173,
+        196
+      ],
+      "state_hint": "dive",
+      "description": "Angles head and wings into a dive",
+      "when_to_use": "Use for the dive action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "hover",
+          "sequence_index": 4,
+          "fps": 10,
+          "loop": true
+        },
+        {
+          "sequence": "dive",
+          "sequence_index": 1,
+          "fps": 9,
+          "loop": false
+        }
+      ]
+    },
+    "stormwing_05": {
+      "x": 960,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 5,
+      "trim": [
+        8,
+        30,
+        189,
+        212
+      ],
+      "state_hint": "dive",
+      "description": "Open-beak swoop with a splash of sea spray",
+      "when_to_use": "Use for the dive action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "dive",
+          "sequence_index": 2,
+          "fps": 9,
+          "loop": false
+        }
+      ]
+    },
+    "stormwing_06": {
+      "x": 1152,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 6,
+      "trim": [
+        3,
+        54,
+        178,
+        192
+      ],
+      "state_hint": "hurt",
+      "description": "Flinches midflight; splash droplets near wing",
+      "when_to_use": "Use for the hurt action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "hurt",
+          "sequence_index": 0,
+          "fps": 1,
+          "loop": false
+        },
+        {
+          "sequence": "recover",
+          "sequence_index": 0,
+          "fps": 7,
+          "loop": false
+        }
+      ]
+    },
+    "stormwing_07": {
+      "x": 1344,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 7,
+      "trim": [
+        10,
+        78,
+        176,
+        197
+      ],
+      "state_hint": "recover",
+      "description": "Levels its wings and pulls up from a swoop",
+      "when_to_use": "Use for the recover action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "recover",
+          "sequence_index": 1,
+          "fps": 7,
+          "loop": false
+        }
+      ]
+    },
+    "brine_cannon_00": {
+      "x": 0,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 0,
+      "trim": [
+        19,
+        30,
+        174,
+        178
+      ],
+      "state_hint": "idle",
+      "description": "Quiet barnacled cannon on stone mount",
+      "when_to_use": "Use for the idle action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "idle",
+          "sequence_index": 0,
+          "fps": 3,
+          "loop": true
+        }
+      ]
+    },
+    "brine_cannon_01": {
+      "x": 192,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 1,
+      "trim": [
+        23,
+        29,
+        171,
+        179
+      ],
+      "state_hint": "idle",
+      "description": "Idle oscillation; muzzle and lantern remain visible",
+      "when_to_use": "Use for the idle action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "idle",
+          "sequence_index": 1,
+          "fps": 3,
+          "loop": true
+        }
+      ]
+    },
+    "brine_cannon_02": {
+      "x": 384,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 2,
+      "trim": [
+        25,
+        29,
+        172,
+        181
+      ],
+      "state_hint": "idle",
+      "description": "Cannon holds at ready",
+      "when_to_use": "Use for the idle action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "idle",
+          "sequence_index": 2,
+          "fps": 3,
+          "loop": true
+        }
+      ]
+    },
+    "brine_cannon_03": {
+      "x": 576,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 3,
+      "trim": [
+        20,
+        29,
+        189,
+        180
+      ],
+      "state_hint": "fire",
+      "description": "Muzzle fills with splashing energy as it charges",
+      "when_to_use": "Use for the fire action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "fire",
+          "sequence_index": 0,
+          "fps": 8,
+          "loop": false
+        }
+      ]
+    },
+    "brine_cannon_04": {
+      "x": 768,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 4,
+      "trim": [
+        14,
+        30,
+        186,
+        181
+      ],
+      "state_hint": "fire",
+      "description": "Projectile is released; bright orb visible at muzzle",
+      "when_to_use": "Use for the fire action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "fire",
+          "sequence_index": 1,
+          "fps": 8,
+          "loop": false
+        }
+      ]
+    },
+    "brine_cannon_05": {
+      "x": 960,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 5,
+      "trim": [
+        26,
+        28,
+        167,
+        180
+      ],
+      "state_hint": "fire",
+      "description": "Muzzle settles while smoke wafts away",
+      "when_to_use": "Use for the fire action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "fire",
+          "sequence_index": 2,
+          "fps": 8,
+          "loop": false
+        }
+      ]
+    },
+    "brine_cannon_06": {
+      "x": 1152,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 6,
+      "trim": [
+        28,
+        31,
+        173,
+        187
+      ],
+      "state_hint": "hurt",
+      "description": "Cannon recoils and rattles under impact",
+      "when_to_use": "Use for the hurt action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "hurt",
+          "sequence_index": 0,
+          "fps": 1,
+          "loop": false
+        }
+      ]
+    },
+    "brine_cannon_07": {
+      "x": 1344,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 7,
+      "trim": [
+        17,
+        11,
+        173,
+        181
+      ],
+      "state_hint": "death",
+      "description": "Destroyed low cannon base with smoke above",
+      "when_to_use": "Use for the death action of this enemy.",
+      "sequence_membership": [
+        {
+          "sequence": "death",
+          "sequence_index": 0,
+          "fps": 1,
+          "loop": false
+        }
+      ]
+    },
+    "brine_orb_00": {
+      "x": 0,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 0,
+      "trim": [
+        24,
+        67,
+        144,
+        134
+      ],
+      "state_hint": "flight",
+      "description": "Water orb travels forward with short wake",
+      "when_to_use": "Loop as a moving projectile before it collides.",
+      "sequence_membership": [
+        {
+          "sequence": "flight",
+          "sequence_index": 0,
+          "fps": 12,
+          "loop": true
+        }
+      ]
+    },
+    "brine_orb_01": {
+      "x": 192,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 1,
+      "trim": [
+        24,
+        55,
+        142,
+        132
+      ],
+      "state_hint": "flight",
+      "description": "Water orb and trailing bubbles, flight phase 2",
+      "when_to_use": "Loop as a moving projectile before it collides.",
+      "sequence_membership": [
+        {
+          "sequence": "flight",
+          "sequence_index": 1,
+          "fps": 12,
+          "loop": true
+        }
+      ]
+    },
+    "brine_orb_02": {
+      "x": 384,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 2,
+      "trim": [
+        25,
+        54,
+        149,
+        125
+      ],
+      "state_hint": "flight",
+      "description": "Water orb bulges with spray, flight phase 3",
+      "when_to_use": "Loop as a moving projectile before it collides.",
+      "sequence_membership": [
+        {
+          "sequence": "flight",
+          "sequence_index": 2,
+          "fps": 12,
+          "loop": true
+        }
+      ]
+    },
+    "brine_orb_03": {
+      "x": 576,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 3,
+      "trim": [
+        24,
+        57,
+        151,
+        126
+      ],
+      "state_hint": "flight",
+      "description": "Water orb streaks with thin wake, flight phase 4",
+      "when_to_use": "Loop as a moving projectile before it collides.",
+      "sequence_membership": [
+        {
+          "sequence": "flight",
+          "sequence_index": 3,
+          "fps": 12,
+          "loop": true
+        }
+      ]
+    },
+    "brine_orb_04": {
+      "x": 768,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 4,
+      "trim": [
+        57,
+        59,
+        138,
+        130
+      ],
+      "state_hint": "impact",
+      "description": "Orb strikes a surface in a small splash",
+      "when_to_use": "Play once after collision; disable projectile contact damage.",
+      "sequence_membership": [
+        {
+          "sequence": "impact",
+          "sequence_index": 0,
+          "fps": 12,
+          "loop": false
+        }
+      ]
+    },
+    "brine_orb_05": {
+      "x": 960,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 5,
+      "trim": [
+        36,
+        26,
+        161,
+        139
+      ],
+      "state_hint": "impact",
+      "description": "Larger cresting water splash at full impact",
+      "when_to_use": "Play once after collision; disable projectile contact damage.",
+      "sequence_membership": [
+        {
+          "sequence": "impact",
+          "sequence_index": 1,
+          "fps": 12,
+          "loop": false
+        }
+      ]
+    },
+    "brine_orb_06": {
+      "x": 1152,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 6,
+      "trim": [
+        30,
+        30,
+        153,
+        143
+      ],
+      "state_hint": "impact",
+      "description": "Dissipating spray and scattered bubbles",
+      "when_to_use": "Play once after collision; disable projectile contact damage.",
+      "sequence_membership": [
+        {
+          "sequence": "impact",
+          "sequence_index": 2,
+          "fps": 12,
+          "loop": false
+        }
+      ]
+    },
+    "brine_orb_07": {
+      "x": 1344,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 7,
+      "trim": [
+        28,
+        24,
+        161,
+        152
+      ],
+      "state_hint": "impact",
+      "description": "Last ring of fading water droplets",
+      "when_to_use": "Play once after collision; disable projectile contact damage.",
+      "sequence_membership": [
+        {
+          "sequence": "impact",
+          "sequence_index": 3,
+          "fps": 12,
+          "loop": false
+        }
+      ]
+    }
+  },
+  "recommended_states": {
+    "enemies": [
+      "idle/patrol",
+      "chase",
+      "windup/attack",
+      "hurt",
+      "death/despawn"
+    ],
+    "projectile": [
+      "spawn",
+      "flight",
+      "impact",
+      "despawn"
+    ]
+  },
+  "notes": [
+    "One frame per fixed 192x256 grid cell. All 40 frame rectangles are explicit and exactly on-grid.",
+    "Animation indices are zero-based indices into animations[action].frames, not atlas columns.",
+    "Enemy pivot points, hitboxes, attack ranges, and FPS values are starting values to tune during playtesting.",
+    "Facing left: mirror the drawn frame, retain the pivot, and mirror projectile spawn offsets and attack hitbox horizontally.",
+    "When an enemy dies, stop applying body contact damage. Stormwing has no distinct dead pose; play the project's existing death VFX then despawn.",
+    "Cannon frame 4 already visually shows a fired orb; do not also render a second orb inside that frame. Spawn the independent projectile once on animation frame index 1.",
+    "Do not let the fire animation loop or re-spawn projectiles when the same animation frame is rendered repeatedly.",
+    "Sprite poses are hand-directed generated artwork and may require interpolation, frame reordering, or per-entity position stabilization for seamless movement.",
+    "Hitboxes are gameplay suggestions, not verified physics assets.",
+    "Sprite sheets and preview are RGBA; transparent pixels outside sprites are non-opaque."
+  ]
+}

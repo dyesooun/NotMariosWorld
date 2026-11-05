@@ -1,0 +1,999 @@
+{
+  "format": "whimsical-overgrowth-forest-sprite-atlas/v1",
+  "theme": "Whimsical Overgrowth Forest",
+  "asset": "whimsical-overgrowth-forest-enemies.png",
+  "coordinate_system": "top-left (0,0), x right, y down",
+  "pixel_units": "source image pixels",
+  "transparent": true,
+  "atlas": {
+    "width": 1536,
+    "height": 1280,
+    "columns": 8,
+    "rows": 5,
+    "cell_width": 192,
+    "cell_height": 256,
+    "padding": 0,
+    "extrusion": 0,
+    "frame_count": 40
+  },
+  "rendering": {
+    "filter": "nearest",
+    "antialias": false,
+    "texture_wrap": "clamp-to-edge",
+    "recommended_scale": "Preserve aspect ratio, ideally use integer display scaling; keep each animation frame untrimmed.",
+    "default_facing": "right",
+    "flip_for_left": true
+  },
+  "instructions": "Crop by frames[id].x/y/w/h without auto sprite detection; 8x5 fixed grid. Use consistent entity pivot_px and the untrimmed 192x256 frame for all animations. Ignore the checkerboard preview as a sprite source.",
+  "enemies": [
+    {
+      "id": "brambleback_boar",
+      "display_name": "Brambleback Boar",
+      "type": "land",
+      "role": "fast_chaser",
+      "frame_row": 0,
+      "description": "Moss-covered, mushroom-dotted forest boar with bark-like armor and tusks; patrols platforms, pursues the player, and makes a brief damaging charge.",
+      "pivot_px": [
+        96,
+        204
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -57,
+        -86,
+        114,
+        81
+      ],
+      "gravity": true,
+      "damage_sources": [
+        "body_contact",
+        "tusk_lunge"
+      ],
+      "animations": {
+        "idle": {
+          "frames": [
+            "brambleback_boar_00",
+            "brambleback_boar_01"
+          ],
+          "fps": 3,
+          "loop": true
+        },
+        "run": {
+          "frames": [
+            "brambleback_boar_01",
+            "brambleback_boar_02",
+            "brambleback_boar_03",
+            "brambleback_boar_02"
+          ],
+          "fps": 10,
+          "loop": true
+        },
+        "lunge": {
+          "frames": [
+            "brambleback_boar_04",
+            "brambleback_boar_05",
+            "brambleback_boar_03"
+          ],
+          "fps": 8,
+          "loop": false,
+          "damage_active_indices": [
+            1
+          ]
+        },
+        "hurt": {
+          "frames": [
+            "brambleback_boar_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "death": {
+          "frames": [
+            "brambleback_boar_07"
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      }
+    },
+    {
+      "id": "sporecap_troll",
+      "display_name": "Sporecap Troll",
+      "type": "land",
+      "role": "heavy_melee",
+      "frame_row": 1,
+      "description": "Squat forest troll wearing a giant red-speckled mushroom cap; slow land enemy that winds up and pounds the ground at close range.",
+      "pivot_px": [
+        96,
+        197
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -52,
+        -136,
+        104,
+        133
+      ],
+      "gravity": true,
+      "damage_sources": [
+        "body_contact",
+        "ground_slam"
+      ],
+      "animations": {
+        "idle": {
+          "frames": [
+            "sporecap_troll_00",
+            "sporecap_troll_01"
+          ],
+          "fps": 3,
+          "loop": true
+        },
+        "walk": {
+          "frames": [
+            "sporecap_troll_01",
+            "sporecap_troll_02",
+            "sporecap_troll_03",
+            "sporecap_troll_00"
+          ],
+          "fps": 5,
+          "loop": true
+        },
+        "slam": {
+          "frames": [
+            "sporecap_troll_04",
+            "sporecap_troll_05",
+            "sporecap_troll_00"
+          ],
+          "fps": 5,
+          "loop": false,
+          "damage_active_indices": [
+            1
+          ]
+        },
+        "hurt": {
+          "frames": [
+            "sporecap_troll_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "death": {
+          "frames": [
+            "sporecap_troll_07"
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      }
+    },
+    {
+      "id": "leafwing_owl",
+      "display_name": "Leafwing Owl",
+      "type": "flying",
+      "role": "aerial_diver",
+      "frame_row": 2,
+      "description": "Small owl-like forest spirit with oversized leaf-shaped wings; flaps above platforms, follows a flight route, and dives toward the player.",
+      "pivot_px": [
+        96,
+        130
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -45,
+        -44,
+        90,
+        84
+      ],
+      "gravity": false,
+      "damage_sources": [
+        "body_contact",
+        "dive"
+      ],
+      "animations": {
+        "hover": {
+          "frames": [
+            "leafwing_owl_00",
+            "leafwing_owl_01",
+            "leafwing_owl_02",
+            "leafwing_owl_03"
+          ],
+          "fps": 9,
+          "loop": true
+        },
+        "dive": {
+          "frames": [
+            "leafwing_owl_04",
+            "leafwing_owl_05",
+            "leafwing_owl_03"
+          ],
+          "fps": 9,
+          "loop": false,
+          "damage_active_indices": [
+            1
+          ]
+        },
+        "hurt": {
+          "frames": [
+            "leafwing_owl_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "death": {
+          "frames": [
+            "leafwing_owl_07"
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      }
+    },
+    {
+      "id": "snapvine_pod",
+      "display_name": "Snapvine Pod",
+      "type": "projectile",
+      "role": "stationary_ranged",
+      "frame_row": 3,
+      "description": "Rooted carnivorous plant with a large pink flower-mouth and leafy crown; periodically fires glowing seed projectiles horizontally toward the player.",
+      "pivot_px": [
+        96,
+        160
+      ],
+      "collision_box_relative_to_pivot_px": [
+        -50,
+        -102,
+        100,
+        100
+      ],
+      "gravity": true,
+      "damage_sources": [
+        "glowseed_projectile"
+      ],
+      "projectile_id": "glowseed",
+      "spawn_offset_from_pivot_px": [
+        60,
+        -64
+      ],
+      "animations": {
+        "idle": {
+          "frames": [
+            "snapvine_pod_00",
+            "snapvine_pod_01",
+            "snapvine_pod_02"
+          ],
+          "fps": 3,
+          "loop": true
+        },
+        "fire": {
+          "frames": [
+            "snapvine_pod_03",
+            "snapvine_pod_04",
+            "snapvine_pod_05"
+          ],
+          "fps": 8,
+          "loop": false,
+          "spawn_projectile_at_index": 1
+        },
+        "hurt": {
+          "frames": [
+            "snapvine_pod_06"
+          ],
+          "fps": 1,
+          "loop": false
+        },
+        "death": {
+          "frames": [
+            "snapvine_pod_07"
+          ],
+          "fps": 1,
+          "loop": false
+        }
+      }
+    }
+  ],
+  "projectiles": [
+    {
+      "id": "glowseed",
+      "display_name": "Glowseed Orb",
+      "frame_row": 4,
+      "description": "Luminous green-gold magical seed orb fired by Snapvine Pod. Loop frames 0–3 in flight; upon collision play one-shot impact frames 4–7 and despawn.",
+      "pivot_px": [
+        96,
+        96
+      ],
+      "velocity_direction": "facing",
+      "gravity": false,
+      "collision_box_relative_to_pivot_px": [
+        -19,
+        -19,
+        38,
+        38
+      ],
+      "animations": {
+        "flight": {
+          "frames": [
+            "glowseed_fx_00",
+            "glowseed_fx_01",
+            "glowseed_fx_02",
+            "glowseed_fx_03"
+          ],
+          "fps": 12,
+          "loop": true
+        },
+        "impact": {
+          "frames": [
+            "glowseed_fx_04",
+            "glowseed_fx_05",
+            "glowseed_fx_06",
+            "glowseed_fx_07"
+          ],
+          "fps": 12,
+          "loop": false,
+          "despawn_on_complete": true
+        }
+      }
+    }
+  ],
+  "frames": {
+    "brambleback_boar_00": {
+      "x": 0,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 0,
+      "trim": [
+        22,
+        93,
+        183,
+        205
+      ],
+      "pose": "idle_a",
+      "description": "Idle A: grounded, alert pose; loop with Idle B"
+    },
+    "brambleback_boar_01": {
+      "x": 192,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 1,
+      "trim": [
+        34,
+        96,
+        180,
+        205
+      ],
+      "pose": "idle_b",
+      "description": "Idle B: subtle breath/stance shift"
+    },
+    "brambleback_boar_02": {
+      "x": 384,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 2,
+      "trim": [
+        18,
+        96,
+        180,
+        205
+      ],
+      "pose": "run_a",
+      "description": "Run A: forward patrol or chase stride"
+    },
+    "brambleback_boar_03": {
+      "x": 576,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 3,
+      "trim": [
+        19,
+        111,
+        183,
+        205
+      ],
+      "pose": "run_b",
+      "description": "Run B: alternate gallop stride"
+    },
+    "brambleback_boar_04": {
+      "x": 768,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 4,
+      "trim": [
+        23,
+        95,
+        176,
+        203
+      ],
+      "pose": "charge_windup",
+      "description": "Charge anticipation: head forward and body tensed"
+    },
+    "brambleback_boar_05": {
+      "x": 960,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 5,
+      "trim": [
+        21,
+        94,
+        163,
+        203
+      ],
+      "pose": "tusk_lunge",
+      "description": "Tusk lunge: short-range damaging attack"
+    },
+    "brambleback_boar_06": {
+      "x": 1152,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 6,
+      "trim": [
+        20,
+        80,
+        179,
+        205
+      ],
+      "pose": "hurt",
+      "description": "Hurt: recoil/stagger; interrupt attacks"
+    },
+    "brambleback_boar_07": {
+      "x": 1344,
+      "y": 0,
+      "w": 192,
+      "h": 256,
+      "row": 0,
+      "col": 7,
+      "trim": [
+        16,
+        136,
+        176,
+        203
+      ],
+      "pose": "death",
+      "description": "Defeated: collapsed body; disable contact damage"
+    },
+    "sporecap_troll_00": {
+      "x": 0,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 0,
+      "trim": [
+        15,
+        32,
+        166,
+        197
+      ],
+      "pose": "idle_a",
+      "description": "Idle A: stationary mushroom-armored brute"
+    },
+    "sporecap_troll_01": {
+      "x": 192,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 1,
+      "trim": [
+        20,
+        37,
+        171,
+        197
+      ],
+      "pose": "idle_b",
+      "description": "Idle B: small idle breathing pose"
+    },
+    "sporecap_troll_02": {
+      "x": 384,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 2,
+      "trim": [
+        25,
+        41,
+        169,
+        197
+      ],
+      "pose": "walk_a",
+      "description": "Walk A: first heavy step"
+    },
+    "sporecap_troll_03": {
+      "x": 576,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 3,
+      "trim": [
+        26,
+        50,
+        175,
+        197
+      ],
+      "pose": "walk_b",
+      "description": "Walk B: second heavy step"
+    },
+    "sporecap_troll_04": {
+      "x": 768,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 4,
+      "trim": [
+        30,
+        20,
+        170,
+        197
+      ],
+      "pose": "slam_windup",
+      "description": "Slam windup: arm lifted, warning pose"
+    },
+    "sporecap_troll_05": {
+      "x": 960,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 5,
+      "trim": [
+        9,
+        85,
+        191,
+        205
+      ],
+      "pose": "slam_impact",
+      "description": "Slam impact: forward ground pound; melee damage window"
+    },
+    "sporecap_troll_06": {
+      "x": 1152,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 6,
+      "trim": [
+        1,
+        38,
+        171,
+        197
+      ],
+      "pose": "hurt",
+      "description": "Hurt: hit reaction; no damage"
+    },
+    "sporecap_troll_07": {
+      "x": 1344,
+      "y": 256,
+      "w": 192,
+      "h": 256,
+      "row": 1,
+      "col": 7,
+      "trim": [
+        16,
+        54,
+        180,
+        198
+      ],
+      "pose": "death",
+      "description": "Defeated: fallen mushroom brute"
+    },
+    "leafwing_owl_00": {
+      "x": 0,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 0,
+      "trim": [
+        15,
+        51,
+        179,
+        161
+      ],
+      "pose": "hover_a",
+      "description": "Hover A: wings broadly spread"
+    },
+    "leafwing_owl_01": {
+      "x": 192,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 1,
+      "trim": [
+        18,
+        50,
+        184,
+        162
+      ],
+      "pose": "hover_b",
+      "description": "Hover B: flap transition"
+    },
+    "leafwing_owl_02": {
+      "x": 384,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 2,
+      "trim": [
+        21,
+        47,
+        181,
+        159
+      ],
+      "pose": "hover_c",
+      "description": "Hover C: wingbeat continuation"
+    },
+    "leafwing_owl_03": {
+      "x": 576,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 3,
+      "trim": [
+        30,
+        37,
+        168,
+        177
+      ],
+      "pose": "hover_d",
+      "description": "Hover D: higher wingbeat and body bob"
+    },
+    "leafwing_owl_04": {
+      "x": 768,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 4,
+      "trim": [
+        16,
+        39,
+        176,
+        176
+      ],
+      "pose": "dive_windup",
+      "description": "Dive windup: wings raised, enemy prepares to dive"
+    },
+    "leafwing_owl_05": {
+      "x": 960,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 5,
+      "trim": [
+        21,
+        35,
+        177,
+        193
+      ],
+      "pose": "dive_strike",
+      "description": "Dive strike: downward swoop and contact hit"
+    },
+    "leafwing_owl_06": {
+      "x": 1152,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 6,
+      "trim": [
+        28,
+        49,
+        175,
+        169
+      ],
+      "pose": "hurt",
+      "description": "Hurt: unstable flight, disable active strike"
+    },
+    "leafwing_owl_07": {
+      "x": 1344,
+      "y": 512,
+      "w": 192,
+      "h": 256,
+      "row": 2,
+      "col": 7,
+      "trim": [
+        20,
+        54,
+        174,
+        177
+      ],
+      "pose": "death",
+      "description": "Defeated: falling/limp leafwing creature"
+    },
+    "snapvine_pod_00": {
+      "x": 0,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 0,
+      "trim": [
+        28,
+        18,
+        153,
+        161
+      ],
+      "pose": "idle_a",
+      "description": "Idle A: leaf-crowned pod watches player"
+    },
+    "snapvine_pod_01": {
+      "x": 192,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 1,
+      "trim": [
+        25,
+        13,
+        148,
+        161
+      ],
+      "pose": "idle_b",
+      "description": "Idle B: alternate idle posture"
+    },
+    "snapvine_pod_02": {
+      "x": 384,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 2,
+      "trim": [
+        28,
+        13,
+        148,
+        162
+      ],
+      "pose": "idle_c",
+      "description": "Idle C: slight anticipatory move"
+    },
+    "snapvine_pod_03": {
+      "x": 576,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 3,
+      "trim": [
+        22,
+        21,
+        174,
+        161
+      ],
+      "pose": "fire_windup",
+      "description": "Fire windup: mouth opening and glowing"
+    },
+    "snapvine_pod_04": {
+      "x": 768,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 4,
+      "trim": [
+        17,
+        27,
+        181,
+        161
+      ],
+      "pose": "release",
+      "description": "Projectile release: glowing seed depicted near mouth; spawn one separate projectile"
+    },
+    "snapvine_pod_05": {
+      "x": 960,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 5,
+      "trim": [
+        23,
+        27,
+        163,
+        161
+      ],
+      "pose": "recovery",
+      "description": "Recovery: closing mouth and recoil"
+    },
+    "snapvine_pod_06": {
+      "x": 1152,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 6,
+      "trim": [
+        28,
+        16,
+        149,
+        161
+      ],
+      "pose": "hurt",
+      "description": "Hurt: pod flashes/recoils"
+    },
+    "snapvine_pod_07": {
+      "x": 1344,
+      "y": 768,
+      "w": 192,
+      "h": 256,
+      "row": 3,
+      "col": 7,
+      "trim": [
+        23,
+        8,
+        177,
+        161
+      ],
+      "pose": "death",
+      "description": "Defeated: wilted collapsed plant"
+    },
+    "glowseed_fx_00": {
+      "x": 0,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 0,
+      "trim": [
+        27,
+        50,
+        138,
+        133
+      ],
+      "pose": "flight_a",
+      "description": "Flight A: bright seed orb; loop"
+    },
+    "glowseed_fx_01": {
+      "x": 192,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 1,
+      "trim": [
+        33,
+        38,
+        141,
+        136
+      ],
+      "pose": "flight_b",
+      "description": "Flight B: luminous seed orb; loop"
+    },
+    "glowseed_fx_02": {
+      "x": 384,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 2,
+      "trim": [
+        38,
+        41,
+        147,
+        117
+      ],
+      "pose": "flight_c",
+      "description": "Flight C: rotation/particle alternate"
+    },
+    "glowseed_fx_03": {
+      "x": 576,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 3,
+      "trim": [
+        35,
+        44,
+        149,
+        130
+      ],
+      "pose": "flight_d",
+      "description": "Flight D: rotation/particle alternate"
+    },
+    "glowseed_fx_04": {
+      "x": 768,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 4,
+      "trim": [
+        60,
+        50,
+        142,
+        118
+      ],
+      "pose": "impact_a",
+      "description": "Impact A: compact flare starts"
+    },
+    "glowseed_fx_05": {
+      "x": 960,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 5,
+      "trim": [
+        49,
+        38,
+        157,
+        140
+      ],
+      "pose": "impact_b",
+      "description": "Impact B: petals/particles expand"
+    },
+    "glowseed_fx_06": {
+      "x": 1152,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 6,
+      "trim": [
+        45,
+        30,
+        155,
+        139
+      ],
+      "pose": "impact_c",
+      "description": "Impact C: fragments scatter"
+    },
+    "glowseed_fx_07": {
+      "x": 1344,
+      "y": 1024,
+      "w": 192,
+      "h": 256,
+      "row": 4,
+      "col": 7,
+      "trim": [
+        37,
+        29,
+        166,
+        144
+      ],
+      "pose": "impact_d",
+      "description": "Impact D: dissipating remnants; despawn"
+    }
+  },
+  "recommended_states": {
+    "enemies": [
+      "idle/patrol",
+      "chase",
+      "telegraph/attack",
+      "hurt",
+      "death"
+    ],
+    "projectile": [
+      "spawn",
+      "flight",
+      "impact",
+      "despawn"
+    ]
+  },
+  "notes": [
+    "The suggested collision boxes, pivots, speed and timing are implementation starting points, not engine-tested hitboxes.",
+    "The Snapvine release pose includes a painted glowseed for visual feedback. Spawn exactly one separate glowseed entity on fire animation index 1; do not double-spawn from the artwork.",
+    "Damage_active_indices are zero-based positions within their animation.frames arrays, not atlas column indices.",
+    "Do not let defeated enemies deal contact damage after the death state begins.",
+    "The source visuals were generated as a cohesive sprite sheet and standardized to a fixed grid; frame-to-frame motion may need alignment or pixel editing for perfectly seamless animation.",
+    "trim lists are alpha-content bounds [left, top, right_exclusive, bottom_exclusive] relative to the untrimmed frame, for optional optimization only; do not crop without compensating pivot offsets."
+  ]
+}
