@@ -6,6 +6,10 @@ import { beginPowerDuel, answerPowerDuel } from '../server/power-duels.js';
 import { WebSocket } from 'ws';
 import { createGameServer } from '../server/index.js';
 
+// Keep chest backend coverage on the legacy ocean fixture. The authored
+// forest intentionally exposes no power chests.
+LEVELS[1] = LEVELS[2];
+
 const player=(id,level=1)=>({id,runId:`${id}-run`,connected:true,spawned:true,state:{level,finished:false,deadUntil:0},powerSlots:{},power:null,effects:{}});
 const summary=(level=1,overrides={})=>({level,completedWorlds:[],coins:0,current:0,banked:0,distanceMax:0,progress:0,checkpoint:null,deaths:0,respawnRemaining:0,finished:false,finishedAt:null,...overrides});
 const ws=async url=>{const s=new WebSocket(url);s.inbox=[];s.on('message',d=>s.inbox.push(JSON.parse(d)));await new Promise((r,j)=>{s.once('open',r);s.once('error',j);});return s;};
@@ -13,7 +17,7 @@ const msg=async(s,p)=>{for(let i=0;i<400;i++){const n=s.inbox.findIndex(p);if(n>
 const report=(s,r,p,seq,data,chestId=null,final=false)=>s.send(JSON.stringify({type:'runReport',roundId:r.roundId,runId:p.runId,seq,at:Date.now(),summary:data,chestId,final}));
 
 test('each race level exposes three stable, clear power chests',()=>{for(const level of LEVELS.slice(1)){assert.deepEqual(level.powerChests.map(c=>c.x),level.theme==='forest'?[3940,7460,10940]:[3880,7380,10880]);assert.equal(new Set(level.powerChests.map(c=>c.id)).size,3);for(const c of level.powerChests)assert.equal(level.hazards.some(h=>h.x<c.x+150&&h.x+h.w>c.x-150),false);}});
-test('three authored chest claims are allowed but a fourth is rejected',()=>{const p=player('p');for(let i=1;i<=3;i++){p.power=null;assert.ok(collectPower(p,1,()=>0,`forest-power-chest-${i}`));}p.power=null;assert.equal(collectPower(p,1,()=>0,'forest-power-chest-4'),null);assert.equal(Object.keys(p.powerSlots[1].chests).length,3);});
+test('three authored chest claims are allowed but a fourth is rejected',()=>{const p=player('p'),ids=LEVELS[1].powerChests.map(c=>c.id);for(const id of ids){p.power=null;assert.ok(collectPower(p,1,()=>0,id));}p.power=null;assert.equal(collectPower(p,1,()=>0,'unknown-fourth-chest'),null);assert.equal(Object.keys(p.powerSlots[1].chests).length,3);});
 test('an unopened chest keeps its offered reward until claimed, including after death',()=>{const p=player('cached'),c=LEVELS[1].powerChests[1];assert.equal(chestPower(p,1,c.id,()=>.99).type,'fog');p.state.deadUntil=3;assert.equal(collectPower(p,1,()=>0,c.id),null);p.state.deadUntil=0;assert.equal(chestPower(p,1,c.id,()=>0).type,'fog');assert.equal(collectPower(p,1,()=>0,c.id).power.type,'fog');});
 test('duel uses configured windows and targets every eligible opponent',()=>{const caster=player('caster'),one=player('one'),two=player('two');caster.powerSlots={1:{claimed:true,used:false,reserved:'item',itemId:'i',power:{type:'slow',name:'Sticky Boots',durationMs:5000}}};const room={status:'running',settings:{attackWindowSeconds:3,defendWindowSeconds:4,powerDurationSeconds:6},powerDuel:null,activePower:null,players:new Map([[caster.id,caster],[one.id,one],[two.id,two]])};const started=beginPowerDuel(room,{id:'item',itemId:'i',caster,level:1,power:caster.powerSlots[1].power},{now:100,random:()=>0});assert.equal(started.duel.endsAt,3100);const q=started.duel.attackQuestion;assert.equal(answerPowerDuel(room,caster,{transactionId:started.duel.id,challengeId:q.id,answer:q.answers[0],now:101}).ok,true);assert.deepEqual(started.duel.targets.map(p=>p.id).sort(),['one','two']);assert.equal(started.duel.entry.power.durationMs,6000);});
 

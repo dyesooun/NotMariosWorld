@@ -2,6 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LEVELS, createState, step } from '../public/game/engine.js';
 
+// Forest's authored JSON intentionally has no legacy hazards. Exercise the
+// existing spike/decoy collision contract with the ocean fixture in its slot.
+LEVELS[1] = LEVELS[2];
+
 function withHazard(levelIndex,predicate,check){
   const level=LEVELS[levelIndex],hazard=level.hazards.find(predicate);
   assert.ok(hazard,`expected hazard in ${level.theme}`);

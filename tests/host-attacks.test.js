@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
 import { createGameServer } from '../server/index.js';
 import { collectPower, powerEffects } from '../public/game/powers.js';
+import { LEVELS } from '../public/game/levels.js';
+
+// Player-power portion of host FIFO coverage uses the legacy chest fixture.
+LEVELS[1] = LEVELS[2];
 
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const waitFor = async check => { for (let i = 0; i < 300; i++) { if (check()) return; await pause(5); } throw new Error('Condition timed out'); };

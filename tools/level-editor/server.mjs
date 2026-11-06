@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const EDITOR_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const SPRITE_ROOT = path.resolve(EDITOR_ROOT, '../../public/assets/sprites');
+const SHARED_GAME_ROOT = path.resolve(EDITOR_ROOT, '../../public/game/json-level');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.bmp': 'image/bmp' };
 
 export function createEditorServer() {
@@ -21,8 +22,10 @@ export function createEditorServer() {
       const pathname = decodeURIComponent(url.pathname);
       if (pathname === '/health') { response.writeHead(200, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ app: 'level-editor', version: 1 })); return; }
       const sprites = pathname.startsWith('/assets/sprites/');
-      const root = sprites ? SPRITE_ROOT : EDITOR_ROOT;
-      const relative = sprites ? pathname.slice('/assets/sprites/'.length) : pathname === '/' ? 'index.html' : pathname.slice(1);
+      const sharedPrefix = pathname.startsWith('/public/game/json-level/') ? '/public/game/json-level/' : '/game/json-level/';
+      const shared = pathname.startsWith(sharedPrefix);
+      const root = sprites ? SPRITE_ROOT : shared ? SHARED_GAME_ROOT : EDITOR_ROOT;
+      const relative = sprites ? pathname.slice('/assets/sprites/'.length) : shared ? pathname.slice(sharedPrefix.length) : pathname === '/' ? 'index.html' : pathname.slice(1);
       const resolved = path.resolve(root, relative);
       if (!resolved.startsWith(root + path.sep)) { reply(403, 'Invalid path'); return; }
       const actual = await realpath(resolved);

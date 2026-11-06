@@ -1,4 +1,4 @@
-import { createState, startRun, step, advanceStage } from './engine.js';
+import { createState, startRun, step, advanceStage, getJsonRuntime } from './engine.js';
 import { LEVELS } from './levels.js';
 import { summarizeRun } from './run-protocol.js';
 
@@ -14,7 +14,14 @@ export const runSummary = (state, options = {}) => summarizeRun(state, options);
 
 function chestAt(state) {
   if (!state || state.deadUntil > 0 || state.finished || state.stageTransition) return null;
+  const runtime = getJsonRuntime(state);
+  const active = runtime?._roleContacts;
+  if (active?.size) {
+    const entry = runtime.getStates().find(item => active.has(item.placement.id) && item.state.gameplay?.role === 'power-chest');
+    if (entry) return entry.state.gameplay.chestId || entry.placement.id;
+  }
   const level = LEVELS[state?.level];
+  if (level?.authored) return null;
   if (!level?.powerChests) return null;
   return level.powerChests.find(chest => {
     const avatar = { x: (state.x || 0) - 14, y: (state.y || 0) - 36, w: 28, h: 36 };
@@ -92,7 +99,7 @@ export class LocalRunRuntime {
   }
 
   pause(value = true) { this.paused = !!value; if (value) this.setInput({}); }
-  setFrozen(value = true) { this.frozen = !!value; if (value) this.state.vx = 0; }
+  setFrozen(value = true) { this.frozen = !!value; if (value) { this.state.vx = 0; const runtime=getJsonRuntime(this.state); if(runtime)runtime.player.vx=0; } }
 
   advanceStage({ serverNow = this.now() } = {}) {
     if (this.paused || this.finalReportValue || !this.state.stageTransition) return false;

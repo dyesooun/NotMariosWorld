@@ -1,3 +1,4 @@
+import { LEVEL_DOCUMENTS, LEVEL_CATALOG, documentToLevel } from './level-catalog.js';
 // Deterministic authored platform data. Coordinates use a 960x540 logical view.
 const platform = (x, y, w = 150, h = 18, kind = 'wood', extra = {}) => ({ x, y, w, h, kind, ...extra });
 const coin = (id, x, y) => ({ id, x, y, r: 9 });
@@ -106,12 +107,18 @@ function makeForestLevel() {
   return {id:theme,seed:19417,theme,accent:'#69b84f',flavor:'Flower groves, ancient carvings, and mischievous woodland critters.',width:14200,height:600,endX:14000,platforms,coins,hazards,enemies,checkpoints,powerChests,decorations:{landmarks:['broad-grove','clear-haven','root-terraces','tall-grove','final-mixed-woodland'],flora,carvings,vines,ambientCreature:'glow_moth'}};
 }
 
-export const LEVELS = [
-  { id: 'L0', theme: 'lobby', width: 1400, height: 600, endX: 999999, platforms: [platform(0, 500, 1400, 100, 'ground'), platform(320, 410, 180), platform(650, 350, 180), platform(980, 410, 180)], coins: [], hazards: [], enemies: [], checkpoints: [], sign: 'WELCOME, EXPLORER!  A/D or arrows move · Space jumps · Press START RUN' },
-  makeForestLevel(),
-  makeLevel('ocean', 19417, '#48b8d1', 'A tidepool trail where crabs have strong opinions.'),
-  makeLevel('hell', 19417, '#e35b53', 'A warm little lava walk. Nothing to worry about. Probably.')
-];
+const LOBBY = { id: 'L0', theme: 'lobby', width: 1400, height: 600, endX: 999999, platforms: [platform(0, 500, 1400, 100, 'ground'), platform(320, 410, 180), platform(650, 350, 180), platform(980, 410, 180)], coins: [], hazards: [], enemies: [], checkpoints: [], sign: 'WELCOME, EXPLORER!  A/D or arrows move · Space jumps · Press START RUN' };
+function legacyLevel(entry) {
+  if (entry.id === 2) return makeLevel('ocean', 19417, '#48b8d1', 'A tidepool trail where crabs have strong opinions.');
+  if (entry.id === 3) return makeLevel('hell', 19417, '#e35b53', 'A warm little lava walk. Nothing to worry about. Probably.');
+  return null;
+}
+export const LEVELS = [LOBBY];
+for (const entry of LEVEL_CATALOG) {
+  const level = entry.legacy ? legacyLevel(entry) : documentToLevel(LEVEL_DOCUMENTS.get(entry.id), entry.id, entry);
+  if (!level) throw new Error(`Catalog level ${entry.id} did not resolve to an authored document or supported legacy course.`);
+  LEVELS[entry.id] = level;
+}
 export function platformAt(p, time = 0) {
   const q = { ...p };
   if (p.kind === 'moving') { const d = Math.sin((p.phase || 0) + time * (p.speed || 1)) * p.distance; if (p.axis === 'x') q.x += d; else q.y += d; }

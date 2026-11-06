@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { POWER_DEFINITIONS, collectPower, activatePower, powerEffects, resetPowerInventory, reservePower, releasePowerReservation } from '../public/game/powers.js';
+import { LEVELS } from '../public/game/levels.js';
+
+// These inventory regressions exercise legacy chest rules; authored forest
+// intentionally has no power chests, so use the ocean fixture in slot 1.
+LEVELS[1] = LEVELS[2];
 
 const player = (id, level = 1) => ({ id, name: id, connected: true, spawned: true, state: { level, deadUntil: 0, finished: false }, effects: {} });
 

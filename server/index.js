@@ -1,11 +1,12 @@
 import http from 'node:http';
 import path from 'node:path';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, readdirSync } from 'node:fs';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { AVATARS, COLORS } from '../public/game/engine.js';
 import { LEVELS } from '../public/game/levels.js';
+import { LEVEL_CATALOG } from '../public/game/level-catalog.js';
 import { POWER_DEFINITIONS, chestPower, collectPower, powerEffects, powerStrength, reservePower, releasePowerReservation, resetPowerInventory } from '../public/game/powers.js';
 import { DEFAULT_QUESTIONS } from '../public/game/default-questions.js';
 import { beginPowerDuel, answerPowerDuel, advancePowerDuel, prunePowerDuel, duelView, privateDuelQuiz } from './power-duels.js';
@@ -21,7 +22,7 @@ const clamp = (value, low, high) => Math.max(low, Math.min(high, Number.isFinite
 const send = (ws, value) => ws?.readyState === 1 && ws.send(JSON.stringify(value));
 const error = (ws, message, code, details = {}) => send(ws, { type:'error', message, ...(code ? { code } : {}), ...details });
 const profile = msg => ({ name:clean(msg.name, 24, 'Player'), avatar:AVATARS.includes(msg.avatar) ? msg.avatar : AVATARS[0], color:COLORS.includes(msg.color) ? msg.color : COLORS[0] });
-const biomeNames = ['the lobby', 'Whimsical Woods', 'Troubled Tides', 'Inferno Express'];
+const biomeNames = Object.fromEntries([[0, 'the lobby'], ...LEVEL_CATALOG.map(level => [level.id, level.name])]);
 function settings(input = {}) {
   const result = { worldOrder:normalizeWorldOrder(input.worldOrder) };
   for (const [key, fallback, low, high] of [
@@ -38,7 +39,28 @@ function settings(input = {}) {
 
 export function createGameServer({ port=Number(process.env.PORT)||10000, host='0.0.0.0', staticRoot=path.join(ROOT,'public'), now=()=>Date.now(), tickMs=50 } = {}) {
   const versionFiles = ['server/index.js','server/power-duels.js','server/power-questions.js','public/app.js','public/game/audio.js','public/game/audio-tracks.js','public/game/engine.js','public/game/local-run.js','public/game/run-protocol.js','public/game/client-state.js','public/game/levels.js','public/game/world-order.js','public/game/projectiles.js','public/game/powers.js','public/game/default-questions.js'];
-  const fingerprint = () => { const hash=createHash('sha256'); for (const file of versionFiles) { const full=path.join(ROOT,file); if (existsSync(full)) hash.update(readFileSync(full)); } return hash.digest('hex'); };
+  const fingerprint = () => {
+    const hash=createHash('sha256');
+    const files=new Set([...versionFiles, 'public/bootstrap.js', 'public/game/level-catalog.json']);
+    for(const name of readdirSync(path.join(ROOT,'public/game')).sort())if(name.endsWith('.js'))files.add('public/game/'+name);
+    // Read the disk catalog on every health check, including newly added levels.
+    // This catches authored JSON changes until the server is restarted.
+    const catalogPath=path.join(ROOT,'public/game/level-catalog.json');
+    if (existsSync(catalogPath)) {
+      try {
+        const catalog=JSON.parse(readFileSync(catalogPath,'utf8'));
+        for (const entry of Array.isArray(catalog)?catalog:catalog.levels||[]) if(entry.src) {
+          const url=new URL(entry.src,'http://localhost/game/level-catalog.json');
+          const full=path.resolve(ROOT,'public','.'+decodeURIComponent(url.pathname));
+          if(full.startsWith(path.join(ROOT,'public')+path.sep))files.add(path.relative(ROOT,full));
+        }
+      } catch { hash.update('invalid-level-catalog'); }
+    }
+    const shared=path.join(ROOT,'public/game/json-level');
+    if(existsSync(shared))for(const name of readdirSync(shared).sort())if(name.endsWith('.js'))files.add('public/game/json-level/'+name);
+    for (const file of [...files].sort()) { const full=path.join(ROOT,file); hash.update(file); if (existsSync(full)) hash.update(readFileSync(full)); else hash.update('missing'); }
+    return hash.digest('hex');
+  };
   const runtimeVersion = fingerprint(), rooms = new Map();
   const ranked = room => [...room.players.values()].sort((a,b) => b.score-a.score || (a.finishTime??Infinity)-(b.finishTime??Infinity) || a.joinedAt-b.joinedAt);
   const playerDTO = (room, player, viewer = {}) => {

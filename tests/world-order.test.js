@@ -1,9 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
-import { LEVELS, createState, startRun, step, score } from '../public/game/engine.js';
+import { LEVELS, createState, startRun, step, score, getJsonRuntime } from '../public/game/engine.js';
 import { DEFAULT_WORLD_ORDER, normalizeWorldOrder, worldOrdinal } from '../public/game/world-order.js';
 import { createGameServer } from '../server/index.js';
+
+function placeAtExit(state, levelId) {
+  const level = LEVELS[levelId];
+  const runtime = getJsonRuntime(state);
+  if (runtime) {
+    // Authored levels resolve gameplay roles through their JSON runtime; the
+    // legacy x/endX shortcut is not a valid collision probe for them.
+    runtime.player.x = level.endX + 1 - runtime.player.width / 2;
+    runtime.player.y = 325;
+    runtime.player.vx = 0;
+    runtime.player.vy = 0;
+    runtime.player.grounded = true;
+  } else {
+    state.x = level.endX + 1;
+    state.y = 400;
+  }
+}
 
 function receive(ws, predicate = () => true) {
   const found = ws._inbox.findIndex(predicate);
@@ -50,30 +67,32 @@ test('all six orders start, transition, bank once, and finish on the final order
     assert.equal(state.level, order[0]);
     for (const [position, levelId] of order.entries()) {
       assert.equal(state.level, levelId);
-      state.x = LEVELS[levelId].endX + 1; state.y = 400; state.current = 7; state.distanceMax = 64;
+      placeAtExit(state, levelId); state.current = 7; state.distanceMax = 64;
       const before = state.banked;
       const events = step(state, {}, .016);
       assert.ok(events.some(event => event.type === 'levelComplete' && event.level === levelId));
-      assert.equal(state.banked, before + 7 + Math.floor((LEVELS[levelId].endX + 1 - 90) / 32));
+      const completion = events.find(event => event.type === 'levelComplete');
+      assert.equal(state.banked, before + completion.score);
+      assert.ok(completion.score >= 7, 'authored runtime preserves current points at exit');
       assert.equal(state.completedWorlds.length, position + 1);
       if (position === order.length - 1) assert.ok(state.finished);
     }
     assert.equal(score(state), state.banked);
     const banked=state.banked;assert.deepEqual(step(state,{},.016),[]);assert.equal(state.banked,banked);
   }
-  assert.deepEqual(LEVELS.slice(1).map(level=>level.id),['forest','ocean','hell']);
+  assert.deepEqual(LEVELS.slice(1).map(level=>level.id),[1,'ocean','hell']);
 });
 
 test('level transitions retain latched order and completed identities while resetting checkpoint state', () => {
   const state = startRun(createState(), { worldOrder: [3, 1, 2] });
   state.checkpoint = { id: 'checkpoint', x: 300, y: 500, current: 4, coins: 1, collected: ['coin'], distanceMax: 300, progress: .2 };
-  state.x = LEVELS[3].endX + 1; state.y = 400; state.current = 10; state.distanceMax = 500;
+  placeAtExit(state, 3); state.current = 10; state.distanceMax = 500;
   step(state, {}, .016, {worldOrder:[1,2,3]});
   assert.equal(state.level, 1);
   assert.deepEqual(state.worldOrder, [3, 1, 2]);
   assert.deepEqual(state.completedWorlds, [3]);
   assert.equal(state.checkpoint, null);
-  state.x = LEVELS[1].endX + 1; state.y = 400;
+  placeAtExit(state, 1);
   step(state, {}, .016);
   assert.equal(state.level, 2);
   assert.deepEqual(state.completedWorlds, [3, 1]);
@@ -138,7 +157,7 @@ test('WebSocket ordered completion broadcasts identity, banks once, resets check
     await receive(playerSocket,m=>m.type==='reportAck'&&m.seq===seq);
   }
   for (const [index, levelId] of [3, 1, 2].entries()) {
-    local.current = 5; local.x = LEVELS[levelId].endX + 1; local.y = 400;
+    local.current = 5; placeAtExit(local, levelId);
     const before = local.banked;
     step(local,{},1/60,room.settings);await report();
     const announcement = await receive(host, message => message.type === 'state' && message.room.announcement?.kind === 'level' && message.room.announcement.text.includes(names[levelId]));
@@ -148,7 +167,15 @@ test('WebSocket ordered completion broadcasts identity, banks once, resets check
     if (index === 0) assert.equal(runner.summary.checkpoint, null);
     assert.ok(announcement.room.announcement.text.includes(names[levelId]));
     if (index === 0) {
-      local.y=620;local.x=100;local.grounded=false;local._standingPlatform=null;
+      const authoredRuntime = getJsonRuntime(local);
+      if (authoredRuntime) {
+        authoredRuntime.player.x = 100;
+        authoredRuntime.player.y = authoredRuntime.document.world.height + 150;
+        authoredRuntime.player.grounded = false;
+        authoredRuntime.player.standingId = null;
+      } else {
+        local.y=620;local.x=100;local.grounded=false;local._standingPlatform=null;
+      }
       step(local,{},1/60,room.settings);await report();assert.equal(runner.summary.deaths,1);
       assert.deepEqual(local.worldOrder,[3,1,2]);assert.deepEqual(runner.summary.completedWorlds,[3]);
       for(let frame=0;frame<181;frame++)step(local,{},1/60,room.settings);

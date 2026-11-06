@@ -5,7 +5,7 @@
   "name": "WhimsicalForest",
   "biome": "custom",
   "world": {
-    "width": 14200,
+    "width": 5993,
     "height": 600,
     "backgroundColor": "#183c38",
     "spawnPlacementId": "object-a3637b32-1dc0-4109-816d-542d72965e8c"
@@ -5825,7 +5825,7 @@
     {
       "id": "object-862d66b0-1859-45e8-bd35-7e5c74ca123c",
       "definitionId": "whimsical-forest-2-atlas:cut-0001",
-      "x": 1000,
+      "x": 999,
       "y": 0,
       "width": 1000,
       "height": 600,
@@ -5840,18 +5840,6 @@
       "x": 1998,
       "y": 0,
       "width": 1000,
-      "height": 600,
-      "layer": -20,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
-    },
-    {
-      "id": "object-b29db6ce-1593-490f-9efb-7ab1357fd89b",
-      "definitionId": "troubled-tide-1-atlas:cut-0001",
-      "x": 6016,
-      "y": 0,
-      "width": 3000,
       "height": 600,
       "layer": -20,
       "flipX": false,
@@ -6382,8 +6370,8 @@
     {
       "id": "object-5a01e4c4-58fa-4a96-9501-681868c77544",
       "definitionId": "whimsical-forest-props-1-atlas:cut-1",
-      "x": 1865,
-      "y": 385,
+      "x": 1900,
+      "y": 335,
       "width": 180,
       "height": 30,
       "layer": 0,
@@ -6704,7 +6692,7 @@
       "id": "object-2fe8e2fc-fd5c-4cb4-8773-bc2b8934b8a7",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 175,
-      "y": 170,
+      "y": 150,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -6733,8 +6721,8 @@
     {
       "id": "object-38e1185d-5680-4675-9946-259b6c819536",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
-      "x": 120,
-      "y": 175,
+      "x": 125,
+      "y": 160,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -6943,8 +6931,8 @@
     {
       "id": "object-ad1151f5-8f31-4db9-98a2-0123a169b704",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
-      "x": 512,
-      "y": 16,
+      "x": 510,
+      "y": 45,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -7309,8 +7297,8 @@
     {
       "id": "object-5b03434e-e29d-4383-91b5-b51ada86d0f7",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
-      "x": 1904,
-      "y": 336,
+      "x": 1905,
+      "y": 305,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -7663,8 +7651,8 @@
     {
       "id": "object-564547fe-3d81-4eaf-870e-7eb98657d00c",
       "definitionId": "whimsical-forest-props-1-atlas:cut-15",
-      "x": 2605,
-      "y": 445,
+      "x": 2615,
+      "y": 440,
       "width": 60,
       "height": 100,
       "layer": -5,
@@ -8336,7 +8324,7 @@
     {
       "id": "object-86753536-5784-44c0-b8c8-b4ea0af779a3",
       "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
-      "x": 2285,
+      "x": 2305,
       "y": 310,
       "width": 180,
       "height": 60,
@@ -8348,8 +8336,8 @@
     {
       "id": "object-f2d26916-4768-4fed-af9a-a502e002df1a",
       "definitionId": "whimsical-forest-props-1-atlas:cut-0005",
-      "x": 2250,
-      "y": 180,
+      "x": 2245,
+      "y": 210,
       "width": 180,
       "height": 60,
       "layer": 0,
@@ -8390,8 +8378,8 @@
     {
       "id": "object-64b3d637-ada2-49e6-bfb5-db4d0c09180d",
       "definitionId": "whimsical-forest-props-1-atlas:cut-13",
-      "x": 2315,
-      "y": 145,
+      "x": 2310,
+      "y": 175,
       "width": 39.33608181333875,
       "height": 37.763448688194785,
       "layer": 0,
@@ -8432,7 +8420,7 @@
     {
       "id": "object-1c6388c5-f0c9-44e6-9784-bbf1a6f304d4",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
-      "x": 2295,
+      "x": 2315,
       "y": 280,
       "width": 25,
       "height": 25,
@@ -8462,7 +8450,7 @@
     {
       "id": "object-82028049-e737-4e0a-a976-55d6f3b95564",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
-      "x": 2430,
+      "x": 2450,
       "y": 280,
       "width": 25,
       "height": 25,
@@ -8492,8 +8480,8 @@
     {
       "id": "object-c8d07a1f-cea0-4cec-8efc-51ec0259906f",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
-      "x": 2275,
-      "y": 100,
+      "x": 2270,
+      "y": 130,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -8522,8 +8510,8 @@
     {
       "id": "object-a28c478c-0592-4f41-b9ef-63c5e0401b45",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
-      "x": 2370,
-      "y": 145,
+      "x": 2365,
+      "y": 175,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -8687,7 +8675,7 @@
     {
       "id": "object-ae4b9d05-2993-468d-b381-835f62ec36bd",
       "definitionId": "whimsical-forest-1-atlas:cut-0001",
-      "x": 3995,
+      "x": 3994,
       "y": 0,
       "width": 1000,
       "height": 600,
@@ -8854,7 +8842,7 @@
         "motion": {
           "axis": "y",
           "distance": 280,
-          "periodMs": 4000,
+          "periodMs": 5000,
           "phaseMs": 0
         }
       }
@@ -9313,7 +9301,14 @@
       "layer": 0,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "type": "beam",
+        "onMs": 1000,
+        "offMs": 1000,
+        "startState": "on",
+        "startMs": 0,
+        "phaseMs": 1000
+      }
     },
     {
       "id": "f11e0809-ca1e-45aa-b9a8-8471806c85f9",
@@ -9361,7 +9356,14 @@
       "layer": 0,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "type": "beam",
+        "onMs": 1000,
+        "offMs": 1000,
+        "startState": "on",
+        "startMs": 0,
+        "phaseMs": 1000
+      }
     },
     {
       "id": "f0da992e-2dd0-487c-94f0-56651ca80bcc",
@@ -9409,7 +9411,14 @@
       "layer": 0,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "type": "beam",
+        "onMs": 1000,
+        "offMs": 1000,
+        "startState": "on",
+        "startMs": 0,
+        "phaseMs": 1000
+      }
     },
     {
       "id": "f88bc815-0e29-414b-a090-f603582b776b",
@@ -9457,7 +9466,14 @@
       "layer": 0,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "type": "beam",
+        "onMs": 1000,
+        "offMs": 1000,
+        "startState": "on",
+        "startMs": 0,
+        "phaseMs": 1000
+      }
     },
     {
       "id": "db7660c9-ddab-4e0a-a2ae-af4a093c16d6",
@@ -9592,18 +9608,6 @@
       "settings": {}
     },
     {
-      "id": "object-9a72601d-4f62-452c-994a-6025c9f5ef94",
-      "definitionId": "whimsical-forest-props-1-atlas:cut-3",
-      "x": 4750,
-      "y": 330,
-      "width": 40,
-      "height": 30,
-      "layer": 0,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
-    },
-    {
       "id": "object-e3b9a217-43e1-4e3d-98a6-0e778d5e5282",
       "definitionId": "whimsical-forest-props-1-atlas:cut-13",
       "x": 4755,
@@ -9631,7 +9635,7 @@
       "id": "object-e9faa2d1-beab-4bb0-99d1-e57c2d0c2a49",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 4200,
-      "y": 410,
+      "y": 390,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -9643,7 +9647,7 @@
       "id": "object-a632142b-4cd3-4e9e-9c63-548e560a0435",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 4280,
-      "y": 410,
+      "y": 390,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -9655,7 +9659,7 @@
       "id": "object-a98dabe2-9c97-47c9-b3e6-aea2e87c36f7",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 4355,
-      "y": 410,
+      "y": 390,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -9667,7 +9671,7 @@
       "id": "object-e6948b0b-cb56-48a0-8f9b-50fb7783acd7",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 4430,
-      "y": 410,
+      "y": 390,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -9679,7 +9683,7 @@
       "id": "object-bcd10cb5-2868-4e43-9dc3-f174db6f4b04",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 4505,
-      "y": 410,
+      "y": 390,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -9691,7 +9695,7 @@
       "id": "object-06f348bd-e34f-43e3-9430-4e10692f72da",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 4580,
-      "y": 410,
+      "y": 390,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -9703,7 +9707,7 @@
       "id": "object-14111115-9fd2-45a8-92df-840347bd4f2c",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 4645,
-      "y": 410,
+      "y": 390,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -9715,7 +9719,7 @@
       "id": "object-4c98ad4a-576c-4df2-aee2-dd90f32f2dd8",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 4720,
-      "y": 410,
+      "y": 390,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -9727,7 +9731,7 @@
       "id": "object-d1428207-01ca-494c-b3ac-9a6431d0515b",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 4795,
-      "y": 410,
+      "y": 390,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -9750,7 +9754,7 @@
     {
       "id": "object-e4903d30-c8d0-476c-8376-9949b7c3210b",
       "definitionId": "whimsical-forest-3-atlas:cut-0001",
-      "x": 4995,
+      "x": 4993,
       "y": 0,
       "width": 1000,
       "height": 600,
@@ -10416,7 +10420,7 @@
     {
       "id": "object-e77efe72-222e-4a13-b345-60fd9ef49084",
       "definitionId": "whimsical-forest-props-1-atlas:cut-15",
-      "x": 5075,
+      "x": 5080,
       "y": 440,
       "width": 60,
       "height": 100,
@@ -10470,7 +10474,7 @@
     {
       "id": "32379aea-883d-420d-945e-41e294b68652",
       "definitionId": "whimsical-forest-props-1-atlas:cut-9",
-      "x": 5820,
+      "x": 5865,
       "y": 120,
       "width": 72.72240639062693,
       "height": 22.849321900363748,
@@ -10478,6 +10482,54 @@
       "flipX": false,
       "rotation": 0,
       "settings": {}
+    },
+    {
+      "id": "object-3ab55775-ab21-494e-b2d9-1b1d5c5ca877",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-24",
+      "x": 2610,
+      "y": 515,
+      "width": 41.03766196219385,
+      "height": 31.103977338844743,
+      "layer": 1,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-2fce6dd8-ebd6-4677-8e1f-cf9c117d1bad",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-7",
+      "x": 2645,
+      "y": 510.44508613195467,
+      "width": 49.93402363867972,
+      "height": 33.554913868045276,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "0c6185de-9f29-43a6-b850-60507b1349b1",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-0006",
+      "x": 4740,
+      "y": 330,
+      "width": 60,
+      "height": 30,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {
+        "vanish": {
+          "triggerVolume": [
+            0,
+            -0.5,
+            1,
+            0.5
+          ],
+          "countdownMs": 1000,
+          "restoreMode": "timed",
+          "restoreMs": 2000
+        }
+      }
     }
   ]
 }

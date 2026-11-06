@@ -2,11 +2,13 @@ import { LEVELS, platformAt, enemyAt } from './levels.js';
 import { PROJECTILE_RULES } from './projectiles.js';
 import { powerStrength } from './powers.js';
 import { DEFAULT_WORLD_ORDER, normalizeWorldOrder, worldOrdinal } from './world-order.js';
+import LevelRuntime from './json-level/level-runtime.js';
 export { LEVELS };
 export { DEFAULT_WORLD_ORDER, normalizeWorldOrder, worldOrdinal };
 export const AVATARS = ['explorer', 'cat', 'robot', 'wizard'];
 export const COLORS = ['#b7ef51', '#ffb4df', '#7edcff', '#c6a1ff', '#ffd166', '#ff8c69'];
 const DEFAULT = { gravity: 1700, runSpeed: 270, accel: 1900, airControl: .78, jumpSpeed: 650, coyote: .11, jumpBuffer: .12, deathDelay: 3, coinPoints: 10, distancePoints: 1 };
+const JSON_RUNTIMES = new WeakMap();
 const clone = v => JSON.parse(JSON.stringify(v));
 const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 const avatarBox = s => ({ x: s.x - 14, y: s.y - 36, w: 28, h: 36 });
@@ -17,7 +19,85 @@ const hazardBox = h => {
 };
 
 export function createState({ avatar = 'explorer', color = '#b7ef51', name = '', level = 0, worldOrder = DEFAULT_WORLD_ORDER, completedWorlds = [] } = {}) {
-  return { avatar, color, name, level, worldOrder: normalizeWorldOrder(worldOrder), completedWorlds: [...new Set(completedWorlds.filter(v => Number.isInteger(v) && v >= 1 && v <= 3))], x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, stageTransition: null, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], enemyKills: 0, _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
+  return { avatar, color, name, level, worldOrder: normalizeWorldOrder(worldOrder), completedWorlds: [...new Set(completedWorlds.filter(v => Number.isInteger(v) && normalizeWorldOrder(worldOrder).includes(v)))], x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, stageTransition: null, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], enemyKills: 0, _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
+}
+function authoredLevel(s) { return LEVELS[s.level]?.authored ? LEVELS[s.level] : null; }
+function initializeAuthored(s, config = {}) {
+  JSON_RUNTIMES.delete(s);
+  const level = authoredLevel(s);
+  if (!level) return;
+  const runtime = new LevelRuntime(level.jsonDocument, {
+    gravity: config.gravity ?? DEFAULT.gravity, runSpeed: config.runSpeed ?? DEFAULT.runSpeed,
+    jumpSpeed: config.jumpSpeed ?? DEFAULT.jumpSpeed, accel: config.accel ?? DEFAULT.accel,
+    airControl: config.airControl ?? DEFAULT.airControl, coyoteMs: (config.coyote ?? DEFAULT.coyote) * 1000,
+    jumpBufferMs: (config.jumpBuffer ?? DEFAULT.jumpBuffer) * 1000,
+    respawnMs: (config.deathDelay ?? DEFAULT.deathDelay) * 1000,
+  });
+  runtime._deathOffset = s.deaths;
+  runtime.distanceOriginX = runtime.spawn.x;
+  runtime.progressEndX = level.endX;
+  JSON_RUNTIMES.set(s, runtime);
+  syncJsonRuntime(s, runtime, config);
+}
+function syncJsonRuntime(s, runtime, config = {}) {
+  const weight = config.coinPoints ?? DEFAULT.coinPoints;
+  if(s.respawnRemaining>0&&runtime.deadRemainingMs<=0){s.deathCause=null;s.reveal=null;s._particles=[];}
+  Object.assign(s, {
+    x: runtime.player.x + runtime.player.width / 2, y: runtime.player.y + runtime.player.height,
+    vx: runtime.player.vx, vy: runtime.player.vy, grounded: runtime.player.grounded,
+    coins: runtime.coins, current: runtime.coins * weight, collected: [...runtime.collected],
+    progress: runtime.progress, distanceMax: runtime.farthestX,
+    deaths: runtime._deathOffset + runtime.deaths, respawnRemaining: runtime.deadRemainingMs / 1000,
+    deadUntil: runtime.deadRemainingMs ? s.elapsed + runtime.deadRemainingMs / 1000 : 0,
+    _levelTime: (runtime.timeMs - runtime._motionEpochMs) / 1000,
+  });
+  const cp = runtime.checkpoint;
+  s.checkpoint = cp ? { id: cp.id, order: cp.order, x: cp.x + runtime.player.width / 2,
+    y: cp.y + runtime.player.height, current: cp.coins * weight, coins: cp.coins,
+    collected: [...cp.collected], progress: cp.progress, distanceMax: cp.farthestX } : null;
+}
+export function getJsonRuntime(state) { return state ? JSON_RUNTIMES.get(state) || null : null; }
+function completeLevel(s, config, events) {
+  const completedLevel = s.level;
+  const clearScore = s.current + Math.floor(s.distanceMax / 32) * config.distancePoints;
+  s.banked += clearScore; s.current = 0; s.distanceMax = 0; s.progress = 1;
+  if (!s.completedWorlds.includes(completedLevel)) s.completedWorlds.push(completedLevel);
+  events.push({ type: 'levelComplete', level: completedLevel, score: clearScore });
+  const position = s.worldOrder.indexOf(completedLevel), next = s.worldOrder[position + 1];
+  if (next == null) { s.finished = true; events.push({ type: 'finished', score: score(s, config) }); }
+  else if (config.deferStageTransition) { s.stageTransition = { from: completedLevel, to: next }; s.vx = 0; s.vy = 0; s.jumpBuffer = 0; }
+  else { s.level = next; levelStart(s, config); }
+}
+function stepAuthored(s, input, dt, config) {
+  if (!JSON_RUNTIMES.has(s)) initializeAuthored(s, config);
+  const runtime = JSON_RUNTIMES.get(s);
+  runtime.gravity = config.gravity; runtime.runSpeed = config.runSpeed; runtime.jumpSpeed = config.jumpSpeed;
+  runtime.accel = config.accel; runtime.airControl = config.airControl;
+  runtime.powerEffects = Object.fromEntries(Object.entries(config.powerEffects || {}).map(([type, effect]) =>
+    [type, { ...effect, strength: effect.strength || powerStrength(config, type) }]));
+  // Local lifecycle recovery may advance elapsed while animation was suspended.
+  if (runtime.deadRemainingMs > 0 && s.deadUntil > 0 && s.elapsed + 1e-6 >= s.deadUntil) runtime._respawn();
+  const raw = runtime.advance(dt, input), events = [];
+  syncJsonRuntime(s, runtime, config);
+  for (const event of raw) {
+    if (event.type === 'death') {
+      const cause = runtime.getStates().find(entry => entry.placement.id === event.cause?.id);
+      const decoy = cause?.state.gameplay?.role === 'decoy-chest';
+      s.deathCause = { label: event.cause?.name || 'A surprise meeting with danger',
+        x: cause?.state.x ?? s.x, y: cause?.state.y ?? s.y,
+        kind: decoy ? 'decoy' : event.cause?.kind || 'hazard',
+        actualKind: decoy ? cause.state.gameplay.decoyKind : event.cause?.kind || 'hazard' };
+      s.reveal = { ...s.deathCause };
+      s._particles = Array.from({ length: 22 }, (_, i) => ({ x: s.x, y: s.y - 18,
+        vx: Math.cos(i) * (35 + i * 2), vy: -120 - (i % 5) * 24, life: config.deathDelay }));
+      events.push({ type: 'death', ...s.deathCause, respawnIn: config.deathDelay });
+    } else if (event.type === 'respawn') { s.deathCause = null; s.reveal = null; s._particles = []; }
+    else if (event.type === 'checkpoint') events.push({ type: 'checkpoint', id: event.id, level: s.level });
+    else if (event.type === 'level-exit') completeLevel(s, config, events);
+    else if (event.type === 'gameplay-contact') events.push(event);
+  }
+  s.events = events;
+  return events;
 }
 export function startRun(s, config = {}) {
   const profile = s.profile;
@@ -25,13 +105,15 @@ export function startRun(s, config = {}) {
   Object.assign(s, createState({ name: s.name, avatar: s.avatar, color: s.color, level: worldOrder[0], worldOrder }), { started: true });
   if (profile !== undefined) s.profile = clone(profile);
   initializeEnemies(s, LEVELS[s.level] || LEVELS[0]);
+  initializeAuthored(s, config);
   return s;
 }
-function levelStart(s) {
+function levelStart(s, config = {}) {
   const { banked, deaths, elapsed, enemyKills, level, started, name, avatar, color, profile, worldOrder, completedWorlds } = s;
   Object.assign(s, createState({ name, avatar, color, level, worldOrder, completedWorlds }), { banked, deaths, elapsed, enemyKills, started });
   if (profile !== undefined) s.profile = clone(profile);
   initializeEnemies(s, LEVELS[s.level] || LEVELS[0]);
+  initializeAuthored(s, config);
 }
 // The browser releases this hold when the cleared biome's victory cue ends.
 export function advanceStage(s) {
@@ -62,6 +144,7 @@ function respawn(s) {
   s._enemyLevel = null; s.enemies = [];
 }
 function initializeEnemies(s, level) {
+  if(level.authored){s.enemies=[];s._enemyLevel=s.level;return;}
   if (s._enemyLevel === s.level && Array.isArray(s.enemies) && s.enemies.length === level.enemies.length) return;
   s.enemies = level.enemies.map((base, i) => {
     let pi = Number.isInteger(base.platformIndex) ? base.platformIndex : level.platforms.findIndex(p => Math.abs(p.x - base.min) < 100);
@@ -110,6 +193,7 @@ function die(s, h, now, cfg) {
 export function step(s, input = {}, dt = 1 / 60, config = {}) {
   const cfg = { ...DEFAULT, ...config }, events = []; dt = Math.min(Math.max(Number(dt) || 0, 0), .05); s.events = events; s.elapsed += dt;
   if (s.finished || s.stageTransition) return events;
+  if (authoredLevel(s)) return stepAuthored(s, input, dt, cfg);
   const lobby = !s.started && s.level === 0;
   if (!lobby && s.deadUntil > 0) { s.respawnRemaining = Math.max(0, s.deadUntil - s.elapsed); for (const p of s._particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 600 * dt; p.life -= dt; } if (s.elapsed + 1e-6 >= s.deadUntil) respawn(s); return events; }
   const level = LEVELS[s.level] || LEVELS[0]; s._levelTime += dt; s._enemyPhase += dt; initializeEnemies(s, level); updateProjectiles(s, dt);

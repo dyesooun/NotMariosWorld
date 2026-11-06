@@ -13,13 +13,13 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 ## Game concept and platform
 
-- An original, playful pixel-art platform race/battle royale for a company event. Collect coins, travel farther, and escape three worlds to earn the highest score.
+- An original, playful pixel-art platform race/battle royale for a company event. Collect coins, travel farther, and escape the configured race levels to earn the highest score.
 - Desktop browser and keyboard play. Mobile controls are outside the agreed scope.
 - Internet multiplayer, deployed as a Node Web Service on Render, with room-code entry and shareable invite links.
 - Support a host plus up to **25 players**. The host is an observer/controller and does not consume a player slot.
 - Every player runs a separate simulation of the same level layout. Players do not collide, share collectible depletion, or physically enter one another's world. Chest powers and host-triggered power challenges are the explicitly requested interactions between worlds.
 - Layouts and obstacle definitions must be identical for every player. Random power types and quiz questions do not change the terrain; successful attacks target all eligible opponents.
-- Aim for **5–10 minutes** of casual play across all three race levels, including surprise deaths. Actual duration depends on skill and needs team rehearsal; do not claim the target has been proven merely because tests pass.
+- Aim for **5–10 minutes** of casual play across the configured race levels, including surprise deaths. Actual duration depends on skill and needs team rehearsal; do not claim the target has been proven merely because tests pass.
 - No particular licensed character or theme is required. Preserve the original artwork and playful surprise-death tone.
 
 ## Session and host flow
@@ -27,7 +27,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - The host creates a room, configures it, and **starts the race manually**. Joining or spawning must not start the round.
 - Room states are lobby, running, settling, and ended. Settling stops gameplay and collects final reports for at most two seconds before publishing immutable ranks. Host actions are authenticated separately from player access; a room code must not grant host control.
 - Host settings are editable in the lobby. Round duration defaults to **10 minutes** and is configurable from **1–60 minutes**.
-- The host can select **any of the six world orders** in Game settings, including putting ocean or inferno first for testing. Every sequence includes all three worlds exactly once; the default is forest → ocean → inferno. The selected order is room-specific and fixed when a run starts. Late joins and refreshed runs begin at the first world in that selected order, with the shared remaining time.
+- The host can reorder every catalog level in Game settings, including putting ocean or inferno first for testing. Every sequence includes each configured race level exactly once. The catalog order is the default (currently forest → ocean → inferno); there is no three-level limit. The selected order is room-specific and fixed when a run starts. Late joins and refreshed runs begin at the first world in that selected order, with the shared remaining time.
 - Keep biome identity separate from race position. Stage numbers, progress indicators, and the host dashboard follow the selected sequence; artwork, music, chests, checkpoint IDs, and escape broadcasts follow the actual biome. Finish only after the last world in the selected sequence, even if it is the forest or ocean. Do not reorder the global `LEVELS` array to implement this setting.
 - Scoring settings default to **10 points per coin** and **1 point per 32-pixel distance tile**; the current supported range for each weight is 0–1000.
 - The host can separately configure **power duration**, **attack-answer window**, and **defense-answer window** in the lobby, each from **1–60 seconds**. Defaults are **5**, **10**, and **10 seconds**, respectively. The server owns these deadlines; quiz progress and result broadcasts must use the configured values.
@@ -58,17 +58,28 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 | 1 | Whimsical Woods | Whimsical forest |
 | 2 | Troubled Tides | Ocean |
 | 3 | Inferno Express | Hell / lava |
-| 4 | Podium | Shared ranked end-of-round ceremony |
+| Separate ceremony | Podium | Shared ranked end-of-round ceremony; positive catalog IDs, including 4, remain available for race levels |
 
 - Race levels include coins, lethal traps, disguised decoys, enemies, moving platforms, and vanishing platforms.
 - Vary platform widths, heights, gaps, and spacing deterministically. Avoid repetitive equal-size stepping stones and preserve reachable routes.
-- Current race-world tuning uses a 14,000-pixel exit position and a 14,200-pixel world width. Treat these as current tuning, not a reason to silently redesign the courses.
+- JSON race levels use their authored world bounds and exit trigger, without imposing legacy tuning. The retained ocean/inferno compatibility courses use a 14,000-pixel exit and 14,200-pixel width.
 - Keep the world alive with moving clouds, flying birds, swimming fish, parallax scenery, and biome-appropriate animation.
 - Death produces a **pixel explosion**. Reveal the real spike/bomb or other cause behind a decoy and display its cause of death.
 - Use crisp, original pixel sprites. The existing transparent atlas includes avatars, enemies, bombs, coins, spikes, a mushroom/spring, chests, birds, fish, a skull, and a flag. Canvas draws terrain, scenery, and additional effects.
 - Preserve asset provenance in `docs/ASSETS.md`. Do not replace the original art with copyrighted game assets.
 
-### Forest identity (world ID 1)
+### JSON race levels (current source of truth)
+
+- The live forest is loaded directly from `public/assets/sprites/forest/tileset/WhimsicalForest.json`. Preserve this document and its authored artwork, geometry, placements and gameplay roles. Do not regenerate the old forest or insert missing enemies, checkpoints or chests. It currently contains 89 coins, two checkpoints, one selected spawn and one exit, with no power-chest or creature placements.
+- `public/game/level-catalog.json` registers ordered, unique positive numeric IDs, names, audio themes and per-level JSON paths. More than three levels and repeated themes are supported. ID 0 stays the lobby; the podium is outside the race registry. Ocean/inferno retain explicit legacy compatibility entries until their authored JSON files are supplied.
+- The shared renderer/runtime under `public/game/json-level/` is biome agnostic and consumes exported v2 documents: separate atlases, definitions, placements, transforms, authored collision/hazard shapes, motion, beams, vanishing, animations and explicit gameplay roles. Relative atlas sources resolve against each level JSON.
+- The browser and server load the same catalog before accepting gameplay; server validation uses authored checkpoint/chest IDs. Geometry stays local. Runtime objects and embedded atlases never enter player reports. Preserve scoring, death rollback, banking, queued powers, cue holds and cutoff behavior across JSON/legacy transitions. Catalog and authored JSON changes participate in the runtime compatibility fingerprint.
+- The editor and JSON viewer import the same shared runtime modules. Editor changes stay in tool storage until the user exports/replaces the configured JSON; do not silently change production JSON.
+
+### Historical forest artwork (superseded course; asset reference)
+
+The notes below document the retained original art and legacy fixture. They do not override the current authored JSON forest placements or geometry.
+
 
 - The forest uses its own authored course and platform arrangement, separate from the ocean/inferno generator. Keep all players on the same deterministic forest course. This redesign applies to the forest biome regardless of its selected race position; preserve the other biomes until requested otherwise.
 - Forest platforms have moss-covered soil, hanging roots, varied spans, and optional moving/vanishing root ledges. Keep clear, reachable ground routes and solid checkpoint/reward havens.
@@ -85,7 +96,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Enemies, projectiles, spikes, bomb/spike decoys, and falls kill instantly. There is no agreed health/damage system.
 - In every race level, visible and disguised spikes use a centered collision box at **85% of their visual width and height** (7.5% inset on each edge). Preserve the full-sized artwork and original trap coordinates for death reveals. Bombs, enemies, projectiles, and pits keep their existing collision rules.
 - Respawns are unlimited and occur after **3 seconds**.
-- Each race level has checkpoints at **25%, 50%, and 75%**. The exit at 100% completes/banks the level rather than acting as another checkpoint.
+- JSON levels use authored ordered checkpoint triggers and anchors. Legacy ocean/inferno courses retain checkpoints at **25%, 50%, and 75%**. The exit completes/banks the level rather than acting as another checkpoint.
 - Each new checkpoint saves **respawn location, current points, coin count, collected coin IDs, farthest distance, and progress**.
 - Before the first checkpoint, death resets the current level's points, coins, and progress and respawns at that level's start. Previously banked levels remain safe.
 - After a checkpoint, death restores the checkpoint's saved state and respawns there. Only gains made after the saved checkpoint are lost.
@@ -98,7 +109,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Distance uses the farthest point reached, so walking backward and forward cannot farm points.
 - Completing a level banks its full current score **once**, including checkpoint-protected points, then starts the next level with a fresh checkpoint state. Death in a later level never removes earlier banked points.
 - On reaching an exit, stop the background loop and play that biome's complete victory stinger once. Hold the player safely in the cleared biome until the stinger ends before entering the next selected world. Bank score and announce the escape immediately; final-course completion time remains the exit-contact time. The shared clock continues, and round expiry/manual end takes precedence over the cue. Muted, hidden, or unavailable audio uses the cue's duration without blocking progression indefinitely.
-- Completing the third world in the selected sequence banks the final level and waits for the shared room timer and ceremony; it does not immediately end the round for everyone.
+- Completing the last world in the selected sequence banks the final level and waits for the shared room timer and ceremony; it does not immediately end the round for everyone.
 - At time expiry, include **banked points plus current unbanked points** in the final result.
 - Highest score wins. Ties favor earlier full-course completion measured from the **room's start**, then join order for remaining ties. An unfinished player has no completion time.
 - Freeze final scores and ranks at round end. Disconnects, refreshes, reconnects, and new spectators must not change podium placements.
@@ -115,13 +126,13 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 ## Chests and powers
 
-- Not every chest is a decoy. Each race level has **three real power chests** per player; other chests can hide lethal surprises.
-- Forest reward chests are at **x = 3940, 7460, and 10940**; ocean/inferno reward chests remain at **3880, 7380, and 10880**. All sit after the three checkpoints, with cyan sparkles. Keep rewards distinguishable from decoys, with stable IDs, solid support, and clear access.
+- Not every chest is a decoy. JSON levels use their authored power/decoy chest roles. Legacy ocean/inferno courses have **three real power chests** per player; other chests can hide lethal surprises.
+- The current JSON forest has no power chests. Legacy ocean/inferno reward chests remain at **3880, 7380, and 10880**. All sit after the three checkpoints, with cyan sparkles. Keep rewards distinguishable from decoys, with stable IDs, solid support, and clear access.
 - Each chest grants one random power, allowing **up to three uses per level**. Players can hold or reserve **only one power at a time across levels**, without stacking inventory.
 - Reaching another chest while holding a power shows an **in-world Attack / Replace choice**. Attack queues the current item and leaves the new chest unopened until the slot is free. Replace discards the current item and claims the new chest; replacement does not grant an extra inventory slot.
 - Cache an unopened chest's offered reward for that run so walking away and returning cannot reroll it. The browser detects chest contact; the server validates choices against that reported contact, the known chest, offer, held-item identity, current run, reported liveness, and round deadline. The server does not reconstruct collision geometry. A queued item cannot be replaced.
 - An unused held power survives death. A claimed chest stays spent across respawns, including when death rewinds coins to a checkpoint. Used powers/chests must never regenerate through death or checkpoint rollback.
-- Entering the next level gives access to that level's three fresh chests and discards an unreserved old-level item. Already queued requests remain tied to their original level/item and survive the transition; a reserved old item blocks new pickup until consumed. An active turn has already consumed its item and is not a second held slot.
+- Entering the next level gives access to that level's authored fresh chests and discards an unreserved old-level item. Already queued requests remain tied to their original level/item and survive the transition; a reserved old item blocks new pickup until consumed. An active turn has already consumed its item and is not a second held slot.
 
 | Power | Effect | Duration |
 | --- | --- | --- |
@@ -201,7 +212,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 ## Countdown, podium, and host observation
 
 - Run the visible/audible **10-second countdown during the final 10 seconds of play**, not as an extra frozen period after time expires. Players can still move, collect coins, and score during it.
-- At zero, stop local gameplay and server power processing and teleport everyone into **World 4: the podium**. Show **Finalizing scores…** while the server collects final reports for at most **2 seconds**; this is not extra playtime. Publish ranks once every eligible run has reported or that limit expires, then keep them immutable.
+- At zero, stop local gameplay and server power processing and teleport everyone into **the separate podium ceremony**. Show **Finalizing scores…** while the server collects final reports for at most **2 seconds**; this is not extra playtime. Publish ranks once every eligible run has reported or that limit expires, then keep them immutable.
 - A final report must represent the cutoff, including current unbanked points and distance below the next reporting milestone. Manual end uses a short local summary history to select totals at or before its server-issued cutoff. Missing/disconnected players use their last accepted totals. New/refreshed runs cannot replace an eligible run during settlement, and late messages cannot rerank published results.
 - Full-course completion time is trusted client-reported time relative to the shared room start, not message arrival time or a personal timer. Join order remains the last tiebreaker.
 - Show the top three on the main podium and every other ranked player on a ranked stand. Highlight the viewer's avatar/rank and support all 25 player positions.
@@ -212,7 +223,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 ## Architecture and operation
 
-- The local level companion lives under `tools/level-editor/`, starts separately with `npm run editor`, and binds only to `127.0.0.1` (default port 10001, configurable with `EDITOR_PORT`). It authors versioned JSON with separate atlas assets, reusable interpretations, and placements; it does not change the live game's renderer or layouts. The companion uses an image-first import review with automatic/editable cuts, collision and hitboxes, optional per-asset metadata/default sizes, level tags and filters, and tool-owned IndexedDB storage. No schema is required. Placement transforms are independent; cut/physics corrections are shared. Multi-selection supports group move, uniform scale, rotate and horizontal/vertical flips, with one undo step per operation; selection groups stay editor-only. Assets can be deleted with all their placements using Undo-backed deletion; other definitions sharing the atlas are retained. Character image imports support optional creature sequence metadata and visual state/frame authoring; the selected preview state stays outside exported placements and the engine owns runtime transitions. Every asset kind supports per-placement motion independently of animations, beams and vanishing. The preview runs live by default. Platforms have per-placement trigger volumes and entry countdowns for vanishing, with restoration on respawn, timed restoration, or permanent removal until playtest Restart; beams have start delay, on/off durations and phase offset. The timing update clears stale tool libraries once, then retains newly imported assets. The companion also launches a separate playable JSON viewer at `/viewer.html`; its renderer/runtime are biome agnostic and consume authored collision, hazard, motion, beam and vanish data. Platform-kind assets use one-way collision in playtest, allowing jumps through from below and landing from above; moving/vanishing platforms follow the same rule, while other solid kinds retain full collision. Optional gameplay roles, separate from artwork kinds, identify coins, ordered checkpoints, spawnpoints, exits, power chests and decoy chests; shared defaults and placement overrides carry searchable custom tags, triggers and anchors. The local playtest collects coins, saves checkpoint collection/progress for death rollback, selects the editor-chosen spawn asset through `world.spawnPlacementId` (or tagged-spawn priority before legacy coordinate fallback), follows its transformed foot anchor and emits a single exit completion, while chest powers remain coordinator-owned. It exposes engine-owned character-state selection without replacing multiplayer courses. The playtest camera automatically scrolls near viewport edges, canvas clicks preserve follow, and movement resumes follow after inspection. Optional `world.spawn` uses player top-left logical coordinates; missing spawn is inferred and can be overridden in the viewer. See `tools/level-editor/README.md`.
+- The local level companion lives under `tools/level-editor/`, starts separately with `npm run editor`, and binds only to `127.0.0.1` (default port 10001, configurable with `EDITOR_PORT`). It authors versioned JSON with separate atlas assets, reusable interpretations, and placements; exporting/replacing a catalog JSON changes the live level after server restart and browser refresh. The companion uses an image-first import review with automatic/editable cuts, collision and hitboxes, optional per-asset metadata/default sizes, level tags and filters, and tool-owned IndexedDB storage. No schema is required. Placement transforms are independent; cut/physics corrections are shared. Multi-selection supports group move, uniform scale, rotate and horizontal/vertical flips, with one undo step per operation; selection groups stay editor-only. Assets can be deleted with all their placements using Undo-backed deletion; other definitions sharing the atlas are retained. Character image imports support optional creature sequence metadata and visual state/frame authoring; the selected preview state stays outside exported placements and the engine owns runtime transitions. Every asset kind supports per-placement motion independently of animations, beams and vanishing. The preview runs live by default. Platforms have per-placement trigger volumes and entry countdowns for vanishing, with restoration on respawn, timed restoration, or permanent removal until playtest Restart; beams have start delay, on/off durations and phase offset. The timing update clears stale tool libraries once, then retains newly imported assets. The companion also launches a separate playable JSON viewer at `/viewer.html`; its renderer/runtime are biome agnostic and consume authored collision, hazard, motion, beam and vanish data. Platform-kind assets use one-way collision in playtest, allowing jumps through from below and landing from above; moving/vanishing platforms follow the same rule, while other solid kinds retain full collision. Optional gameplay roles, separate from artwork kinds, identify coins, ordered checkpoints, spawnpoints, exits, power chests and decoy chests; shared defaults and placement overrides carry searchable custom tags, triggers and anchors. The local playtest collects coins, saves checkpoint collection/progress for death rollback, selects the editor-chosen spawn asset through `world.spawnPlacementId` (or tagged-spawn priority before legacy coordinate fallback), follows its transformed foot anchor and emits a single exit completion, while chest powers remain coordinator-owned. It exposes engine-owned character-state selection and shares its renderer/runtime with authored multiplayer courses. The playtest camera automatically scrolls near viewport edges, canvas clicks preserve follow, and movement resumes follow after inspection. Optional `world.spawn` uses player top-left logical coordinates; missing spawn is inferred and can be overridden in the viewer. See `tools/level-editor/README.md`.
 
 - Stack: Node.js **22+**, ES modules, `ws`, plain HTML/CSS/JavaScript, and canvas. No frontend build step is required.
 - Each player's browser owns its movement, physics, collisions, enemies/projectiles, coins, checkpoints, deaths/respawns, banking, level transitions, and local score. Reuse the deterministic engine and layouts. Input is processed locally; do not send movement controls or reconcile against server physics. This casual game deliberately trusts client-reported gameplay results.
@@ -238,7 +249,9 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 | `public/game/engine.js` | Local gameplay movement, collisions, deaths, checkpoint state, scoring, enemy simulation |
 | `public/game/local-run.js` | Local fixed-step runtime, milestone reports, cutoff summary history |
 | `public/game/run-protocol.js` | Compact report schema, score aggregation, protocol version and settlement constants |
-| `public/game/levels.js` | Deterministic layouts, checkpoints, platforms, hazards, critter placement, power chest |
+| `public/game/levels.js` | Loaded level registry and deterministic legacy compatibility layouts |
+| `public/game/level-catalog.json`, `level-catalog.js` | Configured race IDs/order, per-level JSON loading, authored checkpoint/chest metadata |
+| `public/game/json-level/` | Shared biome-agnostic JSON rendering, transformed geometry, physics and gameplay triggers |
 | `public/game/world-order.js` | Validated per-room world sequences and race-position lookup |
 | `public/game/renderer.js` | Pixel scene, sprite atlas, wildlife, animation, effects |
 | `public/game/forest-sprites.js` | Supplemental woodland atlas, crop/alpha trim, sprite drawing |
@@ -271,7 +284,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
   - Platform-bound patrol/chase, supported critter positions, flame size/collision, speed, and reduced firing frequency.
   - Distinct authored forest geometry, safe reward/checkpoint havens, complete forest sprite crops, grounded scenery, two new enemy species, and ambient moths.
   - Configured power strengths, increased slippery speed/coasting, latched effect values shared by server/client, and custom fog darkness.
-  - All six world orders, distinct biome identity/race position, final completion on the last selected world, independent rooms, late/refresh starts, bank/checkpoint/death persistence, and correct progress indicators.
+  - Catalog-driven orders (including more than three levels), distinct biome identity/race position, final completion on the last selected world, independent rooms, late/refresh starts, bank/checkpoint/death persistence, and correct progress indicators.
   - Final 10 seconds remaining playable, exact cutoff reports including current points, two-second settlement, immutable published ranks, all podium positions, and reconnect/spectator stability.
   - Local movement independent of network latency; no server physics, movement packets, CCTV payloads/canvases, or unchanged-state broadcast loops. Ordered reports, death reductions, duplicate/stale rejection, host-only detailed patches, and 25-player aggregation.
   - Optional/default icebreakers, named live votes, 15-second closure, manual skip, and in-world presentation.

@@ -2,7 +2,7 @@ import { LEVELS } from './levels.js';
 import { normalizeWorldOrder } from './world-order.js';
 
 // Gameplay lives in the browser. Only this compact projection crosses the wire.
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 export const FINAL_REPORT_WINDOW_MS = 2000;
 export const PROGRESS_REPORT_STEP = .05;
 
@@ -38,15 +38,15 @@ const nonnegative = value => typeof value === 'number' && Number.isFinite(value)
 export function validateRunSummary(value, worldOrder) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const order = normalizeWorldOrder(worldOrder);
-  if (!Number.isInteger(value.level) || value.level < 0 || value.level > 3) return null;
-  if (!Array.isArray(value.completedWorlds) || value.completedWorlds.length > 3) return null;
+  if (!Number.isInteger(value.level) || (value.level !== 0 && !order.includes(value.level))) return null;
+  if (!Array.isArray(value.completedWorlds) || value.completedWorlds.length > order.length) return null;
   const completed = value.completedWorlds;
   if (!order.slice(0, completed.length).every((level, i) => completed[i] === level)) return null;
   if (typeof value.finished !== 'boolean') return null;
-  if (value.finished !== (completed.length === 3)) return null;
+  if (value.finished !== (completed.length === order.length)) return null;
   if (value.level === 0) {
     if (completed.length || value.finished) return null;
-  } else if (value.level !== order[Math.min(completed.length, 2)]) {
+  } else if (value.level !== order[Math.min(completed.length, order.length - 1)]) {
     // A cleared world remains visible until its victory stinger ends. Its
     // points have already been banked, so no current points remain to count.
     const clearing = !value.finished && completed.length > 0 && value.level === completed.at(-1)

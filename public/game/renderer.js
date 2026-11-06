@@ -2,6 +2,9 @@ import { LEVELS, platformAt, enemyAt } from './levels.js';
 import { PROJECTILE_RULES } from './projectiles.js';
 import { FOREST_SPRITES, drawForestSprite, drawForestPlatform, loadForestAtlas } from './forest-sprites.js';
 import { worldOrdinal } from './world-order.js';
+import { loadImages as loadJsonImages, getPreviewState } from './json-level/preview.js';
+import { drawLevelScene } from './json-level/level-renderer.js';
+import { getJsonRuntime } from './engine.js';
 
 const W=960,H=540;
 const rect=(c,color,x,y,w,h)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
@@ -14,6 +17,8 @@ const palette={
 };
 let atlas,cells=null;
 const cache=new Map();
+const jsonImageCache = new WeakMap();
+const jsonImageErrors = new WeakMap();
 const spriteNames=['explorer','cat','robot','wizard','slime','crab','imp','bomb','coin','spikes','spring','chest','bird','fish','skull','flag'];
 function loadAtlas(){
   if(typeof Image==='undefined'||atlas)return;
@@ -48,6 +53,55 @@ export function drawSprite(ctx,name,x,y,width=32,height=width,{color=null,flip=f
   ctx.restore();return true;
 }
 export function drawAvatar(canvas,name,color){const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);drawSprite(c,name,8,8,canvas.width-16,canvas.height-16,{color});}
+function ensureJsonImages(level) {
+  const document = level.jsonDocument;
+  if (!document) return null;
+  if (!jsonImageCache.has(document) && !jsonImageErrors.has(document)) {
+    const promise = loadJsonImages(document.assets).then(images => { jsonImageCache.set(document, images); return images; }).catch(error => { jsonImageErrors.set(document, error); return null; });
+    jsonImageCache.set(document, promise);
+  }
+  const value = jsonImageCache.get(document);
+  return value && typeof value.then !== 'function' ? value : null;
+}
+export async function prepareLevelArt() {
+  if (typeof Image === 'undefined') return;
+  loadAtlas();
+  await Promise.all(LEVELS.filter(level => level?.authored).map(async level => {
+    ensureJsonImages(level);
+    await jsonImageCache.get(level.jsonDocument);
+    const error = jsonImageErrors.get(level.jsonDocument);
+    if (error) throw error;
+  }));
+}
+function renderAuthored(ctx, state, level, time, compact) {
+  const document = level.jsonDocument, images = ensureJsonImages(level), canvas = ctx.canvas;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = document.world.backgroundColor || '#183c38'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!images) { ctx.fillStyle = '#f5d778'; ctx.font = '14px monospace'; ctx.fillText(jsonImageErrors.has(document) ? 'Level art unavailable: '+jsonImageErrors.get(document).message : 'Loading authored level art…', 24, 32); ctx.restore(); return; }
+  const viewHeight = Math.min(600, level.height), zoom = H / viewHeight, viewWidth = W / zoom;
+  const camera = { x: Math.max(0, Math.min(Math.max(0, level.width - viewWidth), state.x - viewWidth * .35)),
+    y: Math.max(0, Math.min(Math.max(0, level.height - viewHeight), state.y - viewHeight * .75)), zoom };
+  ctx.setTransform(canvas.width / W * zoom, 0, 0, canvas.height / H * zoom, -camera.x * canvas.width / W * zoom, -camera.y * canvas.height / H * zoom);
+  ctx.imageSmoothingEnabled = false;
+  const runtime = getJsonRuntime(state);
+  const states = runtime ? runtime.getStates() : document.placements.map(placement => ({ placement, state: getPreviewState(document, placement, time * 1000) }));
+  drawLevelScene(ctx, document, states, images, { camera, width: viewWidth, height: viewHeight });
+  if (state.respawnRemaining > 0) {
+    const age = 3 - state.respawnRemaining;
+    ctx.globalAlpha = Math.max(0, 1 - age / 2.3);
+    for (let i = 0; i < 22; i++) { const vx=Math.cos(i)*(35+i*2),vy=-120-(i%5)*24; rect(ctx, i%4===0?'#f8ebc8':state.color, state.x+vx*age, state.y-18+vy*age+300*age*age, 4+i%3, 4+i%2); }
+    ctx.globalAlpha = 1;
+    if(state.reveal?.actualKind==='bomb')drawSprite(ctx,'bomb',state.reveal.x,state.reveal.y,42,42);
+    if(state.reveal?.actualKind==='spikes')drawSprite(ctx,'spikes',state.reveal.x,state.reveal.y,42,26);
+  } else {
+    const bob = state.grounded && Math.abs(state.vx) > 20 ? Math.sin(time * 20) * 1.5 : 0;
+    drawSprite(ctx, state.avatar || 'explorer', state.x - 17, state.y - 40 + bob, 34, 40, { color: state.color, flip: state.vx < -.1 });
+    rect(ctx, state.color || '#b7ef51', state.x - 3, state.y - 48 + bob, 6, 3);
+  }
+  ctx.restore();
+  if (!compact) { ctx.save();ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);rect(ctx, '#18322ad9', 14, 14, 200, 46);ctx.fillStyle='#f2f0d8';ctx.font='12px monospace';ctx.fillText(state.name || 'Explorer', 26, 33);ctx.font='10px monospace';ctx.fillStyle='#bcdb99';ctx.fillText('WORLD '+worldOrdinal(state.level,state.worldOrder)+'   COINS '+state.coins,26,49);ctx.restore(); }
+}
+
 function cloud(ctx,x,y,size=1){ctx.save();ctx.translate(Math.round(x),Math.round(y));ctx.scale(size,size);rect(ctx,'#edf4db',0,12,88,16);rect(ctx,'#edf4db',13,0,38,27);rect(ctx,'#edf4db',50,7,25,20);rect(ctx,'#ffffff80',15,0,33,7);rect(ctx,'#d2e9d8',8,28,72,5);ctx.restore();}
 function mountain(ctx,x,y,w,h,color){ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x,y+h);const points=[[.08,.8],[.18,.8],[.18,.56],[.3,.56],[.3,.35],[.4,.35],[.4,.14],[.49,.14],[.49,0],[.58,0],[.58,.22],[.69,.22],[.69,.5],[.8,.5],[.8,.72],[.9,.72],[.9,.9],[1,.9]];for(const [px,py] of points)ctx.lineTo(Math.round(x+px*w),Math.round(y+py*h));ctx.lineTo(x+w,y+h);ctx.closePath();ctx.fill();}
 function tree(ctx,x,ground,height,p,near=false){
@@ -156,7 +210,9 @@ function enemyPoof(ctx,e){
 }
 export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstructions=false,powerChestClaims=[]}={}){
   if(!canvasOrContext||!state)return;
-  const ctx=canvasOrContext.canvas?canvasOrContext:canvasOrContext.getContext('2d'),canvas=ctx.canvas,level=LEVELS[state.level]||LEVELS[0],theme=level.theme,p=palette[theme]||palette.forest,camera=Math.round(Math.max(0,Math.min(Math.max(0,level.width-W),state.x-330))),worldTime=state._levelTime??time;
+  const ctx=canvasOrContext.canvas?canvasOrContext:canvasOrContext.getContext('2d'),canvas=ctx.canvas,level=LEVELS[state.level]||LEVELS[0];
+  if (level.authored && level.jsonDocument) { renderAuthored(ctx, state, level, time, compact); return; }
+  const theme=level.theme,p=palette[theme]||palette.forest,camera=Math.round(Math.max(0,Math.min(Math.max(0,level.width-W),state.x-330))),worldTime=state._levelTime??time;
   ctx.save();ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);ctx.imageSmoothingEnabled=false;background(ctx,p,theme,camera,time);ctx.save();ctx.translate(-camera,0);
   for(const base of level.platforms){const plat=platformAt(base,worldTime);if(plat.x+plat.w<camera-30||plat.x>camera+W+30||!plat.visible)continue;platform(ctx,plat,theme,p,worldTime);}
   forestDecor(ctx,camera,time,level);

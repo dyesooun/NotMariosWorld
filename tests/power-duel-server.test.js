@@ -6,6 +6,11 @@ import { collectPower,powerEffects } from '../public/game/powers.js';
 import { LocalRunRuntime } from '../public/game/local-run.js';
 import { isDuelFrozen } from '../public/game/client-state.js';
 import { duelView } from '../server/power-duels.js';
+import { LEVELS } from '../public/game/levels.js';
+
+// Legacy power-duel fixtures require chest-backed inventory; use ocean in the
+// former forest slot because authored forest has no power chests.
+LEVELS[1] = LEVELS[2];
 
 const waitFor=async check=>{for(let i=0;i<300;i++){if(check())return;await new Promise(r=>setTimeout(r,5));}throw new Error('Condition timed out');};
 const ACTIONS=new Set(['usePower','powerAnswer','powerChestChoice']);

@@ -4,6 +4,10 @@ import { LocalRunRuntime, FIXED_STEP_SECONDS, MAX_CATCHUP_STEPS } from '../publi
 import { LEVELS } from '../public/game/levels.js';
 import { validateRunSummary, summaryScore } from '../public/game/run-protocol.js';
 
+// Legacy local-run/chest regressions use the ocean course in the old forest
+// slot; authored forest JSON intentionally has no power chests.
+LEVELS[1] = LEVELS[2];
+
 const make = (extra = {}) => {
   const reports = [];
   const runtime = new LocalRunRuntime({

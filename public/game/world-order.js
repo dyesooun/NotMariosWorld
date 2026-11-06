@@ -1,7 +1,9 @@
-export const DEFAULT_WORLD_ORDER = Object.freeze([1, 2, 3]);
+import { DEFAULT_LEVEL_IDS } from './level-catalog.js';
+
+export const DEFAULT_WORLD_ORDER = Object.freeze([...DEFAULT_LEVEL_IDS]);
 
 export function normalizeWorldOrder(value) {
-  if (!Array.isArray(value) || value.length !== 3 || !DEFAULT_WORLD_ORDER.every(id=>value.includes(id))) return [...DEFAULT_WORLD_ORDER];
+  if (!Array.isArray(value) || value.length !== DEFAULT_WORLD_ORDER.length || !DEFAULT_WORLD_ORDER.every(id=>value.includes(id))) return [...DEFAULT_WORLD_ORDER];
   return [...value];
 }
 

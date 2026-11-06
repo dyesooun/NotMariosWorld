@@ -1,0 +1,9 @@
+{
+  "format": "not-marios-world-level-catalog",
+  "version": 1,
+  "levels": [
+    { "id": 1, "name": "Whimsical Woods", "theme": "forest", "src": "/assets/sprites/forest/tileset/WhimsicalForest.json" },
+    { "id": 2, "name": "Troubled Tides", "theme": "ocean", "legacy": true },
+    { "id": 3, "name": "Inferno Express", "theme": "hell", "legacy": true }
+  ]
+}

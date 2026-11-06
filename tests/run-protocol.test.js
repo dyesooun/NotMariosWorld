@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { createState, startRun, LEVELS } from '../public/game/engine.js';
 import { emptyRunSummary, summarizeRun, validateRunSummary, summaryScore } from '../public/game/run-protocol.js';
 
+// This file validates legacy physics summary/checkpoint contracts; use the
+// ocean fixture where the old forest slot is referenced.
+LEVELS[1] = LEVELS[2];
+
 test('run reports contain only summary data, even when the local world has detailed state', () => {
   const local = startRun(createState({ name: 'Local player' }));
   local.collected = ['coin-a', 'coin-b']; local._particles = [{ x: 12, y: 45 }];

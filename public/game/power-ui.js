@@ -1,4 +1,5 @@
 import { POWER_DEFINITIONS } from './powers.js';
+import { LEVELS } from './levels.js';
 
 export const POWER_HUD_RECT = Object.freeze({ x: 14, y: 14, w: 308, h: 80 });
 export const INK_EXTRA_DARKNESS = .75;
@@ -15,7 +16,7 @@ export function powerUIModel(player, { now = Date.now(), running = true, isHost 
   const active = activePowerEffects(player, now), darkness = Math.max(0, Math.min(.95, Number(active.fog?.strength?.darknessPercent ?? 75) / 100));
   return { visible, held, queued, testing, queuePosition:slot?.queuePosition??null, canUse, fog: !!active.fog, darkness,
     heading: testing ? 'POWER QUIZ' : queued ? `${slot.power.name} / QUEUED` : held ? slot.power.name : slot?.used ? 'POWER USED / FIND ANOTHER' : 'FIND A POWER CHEST',
-    detail: testing ? 'Answer in the world / one attempt' : queued ? `Waiting / #${slot.queuePosition??'?'} in room queue` : held ? 'Everyone else / quiz to attack' : `Chests opened: ${player?.powerChestClaims?.length||0}/3 / one slot`,
+    detail: testing ? 'Answer in the world / one attempt' : queued ? `Waiting / #${slot.queuePosition??'?'} in room queue` : held ? 'Everyone else / quiz to attack' : `Chests opened: ${player?.powerChestClaims?.length||0}/${LEVELS[state?.level]?.powerChests?.length||0} / one slot`,
     button: { x: 232, y: 38, w: 74, h: 34 },
     effects: Object.entries(activePowerEffects(player, now)).map(([type, effect]) => ({ type, name: POWER_DEFINITIONS.find(p => p.type === type)?.name || type, seconds: Math.ceil((effect.endsAt - now) / 1000) }))
   };
