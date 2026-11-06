@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createDocument, createPlacement, parseDocument, serializeDocument,validateDocument,History } from '../document.js';
-import { updateSourceFrame, setDefinitionGeometry, addSourceFrame, removeSourceFrame, exportTilesetManifest, exportAssetLibrary, importAssetLibrary,deleteAssetDefinition } from '../metadata.js';
+import { createDocument, createPlacement, parseDocument, serializeDocument,validateDocument,History,clone } from '../document.js';
+import { updateSourceFrame, setDefinitionGeometry, addSourceFrame, removeSourceFrame, exportTilesetManifest, exportAssetLibrary, importAssetLibrary,deleteAssetDefinition,replaceAtlasImage } from '../metadata.js';
 import { validateTilesetManifest } from '../manifest-validation.js';
 
 const schema = JSON.parse(readFileSync(new URL('../../../public/assets/sprites/schema.json', import.meta.url)));
@@ -23,4 +23,53 @@ test('deleting a shared asset removes its placements and broken support links wi
   assert.ok(d.assets.atlas);assert.deepEqual(validateDocument(d),[]);
   const restored=history.undo();assert.ok(restored.definitions.floor);assert.equal(restored.placements.length,2);
   deleteAssetDefinition(d,'off');assert.deepEqual(d.assets,{});assert.deepEqual(exportAssetLibrary(d).definitions,{});
+});
+
+test('replacing an atlas keeps cuts, definitions, and placement transforms',()=>{
+  const d=doc(),p=createPlacement(d,'floor',123,456);p.rotation=17;p.flipX=true;p.settings={motion:{axis:'x',distance:20}};d.placements.push(p);
+  const before={placement:JSON.stringify(p),definition:JSON.stringify(d.definitions.floor),frameIds:Object.keys(d.assets.atlas.frames)};
+  replaceAtlasImage(d,'atlas',{src:'data:image/png;base64,replacement',name:'new-atlas.png',width:64,height:32},'keep');
+  assert.equal(d.assets.atlas.src,'data:image/png;base64,replacement');
+  assert.deepEqual(Object.keys(d.assets.atlas.frames),before.frameIds);assert.equal(JSON.stringify(d.placements[0]),before.placement);assert.equal(JSON.stringify(d.definitions.floor),before.definition);
+});
+
+test('replacement rejects out-of-bounds cuts atomically and scale mode preserves logical geometry',()=>{
+  const d=doc(),placement=createPlacement(d,'floor',10,20);d.placements.push(placement);const snapshot=JSON.stringify(d);
+  assert.throws(()=>replaceAtlasImage(d,'atlas',{src:'data:image/png;base64,small',name:'small.png',width:8,height:8},'keep'),/too small/);assert.equal(JSON.stringify(d),snapshot);
+  const physics=JSON.stringify(d.definitions.floor.physics),position=[d.placements[0].x,d.placements[0].y];
+  replaceAtlasImage(d,'atlas',{src:'data:image/png;base64,scaled',name:'scaled.png',width:128,height:64},'scale');
+  assert.deepEqual(d.assets.atlas.frames.floor.sourceRectPx,{x:0,y:0,w:64,h:32});assert.equal(JSON.stringify(d.definitions.floor.physics),physics);assert.deepEqual([d.placements[0].x,d.placements[0].y],position);
+});
+
+test('replacement serializes through History undo and redo',()=>{
+  const d=doc(),history=new History(d),old=d.assets.atlas.src;
+  replaceAtlasImage(d,'atlas',{src:'data:image/png;base64,next',name:'next.png',width:64,height:32},'keep');history.commit(d);
+  const undone=history.undo();assert.equal(undone.assets.atlas.src,old);const redone=history.redo();assert.equal(redone.assets.atlas.src,'data:image/png;base64,next');
+});
+
+test('replacement preserves every crop and world reference while invalidating old source measurements',()=>{
+  const d=doc(),first=createPlacement(d,'floor',10,20),second=createPlacement(d,'off',200,300);
+  first.flipY=true;first.rotation=37;second.settings.supportId=first.id;d.placements.push(first,second);
+  const before={placements:clone(d.placements),definitions:clone(d.definitions),cuts:Object.fromEntries(Object.entries(d.assets.atlas.frames).map(([id,f])=>[id,clone(f.sourceRectPx)]))};
+  replaceAtlasImage(d,'atlas',{src:'data:image/png;base64,updated',width:100,height:80},'keep');
+  assert.deepEqual(d.placements,before.placements);assert.deepEqual(d.definitions,before.definitions);
+  for(const[id,f]of Object.entries(d.assets.atlas.frames)){
+    assert.deepEqual(f.sourceRectPx,before.cuts[id]);assert.equal(f.measurementStatus,'unresolved');
+  }
+  assert.deepEqual(validateDocument(d),[]);
+  assert.equal(validateTilesetManifest(exportTilesetManifest(d,'atlas',schema),schema).length,0);
+});
+
+test('nonuniform atlas resize scales beam offsets and keeps small edge cuts in bounds',()=>{
+  const d=doc();addSourceFrame(d,'atlas',{x:63,y:31,w:1,h:1});
+  d.definitions.off.visual.beamAlignment={onOffsetPx:{x:-4,y:8},offOffsetPx:{x:12,y:-2}};
+  const placements=clone(d.placements),physics=clone(d.definitions.off.physics);
+  replaceAtlasImage(d,'atlas',{src:'data:image/png;base64,smaller',width:5,height:3},'scale');
+  for(const f of Object.values(d.assets.atlas.frames)){
+    assert.ok(f.x>=0&&f.y>=0&&f.w>=1&&f.h>=1);assert.ok(f.x+f.w<=5&&f.y+f.h<=3);
+  }
+  assert.deepEqual(d.definitions.off.visual.beamAlignment,{onOffsetPx:{x:-4*5/64,y:8*3/32},offOffsetPx:{x:12*5/64,y:-2*3/32}});
+  assert.deepEqual(d.definitions.off.physics,physics);assert.deepEqual(d.placements,placements);
+  assert.deepEqual(validateDocument(d),[]);
+  assert.equal(validateTilesetManifest(exportTilesetManifest(d,'atlas',schema),schema).length,0);
 });

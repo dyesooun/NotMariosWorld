@@ -67,6 +67,60 @@ export function updateSourceFrame(doc, assetId, frameId, nextCrop) {
   syncFrame(frame, c); invalidate(frame); syncManifestFrame(asset, frameId, frame); return doc;
 }
 
+function scalePixelMetadata(value, sx, sy, key = '') {
+  if (Array.isArray(value)) {
+    if (key.endsWith('Px') && value.every(item => typeof item === 'number')) {
+      if (value.length === 2) return [value[0] * sx, value[1] * sy];
+      if (value.length === 4) return [value[0] * sx, value[1] * sy, value[2] * sx, value[3] * sy];
+    }
+    return value.map(item => scalePixelMetadata(item, sx, sy, key));
+  }
+  if (!value || typeof value !== 'object') return value;
+  const out = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item === 'number' && /^(x\d*|left|right|width|w)$/.test(key)) out[key] = item * sx;
+    else if (typeof item === 'number' && /^(y\d*|top|bottom|height|h)$/.test(key)) out[key] = item * sy;
+    else out[key] = scalePixelMetadata(item, sx, sy, key);
+  }
+  return out;
+}
+
+// Swap an atlas source without changing reusable definition IDs or world data.
+// The caller supplies a decoded data URL and dimensions after validation.
+export function replaceAtlasImage(doc, assetId, replacement, mode = 'keep') {
+  const asset = doc.assets?.[assetId];
+  if (!asset) throw new Error(`Unknown atlas: ${assetId}`);
+  const width = Number(replacement?.width), height = Number(replacement?.height);
+  if (!replacement?.src || !Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) throw new Error('Replacement image is invalid.');
+  if (mode !== 'keep' && mode !== 'scale') throw new Error('Choose how to handle existing cut coordinates.');
+  if (mode === 'keep') {
+    for (const [id, frame] of Object.entries(asset.frames || {})) {
+      const r = sourceRect(frame);
+      if (!r || r.x + r.w > width || r.y + r.h > height) throw new Error(`Replacement image is too small for cut “${frame.name || id}”. Choose “Scale cuts to image size” or use a matching canvas.`);
+    }
+  } else {
+    const sx = width / asset.width, sy = height / asset.height;
+    for (const frame of Object.values(asset.frames || {})) {
+      const r = sourceRect(frame);
+      const x = Math.min(width - 1, Math.max(0, Math.round(r.x * sx))), y = Math.min(height - 1, Math.max(0, Math.round(r.y * sy)));
+      const right = Math.min(width, Math.max(x + 1, Math.round((r.x + r.w) * sx))), bottom = Math.min(height, Math.max(y + 1, Math.round((r.y + r.h) * sy)));
+      syncFrame(frame, { x, y, w: right - x, h: bottom - y });
+    }
+    for (const definition of Object.values(doc.definitions || {})) {
+      if (definition.visual?.assetId !== assetId) continue;
+      if (definition.visual.beamAlignment) definition.visual.beamAlignment = scalePixelMetadata(definition.visual.beamAlignment, sx, sy, 'beamAlignmentPx');
+    }
+    if(asset.manifest?.beamPairs)asset.manifest.beamPairs=scalePixelMetadata(asset.manifest.beamPairs,sx,sy);
+  }
+  asset.src = replacement.src; asset.width = width; asset.height = height;
+  if (asset.manifest?.atlas) { asset.manifest.atlas.image = replacement.name || asset.manifest.atlas.image || asset.src; asset.manifest.atlas.width = width; asset.manifest.atlas.height = height; }
+  for (const [id, frame] of Object.entries(asset.frames || {})) {
+    invalidate(frame, 'Atlas image replaced; source-pixel measurements need review.');
+    syncManifestFrame(asset, id, frame);
+  }
+  return doc;
+}
+
 export function setDefinitionGeometry(doc, definitionId, channel, input) {
   const d = doc.definitions?.[definitionId]; if (!d) throw new Error(`Unknown definition: ${definitionId}`);
   if (!['body','damage','interaction'].includes(channel)) throw new Error('Geometry channel must be body, damage, or interaction.');

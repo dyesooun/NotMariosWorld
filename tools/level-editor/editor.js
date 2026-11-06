@@ -4,7 +4,7 @@ import { loadImages, drawPlacement, drawThumbnail, getPreviewState } from './pre
 import { placementBounds,containsPlacement,getTransformHandles,hitTestHandles,resizePlacement,rotationForPointer,localToWorld,worldToLocal } from './transforms.js';
 import { buildAutomaticManifest,readAtlasPixels } from './auto-tileset.js';
 import { mountAssetEditor } from './asset-editor.js';
-import { exportAssetLibrary,importAssetLibrary,exportTilesetManifest,deleteAssetDefinition } from './metadata.js';
+import { exportAssetLibrary,importAssetLibrary,exportTilesetManifest,deleteAssetDefinition,replaceAtlasImage } from './metadata.js';
 import {readStored,writeStored} from './storage.js';
 import { detectAtlasCuts,createGridCuts } from './atlas-analysis.js';
 import { createCharacterCatalog } from './characters.js';
@@ -391,6 +391,20 @@ function downloadJSON(value,filename){
 }
 function saveAssetMetadata(){try{downloadJSON(exportAssetLibrary(doc),'asset-metadata.json');toast('Reusable asset metadata exported without level placements.');}catch(error){toast(error.message,true);}}
 function changeMetadata(callback){if(!importDraft)return change(callback);const before=clone(importDraft);try{callback(importDraft);const errors=validateDocument(importDraft);if(errors.length)throw new Error(errors[0]);assetEditor?.refresh();return true;}catch(error){importDraft=before;toast(error.message,true);return false;}}
+async function replaceAtlas(assetId, replacement) {
+  const target = importDraft || doc;
+  if (!target?.assets?.[assetId]) { toast('The selected atlas is no longer available.', true); return false; }
+  // Validate on an isolated copy first so the dialog can retain its pending
+  // file and offer the alternate crop mode after a bounds failure.
+  replaceAtlasImage(clone(target), assetId, replacement, replacement.mode);
+  const applied = changeMetadata(project => replaceAtlasImage(project, assetId, replacement, replacement.mode));
+  if (!applied) return false;
+  const cache = importDraft ? draftImages : images;
+  cache?.set(assetId, replacement.image);
+  render();
+  toast(`Atlas image replaced: ${replacement.name} (${replacement.width} × ${replacement.height}).`);
+  return true;
+}
 function acceptImport(){if(!importDraft)return;const draft=importDraft,loaded=draftImages;importDraft=null;draftImages=null;if(change(project=>{project.assets=draft.assets;project.definitions=draft.definitions;})){images=loaded;render();toast('Reviewed assets added to the drawer.');}}
 function cancelImport(){importDraft=null;draftImages=null;toast('Import cancelled; the asset drawer is unchanged.');}
 async function loadAssetMetadata(file){
@@ -604,7 +618,7 @@ async function start() {
     }catch(error){toast(`Saved metadata could not be restored: ${error.message}`,true);}
     images = await loadImages(doc.assets,{allowMissing:true});if(images.size<Object.keys(doc.assets).length)warnings.unshift('Some saved images are unavailable; their metadata and placements are retained.');history=new History(doc);
     sequenceEditor=mountSequenceEditor({getDocument:()=>importDraft||doc,getImages:()=>draftImages||images,change:changeMetadata,onMessage:toast});
-    assetEditor=mountAssetEditor({getDocument:()=>importDraft||doc,getImages:()=>draftImages||images,change:changeMetadata,onMessage:toast,onSelectDefinition:id=>{if(!importDraft){selectedDef=id;render();}},onAcceptImport:acceptImport,onCancelImport:cancelImport,onExportLibrary:saveAssetMetadata,onEditSequences:id=>sequenceEditor.open(id)});
+    assetEditor=mountAssetEditor({getDocument:()=>importDraft||doc,getImages:()=>draftImages||images,change:changeMetadata,onMessage:toast,onSelectDefinition:id=>{if(!importDraft){selectedDef=id;render();}},onAcceptImport:acceptImport,onCancelImport:cancelImport,onExportLibrary:saveAssetMetadata,onEditSequences:id=>sequenceEditor.open(id),onReplaceAtlas:replaceAtlas});
     bind();updateImportControls();updateCharacterControls();render();save();
     requestAnimationFrame(function frame(now) { if (playing && !pointer?.before && !document.hidden && lastFrame) timeMs += Math.min(250, now - lastFrame); lastFrame = now; draw(); requestAnimationFrame(frame); });
   } catch (error) { const node = element('pre', null, `Editor could not start: ${error.message}`, 'error'); document.body.replaceChildren(node); }

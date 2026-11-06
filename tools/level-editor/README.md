@@ -11,6 +11,17 @@ Run `npm run editor` from the project folder, then open http://127.0.0.1:10001/.
 5. Switch to Body collision, Damage hitbox, or Interaction trigger. Drag the center/edge handles or draw a box. **Auto geometry** estimates bounds from visible pixels; **Clear box** removes the selected geometry. Rect editing replaces imported polygon geometry for that channel.
 6. Choose **Done importing** to add the reviewed assets to the drawer. Use role/search filters and **Level** to find them.
 
+## Replacing an atlas image
+
+Open **Asset metadata** and select the existing **Atlas**. Choose a **Replacement image**, select how to handle its cuts, then click **Replace atlas image**. This replaces the shared image in the editor's saved project; it does not overwrite a PNG on disk or modify a production level JSON.
+
+- **Keep cut pixel coordinates** preserves each existing crop rectangle exactly. Use this for artwork revised on the same canvas/layout. A different image size is allowed when every existing cut still fits; otherwise replacement is rejected without changing your project.
+- **Scale cuts to image size** keeps the same relative cut layout when an atlas has been resized. Source crop coordinates scale to the new image dimensions. Use this only when the tile arrangement is still the same; otherwise adjust the crops manually afterward.
+
+Both options retain the atlas/frame/definition identities, animation references, authored collision and hitboxes, gameplay settings, and every placement's world position, size, rotation, flips and behavior. Source-image measurements are marked unresolved after replacement; your authored logical collision outlines are retained. All placements sharing that atlas show the new art. Review **Atlas cuts**, **Body collision**, and **Damage hitbox** afterward as needed. Moving a cut changes which pixels are drawn; it does not move the placed object.
+
+The replacement is one **Undo** step, and **Redo** restores it. Imported images are embedded in the tool's IndexedDB data and JSON exports, so the replacement PNG's filename may differ from the old one. Export the level JSON to keep a backup or update a live catalog level. Importing the new image through **Add a tileset** creates another atlas instead of replacing the existing one.
+
 ## Characters and state sequences
 
 Expand **Add a character** and choose **Character image**. Optionally attach **Sequence JSON**: existing forest, tide and hell creature manifests are supported. Without JSON, choose Grid (cell dimensions, margin and spacing) or automatic alpha cuts. Grid keeps untrimmed cell dimensions for animation alignment. Review cuts, collision/hitboxes, names, size and level tags before **Done importing**. No schema file is required.

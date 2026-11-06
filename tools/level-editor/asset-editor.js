@@ -4,7 +4,7 @@ import { readAtlasPixels } from './auto-tileset.js';
 import { getTransformHandles,hitTestHandles,resizePlacement } from './transforms.js';
 import {renderGameplayControls} from './gameplay-controls.js';
 
-export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelectDefinition,onExportLibrary,onAcceptImport,onCancelImport,onEditSequences}) {
+export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelectDefinition,onExportLibrary,onAcceptImport,onCancelImport,onEditSequences,onReplaceAtlas}) {
   const dialog=document.createElement('dialog');dialog.className='asset-editor';dialog.setAttribute('aria-label','Shared asset metadata editor');document.body.append(dialog);
   const header=node('div',dialog,null,'asset-editor-header');const title=node('strong',header,'Shared asset metadata');
   const saveButton=action(header,'Save metadata',onExportLibrary);const doneImport=action(header,'Done importing',()=>{importAccepted=true;onAcceptImport?.();dialog.close();});doneImport.hidden=true;action(header,'Close',()=>dialog.close());
@@ -12,7 +12,7 @@ export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelec
   const controls=node('div',dialog,null,'asset-editor-controls'),tools=node('div',dialog,null,'asset-editor-tools');
   const canvas=node('canvas',dialog);canvas.tabIndex=0;canvas.setAttribute('aria-label','Asset metadata canvas');const ctx=canvas.getContext('2d');
   const footer=node('div',dialog,null,'asset-editor-footer'),status=node('p',dialog,'','hint');
-  let assetId,frameId,definitionId,mode='cuts',adding=false,gesture=null,draft=null,view={x:0,y:0,zoom:1},space=false,importing=false,importAccepted=false,gameplayOpen=false;
+  let assetId,frameId,definitionId,mode='cuts',adding=false,gesture=null,draft=null,view={x:0,y:0,zoom:1},space=false,importing=false,importAccepted=false,gameplayOpen=false,pendingReplacement=null,replacementSequence=0;
   const cache=new WeakMap();
   function node(tag,parent,text,className){const el=document.createElement(tag);if(text!=null)el.textContent=text;if(className)el.className=className;parent?.append(el);return el;}
   function action(parent,text,callback){const button=node('button',parent,text);button.onclick=callback;return button;}
@@ -58,7 +58,35 @@ export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelec
     if(!frame())frameId=Object.keys(asset().frames)[0];
     if(!definition())definitionId=related(frameId)?.id;
     controls.replaceChildren();tools.replaceChildren();footer.replaceChildren();
-    select(controls,'Atlas',Object.values(doc().assets).map(a=>[a.id,a.name]),assetId,value=>{assetId=value;frameId=Object.keys(asset().frames)[0];definitionId=related(frameId)?.id;mode='cuts';adding=false;refresh();fit();});
+    select(controls,'Atlas',Object.values(doc().assets).map(a=>[a.id,a.name]),assetId,value=>{assetId=value;pendingReplacement=null;frameId=Object.keys(asset().frames)[0];definitionId=related(frameId)?.id;mode='cuts';adding=false;refresh();fit();});
+    const replacement=node('fieldset',controls,null,'asset-replacement'); node('legend',replacement,'Replace atlas image');
+    const fileControl=node('div',replacement);
+    const fileInput=node('input',fileControl); fileInput.type='file'; fileInput.accept='image/*'; fileInput.setAttribute('aria-label','Replacement atlas image');
+    action(fileControl,'Replacement image',()=>fileInput.click());
+    const handling=select(replacement,'Crop handling',[['keep','Keep cut pixel coordinates'],['scale','Scale cuts to image size']],'keep',()=>{if(pendingReplacement) pendingReplacement.mode=handling.value;});
+    const fileStatus=node('span',replacement,'Choose an image; existing cuts and placements are retained.','hint');
+    const applyReplacement=action(replacement,'Replace atlas image',async()=>{
+      if(!pendingReplacement)return;
+      const pending=pendingReplacement,target=assetId;
+      if(target!==pending.assetId||!asset())return onMessage('The selected atlas changed; choose the replacement again.',true);
+      try { const applied=await onReplaceAtlas?.(pending.assetId,{...pending,mode:handling.value}); if(applied!==false){pendingReplacement=null;fileInput.value='';fileStatus.textContent='Replacement applied.';refresh();fit();} }
+      catch(error){fileStatus.textContent=error.message;applyReplacement.disabled=false;onMessage(error.message,true);}
+    }); applyReplacement.disabled=true;
+    fileInput.onchange=async()=>{
+      const file=fileInput.files?.[0]; if(!file)return;
+      const targetId=assetId,targetDocument=doc(),targetAsset=asset(),request=++replacementSequence;
+      pendingReplacement=null;applyReplacement.disabled=true;
+      try {
+        if(file.size>64*1024*1024)throw new Error('Use an atlas image up to 64 MB.');
+        const src=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('Cannot read replacement image.'));reader.readAsDataURL(file);});
+        const decoded=await new Promise((resolve,reject)=>{const value=new Image();value.onload=()=>resolve(value);value.onerror=()=>reject(new Error('Cannot decode replacement atlas image.'));value.src=src;});
+        const width=decoded.naturalWidth,height=decoded.naturalHeight;if(width*height>16_777_216)throw new Error('Use an atlas up to 16,777,216 decoded pixels.');
+        if(request!==replacementSequence||!fileInput.isConnected||!dialog.open)return;
+        if (assetId !== targetId || doc() !== targetDocument || doc().assets?.[targetId] !== targetAsset) throw new Error('The selected atlas changed while the replacement was loading. Choose the image again.');
+        pendingReplacement={assetId:targetId,src,width,height,name:file.name,mode:handling.value,image:decoded};
+        fileStatus.textContent=`${file.name} · ${width} × ${height}`;applyReplacement.disabled=false;
+      } catch(error){if(request!==replacementSequence||!fileInput.isConnected||!dialog.open)return;pendingReplacement=null;applyReplacement.disabled=true;fileInput.value='';fileStatus.textContent=error.message;onMessage(error.message,true);}
+    };
     const frames=Object.entries(asset().frames); select(controls,'Source frame',frames.map(([id,f])=>[id,`${f.name||f.display_name||id} · ${id}`]),frameId,value=>{frameId=value;definitionId=related(value)?.id;mode='cuts';adding=false;refresh();fit();});
     const nav=node('div',controls,null,'asset-frame-nav'),index=Math.max(0,frames.findIndex(([id])=>id===frameId));
     const prev=action(nav,'Prev frame',()=>{if(index>0){frameId=frames[index-1][0];definitionId=related(frameId)?.id;refresh();fit();}}),next=action(nav,'Next frame',()=>{if(index<frames.length-1){frameId=frames[index+1][0];definitionId=related(frameId)?.id;refresh();fit();}});prev.disabled=index<=0;next.disabled=index>=frames.length-1;
@@ -107,7 +135,7 @@ export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelec
       const tags=node('label',meta);node('span',tags,'Level tags');const tagInput=node('input',tags);tagInput.value=(d.levels||[]).join(', ');tagInput.onchange=()=>change(project=>{project.definitions[definitionId].levels=tagInput.value.split(',').map(v=>v.trim()).filter(Boolean)});
       for(const[key,label]of [['width','Default width'],['height','Default height']]){const w=node('label',meta);node('span',w,label);const input=node('input',w);input.type='number';input.min='1';input.value=d.size?.[key]||'';input.onchange=()=>change(project=>{project.definitions[definitionId].size[key]=Math.max(1,Number(input.value)||1)});}
     }
-    controls.querySelectorAll('input').forEach(input=>{input.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();input.onchange?.();refresh();draw();}};});
+    controls.querySelectorAll('input').forEach(input=>{if(input.type==='file')return;input.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();input.onchange?.();refresh();draw();}};});
     const count=doc().placements.filter(p=>p.definitionId===definitionId).length;
     status.textContent=mode==='cuts'?`Shared source cut. Pixel measurements are cleared after a crop correction; existing logical collision and placed transforms stay intact. ${asset().width} × ${asset().height} source pixels.`:`${definition()?.name||''} · ${count} placed instances share this geometry. Green: body; red: damage. Coordinates shown here are source-crop pixels.`;
   }
@@ -158,10 +186,10 @@ export function mountAssetEditor({getDocument,getImages,change,onMessage,onSelec
   canvas.onwheel=event=>{event.preventDefault();const point=local(event),bounds=canvas.getBoundingClientRect();view.zoom=Math.max(.02,Math.min(20,view.zoom*Math.exp(-event.deltaY*.001)));view.x=point.x-(event.clientX-bounds.left)/view.zoom;view.y=point.y-(event.clientY-bounds.top)/view.zoom;draw();};
   dialog.addEventListener('keydown',event=>{if(event.code==='Space'&&event.target===canvas){space=true;event.preventDefault();}if(event.key==='Escape'){gesture=null;draft=null;dialog.close();}event.stopPropagation();});
   dialog.addEventListener('keyup',event=>{if(event.code==='Space')space=false;event.stopPropagation();});
-  dialog.addEventListener('close',()=>{gesture=null;draft=null;space=false;if(importing&&!importAccepted)onCancelImport?.();});
+  dialog.addEventListener('close',()=>{gesture=null;draft=null;space=false;pendingReplacement=null;replacementSequence++;if(importing&&!importAccepted)onCancelImport?.();});
   window.addEventListener('resize',draw);
   return {open(id,{importing:reviewImport=false}={}){
-    importing=reviewImport;importAccepted=false;title.textContent=importing?'Review imported assets':'Shared asset metadata';doneImport.hidden=!importing;saveButton.hidden=importing;
+    importing=reviewImport;importAccepted=false;pendingReplacement=null;title.textContent=importing?'Review imported assets':'Shared asset metadata';doneImport.hidden=!importing;saveButton.hidden=importing;
     const d=doc().definitions[id]||Object.values(doc().definitions)[0];if(!d)return;
     definitionId=d.id;assetId=d.visual.assetId;frameId=d.visual.frameId;mode='cuts';adding=false;gesture=null;draft=null;
     if(!dialog.open)dialog.showModal();refresh();fit();
