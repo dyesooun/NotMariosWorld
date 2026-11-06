@@ -168,6 +168,7 @@ test('actor body contact is harmless, while an authored melee window uses only i
 
   const melee = actorFixture();
   melee.definitions.actor.behavior.speed = 0;
+  melee.definitions.actor.physics.lethal = true;
   melee.definitions.actor.visual.animations.detected = { frames: ['detected', 'shooting', 'idle'], fps: 10, loop: false, damage_active_indices: [1] };
   melee.definitions.actor.physics.hazardShapes = [{ kind: 'rect', rect: [1, .25, .5, .5] }];
   const runtime = new LevelRuntime(melee); put(runtime, 445);
@@ -236,4 +237,36 @@ test('the authored game bridge records a stomp without putting runtime state int
   assert.ok(step(state, {}, 1 / 60).some(e => e.type === 'enemyKill')); assert.equal(state.enemyKills, 1);
   assert.ok(validateRunSummary(summarizeRun(state), state.worldOrder));
   assert.ok(JSON.stringify(state).length < 6000); assert.doesNotThrow(() => structuredClone(state));
+});
+
+test('supportIds follows connected authored surfaces and does not bridge real gaps', () => {
+  const d = actorFixture();
+  d.placements.find(p => p.id === 'critter').settings = { supportIds: ['floor-left', 'floor-right'] };
+  const r = new LevelRuntime(d), actor = r._actors.get('critter');
+  assert.deepEqual([...new Set(actor.supportGroup.map(s => s.id))], ['floor-left']);
+  put(r, 700, 'floor-right'); run(r, .1);
+  assert.equal(actor.detected, false);
+  const seam = actorFixture();
+  seam.placements.push({ id: 'floor-seam', definitionId: 'floor', x: 600, y: 300, width: 44, height: 16, layer: 0, flipX: false, rotation: 0, settings: {} });
+  seam.placements.find(p => p.id === 'critter').settings = { supportIds: ['floor-left', 'floor-seam'] };
+  const seamRuntime = new LevelRuntime(seam);
+  assert.deepEqual([...new Set(seamRuntime._actors.get('critter').supportGroup.map(s => s.id))].sort(), ['floor-left', 'floor-seam']);
+});
+
+test('an explicit empty supportIds array overrides a stale supportId and uses auto inference', () => {
+  const d = actorFixture();
+  d.placements.find(p => p.id === 'critter').settings = { supportIds: [], supportId: 'missing-platform' };
+  assert.doesNotThrow(() => new LevelRuntime(d));
+  assert.equal(new LevelRuntime(d)._actors.get('critter').supportId, 'floor-left');
+});
+
+test('melee facing stays locked through recovery and cooldown, then allows a second swing', () => {
+  const d = actorFixture(); d.definitions.actor.physics.lethal = false;
+  d.definitions.actor.behavior.states.attack = 'detected';
+  d.definitions.actor.visual.animations.detected = { frames: ['detected', 'shooting', 'idle'], fps: 10, loop: false, damage_active_indices: [1] };
+  d.definitions.actor.behavior.attackCooldownMs = 100; d.definitions.actor.behavior.speed = 0;
+  const r = new LevelRuntime(d); put(r, 445); run(r, .08);
+  const actor = r._actors.get('critter'), firstFacing = actor.facing;
+  put(r, 200); run(r, 1.7); assert.equal(actor.facing, firstFacing);
+  put(r, 445); run(r, .5);
 });

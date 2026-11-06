@@ -4,7 +4,7 @@ import { loadImages, drawPlacement, drawThumbnail, getPreviewState } from './pre
 import { placementBounds,containsPlacement,getTransformHandles,hitTestHandles,resizePlacement,rotationForPointer,localToWorld,worldToLocal } from './transforms.js';
 import { buildAutomaticManifest,readAtlasPixels } from './auto-tileset.js';
 import { mountAssetEditor } from './asset-editor.js';
-import { exportAssetLibrary,importAssetLibrary,exportTilesetManifest,deleteAssetDefinition,replaceAtlasImage } from './metadata.js';
+import { exportAssetLibrary,importAssetLibrary,mergeLibraryIntoDocument,exportTilesetManifest,deleteAssetDefinition,replaceAtlasImage } from './metadata.js';
 import {readStored,writeStored} from './storage.js';
 import { detectAtlasCuts,createGridCuts } from './atlas-analysis.js';
 import { createCharacterCatalog } from './characters.js';
@@ -18,6 +18,7 @@ import {drawAtmosphere} from '../../public/game/json-level/atmosphere.js';
 import {vfxBounds} from '../../public/game/json-level/vfx.js';
 import {drawDetectionRanges,drawProjectileSpawns} from './range-overlay.js';
 import {projectileSpawnOffset} from '../../public/game/projectiles.js';
+import {supportIdsFor,toggleSupportId,writeSupportIds,cleanupSupportIds,remapSupportIds,pickPlatformAtPoint} from './support-picker.js';
 
 const $ = selector => document.querySelector(selector);
 const stage = $('#stage'), context = stage.getContext('2d'), STORAGE_KEY = 'nmw-level-editor';
@@ -32,6 +33,13 @@ let warnings = [], spaceHeld = false;
 let assetEditor,sequenceEditor,importDraft=null,draftImages=null,levelFilter='all',saveSequence=0;
 let gameplayFilter='all';
 let pendingSave=Promise.resolve();
+let supportPicker = null;
+function pointInSolidPlatform(placement, point) {
+  const state=previewState(placement), shapes=state.physics?.solidShapes?.length?state.physics.solidShapes:(state.physics?.collider?[{kind:'rect',rect:state.physics.collider}]:[]);
+  if(!shapes.length)return false;
+  const local=worldToLocal(state,point), x=local.x/state.width,y=local.y/state.height;
+  return shapes.some(shape=>{const pts=shape.kind==='rect'?[[shape.rect[0],shape.rect[1]],[shape.rect[0]+shape.rect[2],shape.rect[1]],[shape.rect[0]+shape.rect[2],shape.rect[1]+shape.rect[3]],[shape.rect[0],shape.rect[1]+shape.rect[3]]]:shape.points||shape.polygon; if(!Array.isArray(pts)||pts.length<3)return false;let inside=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const a=pts[i],b=pts[j],cross=((a[1]>y)!==(b[1]>y))&&(x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]);if(cross)inside=!inside;}return inside;});
+}
 
 function element(tag, parent, text, className) {
   const node = document.createElement(tag);
@@ -66,7 +74,7 @@ function button(parent, label, callback, className) { const node = element('butt
 function section(parent, title) { const node = element('div', parent, null, 'section'); element('h4', node, title); return node; }
 function selectedPlacement() { return doc.placements.find(p => p.id === selectedId); }
 function selectedPlacements(){return doc.placements.filter(p=>selectedIds.has(p.id));}
-function selectOnly(id){selectedIds.clear();if(id)selectedIds.add(id);selectedId=id||null;editingTrigger=false;}
+function selectOnly(id){selectedIds.clear();if(id)selectedIds.add(id);selectedId=id||null;editingTrigger=false;if(supportPicker&&supportPicker.actorId!==selectedId)supportPicker=null;}
 function toggleSelection(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);selectedId=selectedIds.has(id)?id:[...selectedIds].at(-1)||null;editingTrigger=false;}
 function syncSelection(){const ids=new Set(doc.placements.map(p=>p.id));for(const id of selectedIds)if(!ids.has(id))selectedIds.delete(id);if(!selectedIds.has(selectedId))selectedId=[...selectedIds].at(-1)||null;}
 function groupOperation(operation){const placements=selectedPlacements();if(!placements.length)return;const states=placements.map(previewState);change(project=>{for(const update of transformGroup(placements,states,operation))Object.assign(project.placements.find(p=>p.id===update.id),update);});}
@@ -141,6 +149,10 @@ function draw() {
     drawPlacement(context, doc, placement, images, { timeMs, ...previewOptions(placement), collisions: showCollisions, selected: selectedIds.has(placement.id) });
     if(showCollisions)for(const polygon of gameplayTriggerPolygons(state)){context.beginPath();polygon.forEach((p,i)=>i?context.lineTo(p.x,p.y):context.moveTo(p.x,p.y));context.closePath();context.strokeStyle='#f5d778';context.lineWidth=1/view.zoom;context.stroke();}
   }
+  if (supportPicker) {
+    for (const id of supportPicker.ids) { const platform=doc.placements.find(p=>p.id===id); if(!platform)continue; const box=placementBounds(previewState(platform)); context.fillStyle='#64e6ff22'; context.strokeStyle=id===supportPicker.hoveredId?'#fff0a0':'#64e6ff'; context.lineWidth=(id===supportPicker.hoveredId?3:2)/view.zoom; context.fillRect(box.x,box.y,box.width,box.height); context.strokeRect(box.x,box.y,box.width,box.height); }
+    if(supportPicker.hoveredId&&!supportPicker.ids.includes(supportPicker.hoveredId)){const platform=doc.placements.find(p=>p.id===supportPicker.hoveredId);if(platform){const box=placementBounds(previewState(platform));context.strokeStyle='#fff0a0';context.lineWidth=2/view.zoom;context.strokeRect(box.x,box.y,box.width,box.height);}}
+  }
   drawAtmosphere(context,doc,{timeMs,camera:view,width:bounds.width/view.zoom,height:bounds.height/view.zoom});
   const rangePlacements = selectedIds.size ? doc.placements.filter(p => selectedIds.has(p.id)) : selectedDef ? doc.placements.filter(p => p.definitionId === selectedDef) : [];
   const overlayStates = rangePlacements.map(previewState), overlayView = { zoom: view.zoom, viewport: { x: view.x, y: view.y, width: bounds.width / view.zoom, height: bounds.height / view.zoom } };
@@ -198,7 +210,7 @@ function renderRuntimeBehavior(parent, definition, onChange) {
   const role = behavior.actorType || 'none';
   field(runtime, 'Actor type', isProjectile ? 'projectile' : role, value => onChange(d => {
     if (value === 'projectile') d.kind = 'projectile', d.behavior = { type:'projectile', flightAnimation: animations[0] || null, impactAnimation:null, speed:120, bodySize:[16,16], lifetimeMs:3000, fireIntervalMs:4800 };
-    else if (value === 'creature' || value === 'shooter') d.kind='enemy', d.behavior={ type:'enemy', actorType:value, states:{idle:animations[0]||null,...(value==='shooter'?{shooting:null}:{moving:null}),playerDetected:null,dead:null}, speed:value==='shooter'?0:42, detectRange:value==='shooter'?500:400, fireIntervalMs:4800, detectedMode:'once' };
+    else if (value === 'creature' || value === 'shooter') d.kind='enemy', d.behavior={ type:'enemy', actorType:value, states:{idle:animations[0]||null,...(value==='shooter'?{shooting:null}:{moving:null,attack:null}),playerDetected:null,dead:null}, speed:value==='shooter'?0:42, detectRange:value==='shooter'?500:400, fireIntervalMs:4800, detectedMode:'once', ...(value==='creature'?{attackRange:64,attackCooldownMs:1500,supportIds:[]}: {}) };
     else if (d.kind==='enemy'||d.kind==='projectile') d.kind='character', d.behavior={ type:'static' };
   }), { choices:[['none','None'],['creature','Creature'],['shooter','Shooter'],['projectile','Projectile']] });
   const current = () => doc.definitions[definition.id];
@@ -206,6 +218,15 @@ function renderRuntimeBehavior(parent, definition, onChange) {
   if (!isProjectile && (role==='creature'||role==='shooter')) {
     const slots = role==='shooter' ? [['idle','Idle animation'],['shooting','Shooting animation'],['playerDetected','Player detected animation'],['dead','Dead animation']] : [['idle','Idle animation'],['moving','Moving animation'],['playerDetected','Player detected animation'],['dead','Dead animation']];
     slots.forEach(([key,label])=>choose(label,key,animations));
+    if (role === 'creature') {
+      choose('Attack animation', 'attack', animations);
+      field(runtime,'Flying creature',behavior.flying === true,value=>onChange(d=>{d.behavior.flying=value;}),{type:'checkbox'});
+      element('p',runtime,'Flying creatures keep their last patrol path and remain alive when their support platform vanishes. Gravity alone does not select flying behavior.','muted');
+      field(runtime,'Attack range (edge gap px)',behavior.attackRange ?? 64,value=>onChange(d=>{d.behavior.attackRange=value;}),{type:'number'});
+      field(runtime,'Attack cooldown after completion (ms)',behavior.attackCooldownMs ?? 1500,value=>onChange(d=>{d.behavior.attackCooldownMs=value;}),{type:'number'});
+      const attack=behavior.states?.attack || behavior.states?.playerDetected, sequence=attack&&definition.visual.animations?.[attack], hasGeometry=Array.isArray(definition.physics?.hazardShapes)?definition.physics.hazardShapes.length>0:!!definition.physics?.hitbox, hasDamage=!!(sequence&&Array.isArray(sequence.damage_active_indices)&&sequence.damage_active_indices.length&&hasGeometry);
+      element('p',runtime,hasDamage?'Attack cycles use the authored attack sequence and separate Damage hitbox.':'Attack requires an authored attack sequence, at least one Damage active frame, and a separate Damage hitbox; no frames or geometry are inferred.','muted');
+    }
     if (role==='shooter') {
       const projectiles=Object.values(doc.definitions).filter(d=>d.kind==='projectile');
       field(runtime,'Projectile asset',behavior.projectileDefinitionId||'',value=>onChange(d=>{if(value)d.behavior.projectileDefinitionId=value;else delete d.behavior.projectileDefinitionId;}),{choices:[['','Not assigned'],...projectiles.map(d=>[d.id,d.name])]});
@@ -282,9 +303,11 @@ function renderDefinition(parent, definition) {
     d.physics.collider = parseRect(value); d.physics.solidShapes = null; d.physics.interactionShapes = null; d.physics.calibration = 'authored';
   }), { placeholder: 'x, y, width, height (0–1)' });
   field(physics, 'Damage rectangle', definition.physics.hitbox?.join(', ') || '', value => editDefinition(d => {
-    d.physics.hitbox = parseRect(value); d.physics.hazardShapes = null; d.physics.calibration = 'authored';
+    d.physics.hitbox = parseRect(value); d.physics.hazardShapes = null; if(d.kind==='enemy'&&d.behavior?.actorType==='creature'&&d.physics.hitbox)d.physics.lethal=true; d.physics.calibration = 'authored';
   }), { placeholder: 'blank means none' });
-  field(physics, 'Lethal contact', definition.physics.lethal, value => editDefinition(d => { d.physics.lethal = value; d.physics.calibration = 'authored'; }), { type: 'checkbox' });
+  const actorCreature=definition.kind==='enemy'&&definition.behavior?.actorType==='creature';
+  field(physics, actorCreature ? 'Lethal attacks' : 'Lethal contact', definition.physics.lethal, value => editDefinition(d => { d.physics.lethal = value; d.physics.calibration = 'authored'; }), { type: 'checkbox' });
+  if(actorCreature)element('p',physics,'Requires both a separate Damage hitbox and Damage active frames. Body contact remains harmless; unchecking stays off until explicitly enabled again.','muted');
   field(physics, 'Uses gravity', definition.physics.gravity, value => editDefinition(d => { d.physics.gravity = value; d.physics.calibration = 'authored'; }), { type: 'checkbox' });
   element('p', physics, 'Rectangles use fractions of placement width/height. Rect edits replace imported shapes. Green: solid; blue: interaction; red: danger; yellow: walking surface.', 'muted');
   advancedJSON(parent, 'Advanced visual / animation JSON', definition.visual, value => editDefinition(d => { d.visual = value; }));
@@ -354,8 +377,17 @@ function renderPlacement(parent, placement) {
   }
   if (definition.kind === 'enemy') {
     number('Movement speed', 'speed', 42); number('Detection range', 'detectRange', behavior.actorType === 'shooter' ? 500 : 400); number('Fire interval ms', 'fireIntervalMs', 4800);
+    if (behavior.actorType === 'creature') {
+      field(area,'Flying creature',behavior.flying === true,value=>editPlacement(p=>{p.settings.flying=value;}),{type:'checkbox'});
+      number('Attack range (edge gap px)', 'attackRange', 64); number('Attack cooldown after completion (ms)', 'attackCooldownMs', 1500);
+    }
     const platforms = doc.placements.filter(p => doc.definitions[p.definitionId].kind === 'platform');
-    field(area, 'Support platform', placement.settings.supportId || '', value => editPlacement(p => { if (value) p.settings.supportId = value; else delete p.settings.supportId; }), { choices: [['','Not assigned'], ...platforms.map(p => [p.id, `${doc.definitions[p.definitionId].name} (${Math.round(p.x)}, ${Math.round(p.y)})`])] });
+    const supportIds=supportIdsFor({...definition.behavior,...placement.settings}), picker=section(area,'Supporting platforms');
+    element('p',picker,'Pick one or more actual platform shapes. Multiple supports form one connected patrol chain; empty means automatic inference.','muted');
+    button(picker,supportPicker?.actorId===placement.id?'Done picking supports':'Pick support platforms',()=>{supportPicker=supportPicker?.actorId===placement.id?null:{actorId:placement.id,ids:supportIdsFor({...definition.behavior,...placement.settings}),hoveredId:null};render();draw();});
+    button(picker,'Use automatic support inference',()=>editPlacement(p=>writeSupportIds(p.settings ||= {},[])));
+    for(const id of supportIds){const platform=doc.placements.find(p=>p.id===id),row=element('div',picker,null,'support-row');element('span',row,platform?`${doc.definitions[platform.definitionId].name} (${Math.round(platform.x)}, ${Math.round(platform.y)})`:`Missing ${id}`);button(row,'Remove',()=>editPlacement(p=>writeSupportIds(p.settings ||= {},supportIdsFor(p).filter(v=>v!==id))));}
+    if(supportPicker?.actorId===placement.id)element('p',picker,'Click platforms to toggle them. Esc exits picker; pan/zoom still work.','muted');
   }
   button(parent, 'Edit shared definition', () => { tab = 'definition'; renderInspector(); });
   button(parent,'Edit cuts and hitboxes',()=>assetEditor.open(definition.id));
@@ -418,23 +450,23 @@ function render() {
 }
 function duplicate() {
   const originals=selectedPlacements();if(!originals.length)return;
-  change(project=>{const ids=new Map(originals.map(p=>[p.id,crypto.randomUUID()])),copies=originals.map(p=>{const copy=clone(p);copy.id=ids.get(p.id);copy.x+=Number($('#snap').value)||5;if(ids.has(copy.settings.supportId))copy.settings.supportId=ids.get(copy.settings.supportId);return copy;});project.placements.push(...copies);selectOnly(null);for(const p of copies)selectedIds.add(p.id);selectedId=copies.at(-1).id;});
+  change(project=>{const ids=new Map(originals.map(p=>[p.id,crypto.randomUUID()])),copies=originals.map(p=>{const copy=clone(p);copy.id=ids.get(p.id);copy.x+=Number($('#snap').value)||5;remapSupportIds(copy.settings ||= {},ids);return copy;});project.placements.push(...copies);selectOnly(null);for(const p of copies)selectedIds.add(p.id);selectedId=copies.at(-1).id;});
 }
 function deleteSelectedAsset(id=selectedDef){
   const definition=doc.definitions[id];if(!definition){toast('Choose an asset first.');return;}
   const count=doc.placements.filter(p=>p.definitionId===id).length;
   if(change(project=>deleteAssetDefinition(project,id))){
-    selectedDef=null;if(!selectedPlacement())selectedId=null;setMode('select');render();
+    selectedDef=null;supportPicker=null;if(!selectedPlacement())selectedId=null;setMode('select');render();
     toast(`${definition.name} deleted with ${count} placed instance${count===1?'':'s'}. Undo restores them.`);
   }
 }
 function removeSelected() {
   if (!selectedIds.size) return; const removedIds = new Set(selectedIds);
-  change(project => { project.placements = project.placements.filter(p => !removedIds.has(p.id)); for (const p of project.placements) if (removedIds.has(p.settings.supportId)) delete p.settings.supportId; selectOnly(null); });
+  change(project => { project.placements = project.placements.filter(p => !removedIds.has(p.id)); cleanupSupportIds(project.placements,removedIds); supportPicker=null; selectOnly(null); });
 }
 async function restoreHistory(direction) {
   const candidate = history[direction](); if (!candidate) return;
-  try { const loaded = await loadImages(candidate.assets); doc = candidate; images = loaded; syncSelection(); render(); save(); }
+  try { const loaded = await loadImages(candidate.assets); doc = candidate; images = loaded; supportPicker=null; syncSelection(); render(); save(); }
   catch (error) { history[direction === 'undo' ? 'redo' : 'undo'](); toast(error.message, true); }
 }
 function exportProject() {
@@ -478,7 +510,9 @@ async function loadAssetMetadata(file){
 async function importProject(file) {
   try {
     const candidate = parseDocument(await file.text()), loaded = await loadImages(candidate.assets);
-    doc = candidate; images = loaded; history = new History(doc); selectOnly(null); selectedDef = null; playing = true; resetPreview(); editingTrigger=false;
+    const retained = exportAssetLibrary(doc);
+    doc = mergeLibraryIntoDocument(candidate, retained);
+    images = new Map([...images, ...loaded]); history = new History(doc); selectOnly(null); selectedDef = null; levelFilter = 'all'; playing = true; resetPreview(); editingTrigger=false;
     render(); save(); toast('Level JSON imported.');
   } catch (error) { toast(`Project rejected: ${error.message}`, true); }
   finally { $('#importJson').value = ''; }
@@ -551,7 +585,7 @@ function bind() {
   $('#deleteAssetBtn').onclick=()=>deleteSelectedAsset();
   $('#levelFilter').onchange=event=>{levelFilter=event.target.value;renderPalette();};
   const gameplaySelect=$('#gameplayFilter');gameplaySelect.replaceChildren(new Option('All gameplay roles','all'),...GAMEPLAY_ROLES.map(([value,label])=>new Option(label,value)));gameplaySelect.onchange=event=>{gameplayFilter=event.target.value;renderPalette();};
-  $('#newBtn').onclick = () => { doc = createDocument(doc); history = new History(doc); selectOnly(null); selectedDef = null; playing = true; resetPreview(); editingTrigger=false; view = { x: -32, y: -32, zoom: 1 }; render(); save(); };
+  $('#newBtn').onclick = () => { doc = createDocument(doc); history = new History(doc); supportPicker=null; selectOnly(null); selectedDef = null; levelFilter = 'all'; playing = true; resetPreview(); editingTrigger=false; view = { x: -32, y: -32, zoom: 1 }; render(); save(); };
   $('#importJson').onchange = e => { if (e.target.files[0]) importProject(e.target.files[0]); }; $('#exportBtn').onclick = exportProject;
   $('#playtestBtn').onclick=async()=>{try{await pendingSave;await writeStored({playtest:clone(doc)});location.href='viewer.html?source=draft';}catch(error){toast(`Playtest could not open: ${error.message}`,true);}};
   $('#tilesetManifest').onchange = ()=>{$('#importMode').value='manifest';updateImportControls();}; $('#tilesetImage').onchange = updateImportControls; $('#importTilesetBtn').onclick = importTileset;$('#importMode').onchange=updateImportControls;
@@ -577,6 +611,11 @@ function bind() {
   stage.onwheel = e => { e.preventDefault(); const r = stage.getBoundingClientRect(); if (e.shiftKey) view.x += e.deltaY / view.zoom; else zoomAt(Math.exp(-e.deltaY * .001), e.clientX - r.left, e.clientY - r.top); };
   stage.onpointerdown = e => {
     if (e.button === 2) return; const point = worldPoint(e); stage.setPointerCapture(e.pointerId);stage.focus();
+    if (supportPicker && e.button === 0 && !spaceHeld && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      const hit=pickPlatformAtPoint(doc.placements.map(p=>({placement:p,solid:doc.definitions[p.definitionId]?.kind==='platform'&&previewState(p).physics?.mode==='solid',id:p.id})),point,(candidate)=>pointInSolidPlatform(candidate.placement,point))?.placement;
+      if(hit && hit.id!==supportPicker.actorId){ change(project=>{const actor=project.placements.find(p=>p.id===supportPicker.actorId),definition=actor&&project.definitions[actor.definitionId]; if(actor) writeSupportIds(actor.settings ||= {},toggleSupportId({...definition?.behavior,...actor.settings},hit.id));}); const actor=selectedPlacement(),definition=actor&&doc.definitions[actor.definitionId]; supportPicker.ids=supportIdsFor({...definition?.behavior,...actor?.settings}); render(); draw(); }
+      return;
+    }
     const selected=selectedPlacement();
     if(selected&&e.button===0&&!spaceHeld&&!e.ctrlKey&&!e.metaKey&&(mode==='select'||(mode==='place'&&selectedDef===selected.definitionId))){
       const group=selectedPlacements();
@@ -602,6 +641,7 @@ function bind() {
   };
   stage.onpointermove = e => {
     const point = worldPoint(e); $('#cursorLabel').textContent = `${Math.round(point.x)}, ${Math.round(point.y)}`;
+    if(supportPicker&&!pointer){const hit=pickPlatformAtPoint(doc.placements.map(p=>({placement:p,solid:doc.definitions[p.definitionId]?.kind==='platform'&&previewState(p).physics?.mode==='solid',id:p.id})),point,(candidate)=>pointInSolidPlatform(candidate.placement,point))?.placement;supportPicker.hoveredId=hit?.id||null;draw();}
     if (pointer?.type === 'pan') { view.x = pointer.start.x - (e.clientX - pointer.clientX) / view.zoom; view.y = pointer.start.y - (e.clientY - pointer.clientY) / view.zoom; }
     if(pointer?.type==='marquee')pointer.end=point;
     if(pointer?.type.startsWith('group-')){
@@ -651,6 +691,7 @@ function bind() {
   window.addEventListener('blur', () => { spaceHeld = false; if (pointer) cancelPointer(); }); document.addEventListener('visibilitychange', () => { lastFrame = 0; });
   window.addEventListener('keyup', e => { if (e.code === 'Space') spaceHeld = false; });
   window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && supportPicker) { e.preventDefault(); e.stopPropagation(); supportPicker=null; render(); return; }
     if (['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
     if (e.code === 'Space') { spaceHeld = true; e.preventDefault(); } if (e.key === 'Escape') { if (pointer) cancelPointer(); setMode('select'); }
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSelected(); }
@@ -673,7 +714,7 @@ async function start() {
         toast('Stale tool assets cleared. Import images to build a fresh library.');
       }else{
         const library=await readStored('library');if(library)doc=importAssetLibrary(doc,library);
-        const saved=await readStored('project');if(saved)doc=parseDocument(JSON.stringify(saved));
+        const saved=await readStored('project');if(saved){const savedDocument=parseDocument(JSON.stringify(saved));doc=library?mergeLibraryIntoDocument(savedDocument,library):savedDocument;}
       }
     }catch(error){toast(`Saved metadata could not be restored: ${error.message}`,true);}
     images = await loadImages(doc.assets,{allowMissing:true});if(images.size<Object.keys(doc.assets).length)warnings.unshift('Some saved images are unavailable; their metadata and placements are retained.');history=new History(doc);

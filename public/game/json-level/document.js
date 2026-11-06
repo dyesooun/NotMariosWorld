@@ -127,6 +127,7 @@ export function validateDocument(document) {
     }
     if (value.type === 'enemy') {
       if (value.actorType != null && !['creature', 'shooter'].includes(value.actorType)) error(`${path}.actorType`, 'must be creature or shooter');
+      if (value.flying != null && typeof value.flying !== 'boolean') error(`${path}.flying`, 'must be a boolean');
       if (value.states != null) {
         if (!object(value.states)) error(`${path}.states`, 'must be an object');
         else {
@@ -138,6 +139,7 @@ export function validateDocument(document) {
       if (value.spawnOffset != null && (!Array.isArray(value.spawnOffset) || value.spawnOffset.length !== 2 || !value.spawnOffset.every(finite) || value.spawnOffset.some(n => n < -100 || n > 100))) error(`${path}.spawnOffset`, 'must be a normalized pivot delta within ±100');
       if (value.projectileDefinitionId != null && (typeof value.projectileDefinitionId !== 'string' || !value.projectileDefinitionId.trim() || value.projectileDefinitionId.length > 200)) error(`${path}.projectileDefinitionId`, 'must be a nonempty definition id');
       if (value.supportId != null && (typeof value.supportId !== 'string' || !value.supportId.trim())) error(`${path}.supportId`, 'must be a nonempty placement id');
+      if (value.supportIds != null && (!Array.isArray(value.supportIds) || value.supportIds.some(id => typeof id !== 'string' || !id.trim()) || new Set(value.supportIds).size !== value.supportIds.length)) error(`${path}.supportIds`, 'must be an array of unique nonempty placement ids');
     }
     if (value.type === 'projectile') {
       for (const key of ['flightAnimation', 'impactAnimation']) if (value[key] != null && (typeof value[key] !== 'string' || !value[key].trim())) error(`${path}.${key}`, 'must be a nonempty animation name');
@@ -164,6 +166,8 @@ export function validateDocument(document) {
     }
     if (value.speed != null && (!finite(value.speed) || value.speed < 0 || value.speed > 100000)) error(`${path}.speed`, 'must be between 0 and 100000');
     if (value.detectRange != null && (!finite(value.detectRange) || value.detectRange < 0 || value.detectRange > 1000000)) error(`${path}.detectRange`, 'must be between 0 and 1000000');
+    if (value.attackRange != null && (!finite(value.attackRange) || value.attackRange < 0 || value.attackRange > 1000000)) error(`${path}.attackRange`, 'must be between 0 and 1000000');
+    if (value.attackCooldownMs != null && (!finite(value.attackCooldownMs) || value.attackCooldownMs < 0 || value.attackCooldownMs > 3600000)) error(`${path}.attackCooldownMs`, 'must be between 0 and 3600000 milliseconds');
     if (value.fireIntervalMs != null && (!finite(value.fireIntervalMs) || value.fireIntervalMs < 1 || value.fireIntervalMs > 3600000)) error(`${path}.fireIntervalMs`, 'must be between 1 and 3600000 milliseconds');
     if (value.lifetimeMs != null && (!finite(value.lifetimeMs) || value.lifetimeMs < 1 || value.lifetimeMs > 3600000)) error(`${path}.lifetimeMs`, 'must be between 1 and 3600000 milliseconds');
   }
@@ -228,7 +232,7 @@ export function validateDocument(document) {
     if (definition.kind === 'projectile' && definition.behavior?.type !== 'projectile') error(path, 'projectile kind requires projectile behavior');
     if (definition.behavior?.actorType === 'shooter' && definition.behavior?.projectileDefinitionId && document.definitions[definition.behavior.projectileDefinitionId]?.kind !== 'projectile') error(path, 'projectile definition must have projectile kind');
     if (definition.behavior?.type === 'enemy' && object(definition.behavior.states)) {
-      const allowed = new Set(['idle', 'moving', 'playerDetected', 'shooting', 'dead']);
+      const allowed = new Set(['idle', 'moving', 'playerDetected', 'shooting', 'attack', 'dead']);
       for (const [stateName, animationName] of Object.entries(definition.behavior.states)) {
         if (!allowed.has(stateName)) error(`${path}.behavior.states.${stateName}`, 'unknown actor state slot');
         if (animationName != null && !definition.visual?.animations?.[animationName]) error(`${path}.behavior.states.${stateName}`, 'must reference an existing animation');
@@ -253,7 +257,7 @@ export function validateDocument(document) {
     behavior({ ...definition.behavior, ...placement.settings }, `${path}.settings`);
     const placementBehavior = { ...definition.behavior, ...placement.settings };
     if (placementBehavior.type === 'enemy' && object(placementBehavior.states)) {
-      const allowed = new Set(['idle', 'moving', 'playerDetected', 'shooting', 'dead']);
+      const allowed = new Set(['idle', 'moving', 'playerDetected', 'shooting', 'attack', 'dead']);
       for (const [stateName, animationName] of Object.entries(placementBehavior.states)) {
         if (!allowed.has(stateName)) error(`${path}.settings.states.${stateName}`, 'unknown actor state slot');
         if (animationName != null && !definition.visual?.animations?.[animationName]) error(`${path}.settings.states.${stateName}`, 'must reference an existing animation');
@@ -262,8 +266,14 @@ export function validateDocument(document) {
     if (placementBehavior.type === 'projectile' && definition.kind !== 'projectile') error(`${path}.settings`, 'projectile behavior requires projectile kind');
     gameplay(placement.gameplay, `${path}.gameplay`);
     vfx(placement.vfx, `${path}.vfx`);
-    const supportId = placement.settings?.supportId;
+    const supportId = Array.isArray(placement.settings?.supportIds) ? null : placement.settings?.supportId;
     if (supportId && !document.placements.some(p => p.id === supportId && document.definitions[p.definitionId]?.kind === 'platform')) error(path, 'support platform does not exist');
+    const supportIds = placement.settings?.supportIds;
+    if (Array.isArray(supportIds)) for (const support of supportIds) if (support && !document.placements.some(p => p.id === support && document.definitions[p.definitionId]?.kind === 'platform')) error(`${path}.settings.supportIds`, 'support platform does not exist');
+  }
+  for (const [definitionId, definition] of Object.entries(document.definitions)) {
+    const supportIds = definition.behavior?.supportIds;
+    if (Array.isArray(supportIds)) for (const support of supportIds) if (support && !document.placements.some(p => p.id === support && document.definitions[p.definitionId]?.kind === 'platform')) error(`definitions.${definitionId}.behavior.supportIds`, 'support platform does not exist');
   }
   return errors;
 }

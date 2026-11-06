@@ -14,6 +14,12 @@ function baseDocument() {
 }
 const errors = mutate => { const doc = baseDocument(); mutate(doc); return validateDocument(doc); };
 
+test('flying behavior is explicit and requires a boolean in definitions and placement overrides', () => {
+  assert.deepEqual(errors(d => { d.definitions.actor.behavior.flying = true; }), []);
+  assert.match(errors(d => { d.definitions.actor.behavior.flying = 'true'; }).join('\n'), /behavior\.flying.*boolean/);
+  assert.match(errors(d => { d.placements[0].settings = { type: 'enemy', actorType: 'creature', flying: 1 }; }).join('\n'), /settings\.flying.*boolean/);
+});
+
 test('actor state mappings accept fallback omissions and reject unknown slots or animation refs', () => {
   const valid = baseDocument(); valid.definitions.actor.behavior.states = { idle: 'idle', moving: null, playerDetected: 'detected', dead: null };
   assert.deepEqual(validateDocument(valid), []);

@@ -3,6 +3,7 @@ import { boxPolygon, shapePolygons, polygonsOverlap, polygonBounds } from './run
 import { localToWorld } from './transforms.js';
 import { PROJECTILE_RULES, projectileHeadTarget } from '../projectiles.js';
 import { projectileSpawnPoint } from './projectile-origin.js';
+import { supportSurfaces, connectedSupportRun, supportRunBounds, supportTop, supportingId } from './actor-support.js';
 
 const duration = animation => animation?.frames?.length && animation.fps > 0 ? animation.frames.length / animation.fps * 1000 : 0;
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
@@ -54,11 +55,15 @@ export class ActorSimulation {
         x: state.x, y: state.y, facing: placement.flipX ? -1 : 1, patrolDirection: placement.flipX ? -1 : 1,
         state: 'idle', stateName: null, animationStartMs: r.timeMs, detected: false,
         dead: false, deadAtMs: 0, shotEmitted: false, nextFireAtMs: r.timeMs,
-        supportId: b.supportId || null, lastSupportX: null,
+        supportId: Array.isArray(b.supportIds) ? null : (b.supportId || null), supportIds: Array.isArray(b.supportIds) ? [...new Set(b.supportIds)] : null,
+        explicitSupportIds: Array.isArray(b.supportIds) && b.supportIds.length > 0,
+        flying: b.flying === true, cachedSupportGroup: null, supportLost: false,
+        supportGroup: [], lastSupportX: null, lastSupportY: null,
+        attackCooldownAtMs: 0, attackFallback: false,
         lastAuthoredX: state.x, lastAuthoredY: state.y, baseAuthoredY: state.y,
         footOffset: localToWorld(state, { x: pivot[0] * state.width, y: pivot[1] * state.height }).y - state.y,
       };
-      if (!actor.supportId) {
+      if (!actor.supportIds?.length && !actor.supportId) {
         const foot = state.y + actor.footOffset;
         const supports = states.filter(entry => entry.state.definition.kind === 'platform').map(entry => {
           const bounds = platformBounds(entry.state), top = surfaceY(entry.state, state.x, state.width);
@@ -68,16 +73,53 @@ export class ActorSimulation {
         supports.sort((a, b) => Math.abs(a.top - foot) - Math.abs(b.top - foot));
         actor.supportId = supports[0]?.entry.placement.id || null;
       }
+      if (!actor.supportIds?.length && actor.supportId) actor.supportIds = [actor.supportId];
+      actor.supportGroup = this.connectedSupports(actor, states, true);
+      actor.supportId = this.currentSupport(actor);
       const support = states.find(entry => entry.placement.id === actor.supportId);
-      actor.lastSupportX = support?.state.x ?? null;
+      actor.lastSupportX = support?.state.x ?? null; actor.lastSupportY = support?.state.y ?? null;
       this.transition(actor, b.actorType === 'creature' && Number(b.speed ?? 42) > 0 && support ? 'moving' : 'idle', false);
       r._actors.set(actor.id, actor);
     }
   }
 
   animation(actor, slot) {
+    if (slot === 'attack' && actor.attackAnimationName) return actor.attackAnimationName;
     const name = actor.behavior.states?.[slot];
     return name && actor.definition.visual.animations?.[name] ? name : null;
+  }
+
+  attackAnimation(actor) {
+    const name = actor.behavior.states?.attack;
+    if (name && actor.definition.visual.animations?.[name]) return name;
+    const detected = actor.behavior.states?.playerDetected;
+    const animation = detected && actor.definition.visual.animations?.[detected];
+    return animation && Array.isArray(animation.damage_active_indices) && animation.damage_active_indices.length ? detected : null;
+  }
+
+  connectedSupports(actor, states, initial = false) {
+    const pieces = supportSurfaces(states, actor.supportIds || []);
+    return connectedSupportRun(pieces, actor, { initial });
+  }
+
+  supportBounds(actor) {
+    const bounds = supportRunBounds(actor.supportGroup);
+    return bounds && bounds.width >= actor.placement.width ? bounds : null;
+  }
+
+  supportSurface(actor, x, width) {
+    return supportTop(actor.supportGroup, x, width);
+  }
+
+  currentSupport(actor) {
+    return supportingId(actor.supportGroup, actor.x, actor.placement.width, actor.y + actor.footOffset);
+  }
+
+  syncCarrier(actor, states) {
+    actor.supportId = this.currentSupport(actor);
+    const support = states.find(entry => entry.placement.id === actor.supportId)?.state;
+    actor.lastSupportX = support?.x ?? null;
+    actor.lastSupportY = support?.y ?? null;
   }
 
   transition(actor, slot, emit = true) {
@@ -98,34 +140,74 @@ export class ActorSimulation {
       actor.x += authored.x - actor.lastAuthoredX; actor.y += authored.y - actor.lastAuthoredY;
       actor.lastAuthoredX = authored.x; actor.lastAuthoredY = authored.y;
       const support = states.find(entry => entry.placement.id === actor.supportId);
-      const bounds = support && !support.state.vanished ? platformBounds(support.state) : null;
-      actor.supportVisible = !actor.supportId || !!bounds;
-      if (bounds) {
+      if (support && !support.state.vanished && !actor.supportLost) {
         actor.x += actor.lastSupportX == null ? 0 : support.state.x - actor.lastSupportX;
-        actor.lastSupportX = support.state.x;
+        actor.y += actor.lastSupportY == null ? 0 : support.state.y - actor.lastSupportY;
+      }
+      const wasSupportLost = actor.supportLost;
+      const liveGroup = this.connectedSupports(actor, states);
+      const usableLiveGroup = liveGroup.length >= 1 && supportRunBounds(liveGroup)?.width >= actor.placement.width && supportTop(liveGroup, actor.x, actor.placement.width) != null;
+      if (usableLiveGroup) {
+        actor.supportGroup = liveGroup;
+        actor.cachedSupportGroup = liveGroup.map(surface => ({ ...surface }));
+        actor.supportLost = false;
+        if (wasSupportLost && support && !support.state.vanished) {
+          actor.lastSupportX = support.state.x; actor.lastSupportY = support.state.y;
+        }
+      } else if (actor.flying && actor.cachedSupportGroup?.length) {
+        actor.supportGroup = actor.cachedSupportGroup;
+        actor.supportLost = true;
+      } else {
+        actor.supportGroup = [];
+        actor.supportLost = false;
+      }
+      const bounds = this.supportBounds(actor);
+      actor.supportVisible = actor.supportLost || !actor.supportIds?.length || !!bounds;
+      if (bounds) {
         const hi = bounds.x + bounds.width - actor.placement.width;
         actor.x = clamp(actor.x, bounds.x, Math.max(bounds.x, hi));
-        const top = surfaceY(support.state, actor.x, actor.placement.width);
+        const top = this.supportSurface(actor, actor.x, actor.placement.width);
         if (top != null) actor.y = top - actor.footOffset + authored.y - actor.baseAuthoredY;
       }
+      this.syncCarrier(actor, states);
+      // Complete wind-up/strike/recovery even if the player leaves detection.
+      // Only a new attack acquires a new facing and a new animation clock.
+      if (creature && actor.state === 'attack') {
+        const activeAnimation = actor.definition.visual.animations?.[actor.stateName];
+        if (r.timeMs - actor.animationStartMs < duration(activeAnimation)) continue;
+        actor.attackCooldownAtMs = r.timeMs + (b.attackCooldownMs ?? 1500);
+        this.transition(actor, Number(b.speed ?? 42) > 0 && bounds ? 'moving' : 'idle');
+      }
       const dx = r.player.x + r.player.width / 2 - (actor.x + actor.placement.width / 2);
-      const samePlatform = !!bounds && r.player.grounded && r.player.standingId === actor.supportId;
+      const samePlatform = !!bounds && r.player.grounded && actor.supportGroup.some(s => s.id === r.player.standingId);
       const dy = Math.abs(r.player.y + r.player.height - (actor.y + actor.footOffset));
       const eligible = actor.supportVisible && Math.abs(dx) <= (b.detectRange ?? (creature ? 400 : 500)) && dy <= 140
         && (!creature || samePlatform);
+      const edgeGap = Math.max(0, Math.max(actor.x - (r.player.x + r.player.width), r.player.x - (actor.x + actor.placement.width)));
+      const attackName = creature ? this.attackAnimation(actor) : null;
+      const attackRange = b.attackRange == null ? 64 : Number(b.attackRange);
+      const attackReady = eligible && attackName && samePlatform && edgeGap <= attackRange && r.timeMs >= actor.attackCooldownAtMs;
       if (!eligible) {
         actor.detected = false;
         this.transition(actor, creature && ((bounds && Number(b.speed ?? 42) > 0) || authored.behavior.motion) ? 'moving' : 'idle');
       } else {
         if (!actor.detected) {
           actor.detected = true;
-          if (this.animation(actor, 'playerDetected')) this.transition(actor, 'playerDetected');
+          if (this.animation(actor, 'playerDetected') && (!creature || attackName !== this.animation(actor, 'playerDetected'))) this.transition(actor, 'playerDetected');
         }
         if (actor.state === 'playerDetected') {
           if (r.timeMs - actor.animationStartMs < duration(actor.definition.visual.animations[actor.stateName])) continue;
           this.transition(actor, creature && Number(b.speed ?? 42) > 0 ? 'moving' : 'idle');
         }
-        if (creature) this.transition(actor, Number(b.speed ?? 42) > 0 && bounds ? 'moving' : 'idle');
+        if (creature) {
+          if (attackReady) {
+            actor.facing = Math.sign(dx) || actor.facing;
+            actor.attackAnimationName = attackName;
+            this.transition(actor, 'attack');
+            continue;
+          }
+          this.transition(actor, Number(b.speed ?? 42) > 0 && bounds ? 'moving' : 'idle');
+        }
         else {
           actor.facing = Math.sign(dx) || actor.facing;
           const shootingName = this.animation(actor, 'shooting') || actor.definition.visual.defaultAnimation;
@@ -152,6 +234,9 @@ export class ActorSimulation {
         if (actor.x <= bounds.x) { actor.x = bounds.x; actor.patrolDirection = 1; }
         if (actor.x >= hi) { actor.x = Math.max(bounds.x, hi); actor.patrolDirection = -1; }
         actor.facing = direction || actor.facing;
+        const top = this.supportSurface(actor, actor.x, actor.placement.width);
+        if (top != null) actor.y = top - actor.footOffset + authored.y - actor.baseAuthoredY;
+        this.syncCarrier(actor, states);
       }
     }
   }
@@ -159,12 +244,12 @@ export class ActorSimulation {
   applyActorState(actor, state, timeMs) {
     state.x = actor.x; state.y = actor.y; state.flipX = actor.facing < 0;
     state.actorState = actor.state; state.animation = actor.stateName;
-    if(actor.supportVisible===false)state.vanished=true;
+    if(actor.supportVisible===false && !actor.flying)state.vanished=true;
     const animation = actor.definition.visual.animations?.[actor.stateName];
     const animationElapsed = Math.max(0, timeMs - actor.animationStartMs);
     if (animation?.frames?.length && animation.fps > 0) {
       const frameIndex = Math.floor(animationElapsed / 1000 * animation.fps);
-      const oneShot = !animation.loop || ['playerDetected', 'shooting', 'dead'].includes(actor.state);
+      const oneShot = !animation.loop || ['playerDetected', 'shooting', 'attack', 'dead'].includes(actor.state);
       const index = oneShot ? clamp(frameIndex, 0, animation.frames.length - 1) : frameIndex % animation.frames.length;
       state.frameId = animation.frames[index];
       // Actor transitions are one-shot cues even when their artwork loops.
@@ -177,8 +262,10 @@ export class ActorSimulation {
     // The authored body is used for stomp detection only.  Lethal contact is
     // restricted to an explicitly authored attack window and its hazard
     // geometry; never replace that geometry with the body collider.
-    const attackAnimation = animation && Array.isArray(animation.damage_active_indices) && animation.damage_active_indices.length > 0;
-    state.physics = { ...state.physics, mode: 'trigger', solidShapes: [], lethal: !!attackAnimation && state.damageActive === true };
+    const attackAnimation = actor.state === 'attack' && animation && Array.isArray(animation.damage_active_indices) && animation.damage_active_indices.length > 0;
+    const meleeActive = !!actor.definition.physics?.lethal && !!attackAnimation && state.damageActive === true;
+    state.physics = { ...state.physics, mode: 'trigger', solidShapes: [], lethal: meleeActive,
+      hazardShapes: meleeActive ? (state.physics.hazardShapes || rectShapes(state.physics.hitbox)) : [] };
     if (actor.dead) {
       state.physics = { ...state.physics, lethal: false, mode: 'none', hazardShapes: [], interactionShapes: [], solidShapes: [] };
       if (!animation || timeMs - actor.deadAtMs + 1e-6 >= duration(animation)) state.vanished = true;

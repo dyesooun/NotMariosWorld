@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { LevelRuntime } from '../level-runtime.js';
+import { PlaytestRuntime } from '../playtest-runtime.js';
 import { validateDocument,parseDocument,serializeDocument } from '../document.js';
 import {setLevelSpawn} from '../gameplay.js';
 import {boxPolygon,shapePolygons,polygonsOverlap} from '../runtime-geometry.js';
@@ -22,6 +23,79 @@ function documentFixture() {
   return { format: 'not-marios-world-level', version: 2, id: 'fixture', name: 'Fixture', biome: 'forest', world: { width: 1000, height: 600, backgroundColor: '#183c38' }, assets: { atlas: { id: 'atlas', src: image, width: 1, height: 1, frames: { pixel: { x: 0, y: 0, w: 1, h: 1 } } } }, definitions: defs, placements: [p('floor-1', 'floor', 0, 200, 240, 20), p('mover-1', 'mover', 260, 180, 80, 20), p('spike-1', 'spike', 100, 176, 24, 24), p('beam-1', 'beam', 400, 120, 20, 80), p('vanish-1', 'vanish', 500, 200, 100, 20), p('chest-1', 'interaction', 40, 168, 32, 32), p('critter-1', 'character', 10, 160, 20, 20)] };
 }
 function advanceFor(runtime, seconds, input = {}) { let left = seconds; while (left > 0) { const dt = Math.min(0.1, left); runtime.advance(dt, input); left -= dt; } }
+
+test('playtest god mode permits movement through spikes and active beams without editing the level', () => {
+  const doc = documentFixture(), before = JSON.stringify(doc);
+  const runtime = new PlaytestRuntime(doc, { spawn: { x: 100, y: 150 }, godMode: true, gravity: 0 });
+  advanceFor(runtime, .2, { right: true });
+  assert.ok(runtime.player.x > 140, 'hazard contact must not freeze movement');
+  runtime.reset({spawn: {x: 400, y: 130}});
+  advanceFor(runtime, .12);
+  assert.equal(runtime.getStates().find(entry => entry.placement.id === 'beam-1').state.beamOn, true);
+  advanceFor(runtime, .2, { right: true });
+  assert.ok(runtime.player.x > 440);
+  assert.equal(runtime.deaths, 0);
+  assert.equal(runtime.deadRemainingMs, 0);
+  assert.equal(JSON.stringify(doc), before);
+  runtime.reset();
+  assert.equal(runtime.godMode, true);
+});
+
+test('playtest god mode ignores decoys while collecting overlapping coins and checkpoints', () => {
+  const {doc,add} = coreFixture();
+  add('coin', 'coin', 100, {coinValue: 2});
+  add('checkpoint', 'checkpoint', 100);
+  add('trap', 'decoy-chest', 100, {decoyKind: 'bomb'});
+  const runtime = new PlaytestRuntime(doc, { spawn: {x: 100, y: 120}, godMode: true, gravity: 0 });
+  runtime.advance(.02);
+  assert.equal(runtime.deaths, 0);
+  assert.equal(runtime.coins, 2);
+  assert.equal(runtime.checkpoint.id, 'checkpoint');
+  assert.ok(!runtime.events.some(event => event.type === 'death' || event.type === 'decoy'));
+});
+
+test('god mode fall recovery preserves coins and progress at spawn and checkpoint', () => {
+  const runtime = new PlaytestRuntime(documentFixture(), { spawn: {x: 30, y: 120}, godMode: true, gravity: 0 });
+  for (const checkpoint of [null, {x: 270, y: 120, farthestX: 200, progress: .2}]) {
+    runtime.checkpoint = checkpoint;
+    runtime.coins = 4; runtime.collected.add('saved-coin');
+    runtime.farthestX = 600; runtime.progress = .6;
+    Object.assign(runtime.player, {x: 800, y: 800});
+    const events = runtime.advance(.01);
+    assert.equal(runtime.player.x, checkpoint?.x ?? runtime.spawn.x);
+    assert.equal(runtime.player.y, checkpoint?.y ?? runtime.spawn.y);
+    assert.equal(runtime.deaths, 0);
+    assert.equal(runtime.deadRemainingMs, 0);
+    assert.equal(runtime.farthestX, 600);
+    assert.equal(runtime.progress, .6);
+    assert.equal(runtime.coins, 4);
+    assert.ok(runtime.collected.has('saved-coin'));
+    assert.ok(events.some(event => event.type === 'god-mode-return'));
+  }
+});
+
+test('god mode toggle rescues a dead player and restores normal deaths when disabled', () => {
+  const runtime = new PlaytestRuntime(documentFixture(), {spawn: {x: 100, y: 150}, gravity: 0});
+  assert.equal(runtime.godMode, false);
+  runtime.advance(.02);
+  assert.equal(runtime.deaths, 1);
+  runtime.setGodMode(true);
+  assert.equal(runtime.deadRemainingMs, 0);
+  assert.equal(runtime.deathCause, null);
+  // Melee and projectile collisions both use the runtime's central death hook.
+  for (const kind of ['creature', 'projectile']) {
+    runtime._kill({placement: {id: kind}, state: {definition: {kind, name: kind}}});
+    assert.equal(runtime.deaths, 1);
+    assert.equal(runtime.deadRemainingMs, 0);
+  }
+  runtime.setGodMode(false);
+  runtime.advance(.02);
+  assert.equal(runtime.deaths, 2);
+  assert.ok(runtime.deadRemainingMs > 0);
+  const live = new LevelRuntime(documentFixture(), {spawn: {x: 100, y: 150}, gravity: 0});
+  live.advance(.02);
+  assert.equal(live.deaths, 1);
+});
 
 test('runtime keeps document immutable and supports explicit state overrides', () => {
   const document = documentFixture();

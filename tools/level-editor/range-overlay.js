@@ -53,7 +53,7 @@ export function drawDetectionRanges(context, states, { zoom = 1, viewport } = {}
     context.save(); context.fillStyle = creature ? '#a7e8c522' : '#f5c77a22'; context.strokeStyle = creature ? '#9de8d5' : '#f5c77a'; context.lineWidth = lineWidth;
     context.setLineDash([6 / zoom, 4 / zoom]); roundedRect(context, x, y, width, height, 5 / zoom); context.fill(); context.stroke(); context.setLineDash([]);
     context.beginPath(); context.moveTo(centerX - range, footY); context.lineTo(centerX + range, footY); context.strokeStyle = creature ? '#9de8d5aa' : '#f5c77aaa'; context.stroke();
-    const label = `Detection ±${Math.round(range)} px · ${creature ? 'same platform' : 'player feet ±140 px'}`;
+    const label = `Detection ±${Math.round(range)} px · ${creature ? 'same connected support chain' : 'player feet ±140 px'}`;
     context.font = `${fontSize}px ui-monospace, SFMono-Regular, Consolas, monospace`; context.textBaseline = 'bottom'; context.textAlign = 'center';
     const labelWidth = context.measureText(label).width, margin = 8 / zoom;
     const labelX = viewport ? Math.max(viewport.x + labelWidth / 2 + margin, Math.min(centerX, viewport.x + viewport.width - labelWidth / 2 - margin)) : centerX;

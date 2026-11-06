@@ -1,5 +1,6 @@
 import { clone, validateDocument } from './document.js';
 import { validateTilesetManifest } from './manifest-validation.js';
+import { cleanupSupportIds } from './support-picker.js';
 
 const BAD = new Set(['__proto__', 'prototype', 'constructor']);
 const finite = n => typeof n === 'number' && Number.isFinite(n);
@@ -10,7 +11,12 @@ export function deleteAssetDefinition(doc,definitionId){
   doc.placements=doc.placements.filter(p=>!removedPlacements.has(p.id));
   delete doc.definitions[definitionId];
   for(const d of Object.values(doc.definitions))if(d.behavior?.projectileDefinitionId===definitionId)delete d.behavior.projectileDefinitionId;
-  for(const p of doc.placements){if(removedPlacements.has(p.settings?.supportId))delete p.settings.supportId;if(p.settings?.projectileDefinitionId===definitionId)delete p.settings.projectileDefinitionId;}
+  cleanupSupportIds(doc.placements,removedPlacements);
+  for (const d of Object.values(doc.definitions)) {
+    if (Array.isArray(d.behavior?.supportIds)) d.behavior.supportIds = d.behavior.supportIds.filter(id => !removedPlacements.has(id));
+    if (removedPlacements.has(d.behavior?.supportId)) delete d.behavior.supportId;
+  }
+  for(const p of doc.placements){if(p.settings?.projectileDefinitionId===definitionId)delete p.settings.projectileDefinitionId;}
   const assetId=definition.visual.assetId;
   if(!Object.values(doc.definitions).some(d=>d.visual.assetId===assetId))delete doc.assets[assetId];
   return doc;
@@ -126,7 +132,7 @@ export function setDefinitionGeometry(doc, definitionId, channel, input) {
   if (!['body','damage','interaction'].includes(channel)) throw new Error('Geometry channel must be body, damage, or interaction.');
   const rect = normalizedRect(input), p = d.physics;
   if (channel === 'body') { p.collider = rect; if (p.mode === 'trigger') p.interactionShapes = shape(rect); else p.solidShapes = shape(rect); if (rect && p.mode === 'none') p.mode = 'solid'; }
-  if (channel === 'damage') { p.hitbox = rect; p.hazardShapes = shape(rect); p.lethal = rect != null; }
+  if (channel === 'damage') { p.hitbox = rect; p.hazardShapes = shape(rect); p.lethal = rect != null && d.kind === 'enemy' && d.behavior?.actorType === 'creature' ? true : p.lethal; }
   if (channel === 'interaction') { p.collider = rect; p.interactionShapes = shape(rect); if (rect && p.mode === 'none') p.mode = 'trigger'; }
   p.calibration = 'authored';
   const v = d.visual, a = v && doc.assets[v.assetId], f = a?.frames?.[v.frameId];
@@ -192,5 +198,19 @@ export function importAssetLibrary(doc, library, schema) {
   if (schema) for (const asset of Object.values(library.assets)) if (asset.manifest?.format === 'platformer-tileset-manifest') validateOrThrow(exportTilesetManifest({ assets: { [asset.id]: asset }, definitions: {} }, asset.id, schema));
   const candidate = clone(doc); Object.assign(candidate.assets, clone(library.assets)); Object.assign(candidate.definitions, clone(library.definitions));
   const errors = validateDocument(candidate); if (errors.length) throw new Error(errors.slice(0, 10).join('\n')); return candidate;
+}
+
+// Keep the opened level authoritative while retaining reusable assets from the
+// current editor library. A failed merge never mutates the supplied document.
+export function mergeLibraryIntoDocument(primaryDocument, retainedLibrary) {
+  if (!primaryDocument || !retainedLibrary) return clone(primaryDocument);
+  safe(retainedLibrary);
+  if (retainedLibrary.format !== 'level-editor-asset-library' || retainedLibrary.version !== 1 || !retainedLibrary.assets || !retainedLibrary.definitions) throw new Error('Unsupported retained asset library.');
+  const candidate = clone(primaryDocument);
+  for (const [id, asset] of Object.entries(retainedLibrary.assets)) if (!candidate.assets[id]) candidate.assets[id] = clone(asset);
+  for (const [id, definition] of Object.entries(retainedLibrary.definitions)) if (!candidate.definitions[id]) candidate.definitions[id] = clone(definition);
+  const errors = validateDocument(candidate);
+  if (errors.length) throw new Error(errors.slice(0, 10).join('\n'));
+  return candidate;
 }
 function validateOrThrow(errors) { if (errors?.length) throw new Error(errors.slice(0, 8).join('\n')); }

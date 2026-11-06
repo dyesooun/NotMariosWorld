@@ -9,6 +9,34 @@ export function remapRuntimeSequenceReferences(behavior, oldName, nextName = nul
 }
 
 /**
+ * Set whether an ordered animation frame is an authored melee damage window.
+ * Keep an explicit empty array when the last window is cleared: an absent or
+ * empty list is intentionally harmless at runtime.
+ */
+export function setDamageFrameActive(animation, index, active) {
+  if (!animation || !Number.isInteger(index) || index < 0 || (Array.isArray(animation.frames) && index >= animation.frames.length)) return animation;
+  const indices = new Set(Array.isArray(animation.damage_active_indices)
+    ? animation.damage_active_indices.filter(Number.isInteger)
+    : []);
+  if (active) indices.add(index);
+  else indices.delete(index);
+  animation.damage_active_indices = [...indices].sort((a, b) => a - b);
+  return animation;
+}
+
+export function remapAnimationEventIndices(animation, mapping) {
+  if (!animation || !Array.isArray(mapping)) return animation;
+  for (const key of ['damage_active_indices', 'spawn_projectile_at_indices']) {
+    if (Array.isArray(animation[key])) animation[key] = animation[key].map(index => mapping[index]).filter(index => index != null).sort((a, b) => a - b);
+  }
+  if (Number.isInteger(animation.spawn_projectile_at_index)) {
+    animation.spawn_projectile_at_index = mapping[animation.spawn_projectile_at_index];
+    if (animation.spawn_projectile_at_index == null) delete animation.spawn_projectile_at_index;
+  }
+  return animation;
+}
+
+/**
  * Character sequence editor. Functional mappings choose states at runtime.
  * The selected preview state and
  * preview clock are intentionally kept outside the document.
@@ -84,13 +112,7 @@ export function mountSequenceEditor({ getDocument, getImages, change, onMessage 
     catch (error) { onMessage?.(error.message, true); return false; }
   }
   function remapEventIndices(animation, mapping) {
-    for (const key of ['damage_active_indices', 'spawn_projectile_at_indices']) {
-      if (Array.isArray(animation[key])) animation[key] = animation[key].map(index => mapping[index]).filter(index => index != null).sort((a, b) => a - b);
-    }
-    if (Number.isInteger(animation.spawn_projectile_at_index)) {
-      animation.spawn_projectile_at_index = mapping[animation.spawn_projectile_at_index];
-      if (animation.spawn_projectile_at_index == null) delete animation.spawn_projectile_at_index;
-    }
+    remapAnimationEventIndices(animation, mapping);
   }
   function addState() {
     const base = 'state'; let name = base, i = 2;
@@ -151,9 +173,25 @@ export function mountSequenceEditor({ getDocument, getImages, change, onMessage 
       else { elapsed = 0; last = 0; }
     });
     el('h4', stateEditor, 'Ordered frames');
+    el('p', stateEditor,
+      'Mark the frames that can deal melee damage in a mapped runtime sequence. Draw its attack region under Asset metadata → Edit mode → Damage hitbox. Body contact stays harmless.',
+      'hint');
     const ordered = el('div', stateEditor, null, 'asset-frame-list');
     animationFrames().forEach((frameId, index) => {
       const row = el('div', ordered, null, 'sequence-frame-row'); el('span', row, `${index + 1}. ${frameId}`);
+      const damageLabel = el('label', row, null, 'sequence-damage-toggle');
+      const damageInput = el('input', damageLabel);
+      damageInput.type = 'checkbox';
+      damageInput.checked = Array.isArray(current.damage_active_indices) && current.damage_active_indices.includes(index);
+      damageInput.setAttribute('aria-label', `Damage active frame ${index + 1} (${frameId})`);
+      el('span', damageLabel, 'Damage active');
+      damageInput.onchange = () => mutate(project => {
+        setDamageFrameActive(project.definitions[definitionId].visual.animations[stateName], index, damageInput.checked);
+        const d = project.definitions[definitionId];
+        if (damageInput.checked && d.kind === 'enemy' && d.behavior?.actorType === 'creature') {
+          d.physics.lethal = true; d.physics.calibration = 'authored';
+        }
+      });
       button(row, '↑', () => { if (index) mutate(project => { const a = project.definitions[definitionId].visual.animations[stateName].frames; [a[index - 1], a[index]] = [a[index], a[index - 1]]; const mapping = a.map((_, i) => i); [mapping[index - 1], mapping[index]] = [mapping[index], mapping[index - 1]]; remapEventIndices(project.definitions[definitionId].visual.animations[stateName], mapping); }); });
       button(row, '↓', () => { if (index < animationFrames().length - 1) mutate(project => { const a = project.definitions[definitionId].visual.animations[stateName].frames; [a[index + 1], a[index]] = [a[index], a[index + 1]]; const mapping = a.map((_, i) => i); [mapping[index], mapping[index + 1]] = [mapping[index + 1], mapping[index]]; remapEventIndices(project.definitions[definitionId].visual.animations[stateName], mapping); }); });
       button(row, 'Remove', () => { if (animationFrames().length <= 1) return onMessage?.('A state must keep at least one frame.', true); mutate(project => { const a = project.definitions[definitionId].visual.animations[stateName].frames, mapping = a.map((_, i) => i === index ? null : i < index ? i : i - 1); a.splice(index, 1); remapEventIndices(project.definitions[definitionId].visual.animations[stateName], mapping); }); });

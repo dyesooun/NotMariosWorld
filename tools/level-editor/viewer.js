@@ -1,6 +1,6 @@
 import {parseDocument} from './document.js';
 import {readStored} from './storage.js';
-import {LevelRuntime} from './level-runtime.js';
+import {PlaytestRuntime} from './playtest-runtime.js';
 import {LevelRenderer,loadImages} from './level-renderer.js';
 import {shapePolygons} from './runtime-geometry.js';
 
@@ -11,15 +11,15 @@ const held=new Set();
 function message(text,error=false){$('#message').textContent=text;$('#message').classList.toggle('error',error);}
 function clearInput(){held.clear();}
 function syncSpawn(){if(!runtime)return;const p=runtime.spawn||runtime.player;$('#spawnX').value=p.x;$('#spawnY').value=p.y;}
-function refreshControls(){for(const id of ['playBtn','resetBtn','followBtn','fitBtn','setSpawn','pickSpawn'])$(`#${id}`).disabled=!runtime;$('#playBtn').textContent=playing?'Pause':'Resume';$('#followBtn').classList.toggle('active',cameraMode==='follow');$('#fitBtn').classList.toggle('active',cameraMode==='fit');$('#pickSpawn').classList.toggle('active',pickingSpawn);}
+function refreshControls(){for(const id of ['playBtn','resetBtn','followBtn','fitBtn','setSpawn','pickSpawn','godMode'])$(`#${id}`).disabled=!runtime;$('#playBtn').textContent=playing?'Pause':'Resume';$('#followBtn').classList.toggle('active',cameraMode==='follow');$('#fitBtn').classList.toggle('active',cameraMode==='fit');$('#pickSpawn').classList.toggle('active',pickingSpawn);}
 async function install(text,label){
   const sequence=++loadSequence;message(`Loading ${label}…`);clearInput();
   try{
-    const doc=parseDocument(text),candidate=new LevelRuntime(doc);
+    const doc=parseDocument(text),candidate=new PlaytestRuntime(doc,{godMode:$('#godMode').checked});
     // Preflight every collision channel before replacing the current scene.
     for(const {state}of candidate.getStates())for(const channel of ['solid','hazard','interaction','vanish'])shapePolygons({...state,vanished:false,beamOn:true,damageActive:true},channel);
     const images=await loadImages(doc.assets);if(sequence!==loadSequence)return;
-    runtime=candidate;renderer=new LevelRenderer(canvas,doc,images);playing=true;cameraMode='follow';lastFrame=0;pickingSpawn=false;sourceLabel=label;
+    runtime=candidate;runtime.setGodMode($('#godMode').checked);renderer=new LevelRenderer(canvas,doc,images);playing=true;cameraMode='follow';lastFrame=0;pickingSpawn=false;sourceLabel=label;
     $('#levelName').textContent=doc.name;document.title=`${doc.name} · JSON Level Runner`;syncSpawn();refreshControls();canvas.focus();
     baseMessage=`${doc.placements.length} objects · ${label}. ${(runtime.warnings||[]).join(' ')||'Spawn comes from the chosen asset, tagged markers, legacy world.spawn, or safe solid geometry.'} Spawn X/Y override this viewer session.`;message(baseMessage);
   }catch(error){if(sequence===loadSequence)message(`Level could not be loaded: ${error.message}`,true);}
@@ -33,6 +33,7 @@ $('#sampleBtn').onclick=()=>loadUrl(SAMPLE);$('#loadUrl').onclick=()=>loadUrl($(
 $('#playBtn').onclick=()=>{playing=!playing;clearInput();lastFrame=0;refreshControls();canvas.focus();};
 function restart(spawn){if(!runtime)return;runtime.reset(spawn?{spawn}:{});cameraMode='follow';refreshControls();clearInput();lastFrame=0;syncSpawn();message(spawn?`Viewer spawn set to (${spawn.x.toFixed(1)}, ${spawn.y.toFixed(1)}). ${sourceLabel} is unchanged.`:baseMessage);canvas.focus();}
 $('#resetBtn').onclick=()=>restart();
+$('#godMode').onchange=()=>{if(!runtime)return;runtime.setGodMode($('#godMode').checked);clearInput();message(runtime.godMode?'God mode ON · hazards and attacks are harmless; falls return to your checkpoint or spawn.':'God mode OFF · normal deaths restored.');canvas.focus();};
 $('#setSpawn').onclick=()=>{const x=Number($('#spawnX').value),y=Number($('#spawnY').value);if(!Number.isFinite(x)||!Number.isFinite(y))return message('Spawn coordinates must be finite.',true);try{restart({x,y});}catch(error){message(error.message,true);}};
 $('#pickSpawn').onclick=()=>{pickingSpawn=!pickingSpawn;refreshControls();message(pickingSpawn?'Click the canvas to set the player’s top-left spawn point for this viewer session.':baseMessage);};
 $('#followBtn').onclick=()=>{cameraMode='follow';refreshControls();canvas.focus();};$('#fitBtn').onclick=()=>{cameraMode='fit';refreshControls();canvas.focus();};$('#colliders').onchange=()=>canvas.focus();
@@ -59,6 +60,7 @@ function frame(now){
       for(const event of events)if(event.type==='vanish'||event.type==='restore'){const placement=runtime.document.placements.find(p=>p.id===event.id),definition=placement&&runtime.document.definitions[placement.definitionId];message(`${definition?.name||'Platform'} ${event.type==='restore'?'restored':'vanished'}.`);}
       for(const event of events){
         if(event.type==='coin')message(`Coin collected · ${runtime.coins} coin units`);
+        if(event.type==='god-mode-return')message('God mode · returned to your checkpoint or spawn without a death.');
         if(event.type==='checkpoint')message(`Checkpoint ${event.order} reached · ${runtime.checkpoint.coins} coin units saved.`);
         if(event.type==='respawn')message(runtime.checkpoint?`Respawned at checkpoint ${runtime.checkpoint.order} · ${runtime.coins} saved coin units restored.`:'Respawned at the start · coin collection reset.');
         if(event.type==='gameplay-contact'&&event.action==='entered'&&event.role==='power-chest')message('Power chest reached. Rewards and inventory are supplied by the core game coordinator.');
@@ -67,7 +69,7 @@ function frame(now){
     }
     if(cameraMode==='follow')renderer.follow(runtime.player);else if(cameraMode==='fit')renderer.fit();
     renderer.draw(runtime,{collisions:$('#colliders').checked});
-    $('#stats').textContent=`${(runtime.timeMs/1000).toFixed(2)}s · X ${runtime.player.x.toFixed(0)} · Y ${runtime.player.y.toFixed(0)} · ${runtime.deaths} deaths · Coins ${runtime.coins||0} · Checkpoint ${runtime.checkpoint?.order??'—'}`;
+    $('#stats').textContent=`${runtime.godMode?'GOD MODE · ':''}${(runtime.timeMs/1000).toFixed(2)}s · X ${runtime.player.x.toFixed(0)} · Y ${runtime.player.y.toFixed(0)} · ${runtime.deaths} deaths · Coins ${runtime.coins||0} · Checkpoint ${runtime.checkpoint?.order??'—'}`;
     $('#finishNotice').hidden=!runtime.finished;
     const dead=runtime.deadRemainingMs>0;$('#deathNotice').hidden=!dead;if(dead)$('#deathNotice').textContent=`${runtime.deathCause||'Hazard contact'}\nRespawning in ${(runtime.deadRemainingMs/1000).toFixed(1)}s`;
   }
