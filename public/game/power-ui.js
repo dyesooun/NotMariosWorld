@@ -27,22 +27,6 @@ export function powerUIModel(player, { now = Date.now(), running = true, isHost 
   };
 }
 
-function drawPowerIcon(ctx, type, x, y, size, color = '#b7ef51') {
-  // Deliberately blocky, original marks: all geometry stays on a pixel grid.
-  const u = Math.max(1, Math.round(size / 8));
-  ctx.fillStyle = color;
-  const block = (gx, gy, gw = 1, gh = 1) => ctx.fillRect(x + gx * u, y + gy * u, gw * u, gh * u);
-  if (type === 'slow') { // Sticky boot
-    block(1, 1, 4, 2); block(2, 3, 3, 2); block(1, 5, 5, 1); block(0, 6, 7, 1); block(5, 4, 2, 2);
-  } else if (type === 'reverse') { // Opposite arrows
-    block(0, 2, 5, 2); block(0, 1, 2, 1); block(0, 4, 2, 1); block(3, 5, 5, 2); block(6, 4, 2, 1); block(6, 7, 2, 1);
-  } else if (type === 'slippery') { // Ice skate
-    block(1, 1, 4, 1); block(2, 2, 3, 3); block(4, 4, 2, 1); block(0, 6, 7, 1); block(1, 7, 5, 1);
-  } else if (type === 'fog') { // Ink cloud
-    block(2, 1, 3, 1); block(1, 2, 6, 3); block(0, 4, 8, 2); block(2, 6, 4, 1); block(1, 7, 2, 1); block(5, 7, 2, 1);
-  }
-}
-
 export function renderPowerUI(canvas, player, options = {}) {
   const model = powerUIModel(player, options), ctx = canvas.getContext('2d');
   if (!model.visible) return model;
@@ -74,9 +58,7 @@ export function renderPowerUI(canvas, player, options = {}) {
     for(const [cx,cy] of [[x,y],[x+w-corner,y],[x,y+h-corner],[x+w-corner,y+h-corner]])ctx.fillRect(cx,cy,corner,corner);
   };
   panel(r.x,r.y,r.w,r.h);
-  const iconColor = '#b7ef51';
-  if (model.powerType) drawPowerIcon(ctx, model.powerType, r.x + 12*GAME_CARD_SCALE, r.y + (8/0.75)*GAME_CARD_SCALE, 22 * GAME_CARD_SCALE, iconColor);
-  text(model.powerName || 'POWER SLOT', r.x + 36 * GAME_CARD_SCALE, r.y + 18 * GAME_CARD_SCALE, 10, '#b7ef51');
+  text(model.powerName || 'POWER SLOT', r.x + 12 * GAME_CARD_SCALE, r.y + 18 * GAME_CARD_SCALE, 10, '#b7ef51');
   const status=model.testing?'ANSWER YOUR QUESTION':model.queued?`QUEUED / #${model.queuePosition??'?'}`:model.held?'READY TO ACTIVATE':model.heading;
   text(status, r.x + 12 * GAME_CARD_SCALE, r.y + 38 * GAME_CARD_SCALE, 10, model.held ? '#b7ef51' : '#e9f4d5');
   text(model.detail, r.x + 12 * GAME_CARD_SCALE, r.y + 70 * GAME_CARD_SCALE, 9, '#aac3b5');

@@ -1,3 +1,5 @@
+import { GAME_CARD_SCALE } from './overlay-layout.js';
+
 export function powerChestOfferModel(player, { running = true, isHost = false } = {}) {
   const offer = player?.powerOffer;
   if (!running || isHost || !offer || !player.connected || !player.spawned || player.state?.finished || player.state?.respawnRemaining || player.state?.level !== offer.level || (player.powerQuiz && !player.powerQuiz.answered)) return null;
@@ -15,7 +17,7 @@ export function createPowerChestControls(viewport, { onChoice, onOpen, onClose }
   const doc = viewport.ownerDocument;
   const root = doc.createElement('section');
   root.className = 'power-chest-controls'; root.hidden = true;
-  const panel = doc.createElement('div'); panel.className = 'power-chest-panel';
+  const panel = doc.createElement('div'); panel.className = 'pixel-world-panel power-chest-panel';
   panel.setAttribute('role', 'group'); panel.setAttribute('aria-label', 'Choose a chest power');
   const title = doc.createElement('h2'); title.textContent = 'ONE SLOT. YOUR CALL.';
   const held = doc.createElement('p'); held.className = 'power-chest-held';
@@ -49,9 +51,9 @@ export function createPowerChestControls(viewport, { onChoice, onOpen, onClose }
     attack.disabled = pending || !model.canAttack; replace.disabled = pending || !model.canReplace;
     const bounds = canvas?.getBoundingClientRect() || viewport.getBoundingClientRect(), outer = viewport.getBoundingClientRect();
     const scale = Math.min(bounds.width / 960, bounds.height / 540), r = model.panel;
-    panel.style.left = `${bounds.left - outer.left + (bounds.width - 960 * scale) / 2 + r.x * scale}px`;
-    panel.style.top = `${bounds.top - outer.top + (bounds.height - 540 * scale) / 2 + r.y * scale}px`;
-    panel.style.width = `${r.w}px`; panel.style.height = `${r.h}px`; panel.style.transform = `scale(${scale})`;
+    panel.style.left = `${bounds.left - outer.left + (bounds.width - 960 * scale) / 2 + (r.x + r.w * (1 - GAME_CARD_SCALE) / 2) * scale}px`;
+    panel.style.top = `${bounds.top - outer.top + (bounds.height - 540 * scale) / 2 + (r.y + r.h * (1 - GAME_CARD_SCALE) / 2) * scale}px`;
+    panel.style.width = `${r.w}px`; panel.style.height = `${r.h}px`; panel.style.transform = `scale(${scale * GAME_CARD_SCALE})`;
   }
   return { root, update, resetSubmission, destroy() { root.remove(); current = null; } };
 }

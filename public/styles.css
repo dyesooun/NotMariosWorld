@@ -126,7 +126,7 @@ dialog{border:1px solid #56624c;border-radius:12px;background:#1c2325;color:#f1f
 .host-power-button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;min-height:45px}
 .host-power-button small{font-size:8px;color:var(--muted);min-height:10px}
 .broadcast-stage{margin-top:0;margin-bottom:22px;background:#15251f}
-.broadcast-stage .world-screen{max-width:720px;margin:auto}
+.broadcast-stage .world-screen{max-width:none;margin:auto}
 .broadcast-stage .world-screen canvas{background:#101b17}
 .broadcast-stage .game-topbar{font-size:9px}
 .broadcast-stage .game-topbar .pill{font-size:8px}
@@ -148,3 +148,12 @@ dialog{border:1px solid #56624c;border-radius:12px;background:#1c2325;color:#f1f
 .report-card{padding:16px;border:1px solid var(--line);border-radius:8px;background:var(--panel);min-width:0}.report-identity{display:flex;gap:9px;align-items:center}.report-identity canvas{width:34px;height:38px;image-rendering:pixelated;flex-shrink:0}.report-identity>div{min-width:0;flex:1}.report-identity strong{font-size:12px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.report-identity small{display:block;font-size:9px;color:var(--muted);margin-top:5px}.report-score{font:600 15px "Space Grotesk",sans-serif;color:var(--lime);white-space:nowrap}.report-track{height:5px;background:#35463b;margin:16px 0 11px;border-radius:2px;overflow:hidden}.report-track i{display:block;height:100%;background:var(--lime);transition:width .15s}.report-line{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:10px;color:#b6c8b0}.report-line.muted{color:var(--muted);font-size:9px}.feed-grid{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:650px){.feed-grid{grid-template-columns:1fr}}
 
 .world-panel-body .leader-person strong{font-size:14px}.world-panel-body .leader-person small,.world-panel-body .panel-head small{font-size:12px}.world-panel-body .leader-score{font-size:16px}
+
+/* Every game-world popup shares the HUD's pixel frame and HTML typeface. */
+.power-quiz-panel.pixel-world-panel,.power-chest-panel.pixel-world-panel{background:#172c25f5;border-color:#b7ef51;border-radius:0;box-shadow:5px 5px 0 #08161288;color:#ecf4d6;font-family:monospace}
+.power-chest-panel h2{color:#b7ef51}
+.death-caption{width:430px;max-width:none;transform-origin:center}
+.world-screen .finish-overlay{inset:0;z-index:4;line-height:normal;backdrop-filter:none}
+.finish-overlay>div{width:600px;flex-shrink:0;padding:24px;transform-origin:center;position:relative;font-family:monospace}
+.finish-overlay h2{font-family:monospace;font-size:24px;line-height:1.3;letter-spacing:0}
+.finish-overlay p{font-family:monospace;margin-inline:auto}

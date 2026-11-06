@@ -1,3 +1,5 @@
+import { GAME_CARD_SCALE } from './overlay-layout.js';
+
 const LOGICAL_WIDTH = 960;
 const LOGICAL_HEIGHT = 540;
 
@@ -39,7 +41,7 @@ export function createPowerQuizControls(viewport, { onSubmit, onOpen, onClose } 
   const shade = doc.createElement('div');
   shade.className = 'power-quiz-shade';
   const panel = doc.createElement('section');
-  panel.className = 'power-quiz-panel';
+  panel.className = 'pixel-world-panel power-quiz-panel';
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-modal', 'false');
 
@@ -115,11 +117,13 @@ export function createPowerQuizControls(viewport, { onSubmit, onOpen, onClose } 
     const offsetX = canvasRect.left - viewportRect.left + (canvasRect.width - LOGICAL_WIDTH * scale) / 2;
     const offsetY = canvasRect.top - viewportRect.top + (canvasRect.height - LOGICAL_HEIGHT * scale) / 2;
     panel.style.position = 'absolute';
-    panel.style.left = `${offsetX + model.panel.x * scale}px`;
-    panel.style.top = `${offsetY + model.panel.y * scale}px`;
+    // Keep the panel's base-design center anchored while applying the shared
+    // card scale. Input/button rectangles remain in panel-local coordinates.
+    panel.style.left = `${offsetX + (model.panel.x + model.panel.w * (1 - GAME_CARD_SCALE) / 2) * scale}px`;
+    panel.style.top = `${offsetY + (model.panel.y + model.panel.h * (1 - GAME_CARD_SCALE) / 2) * scale}px`;
     panel.style.width = `${model.panel.w}px`;
     panel.style.height = `${model.panel.h}px`;
-    panel.style.transform = `scale(${scale})`;
+    panel.style.transform = `scale(${scale * GAME_CARD_SCALE})`;
     panel.style.transformOrigin = 'top left';
     setRect(input, {
       x: model.input.x - model.panel.x,

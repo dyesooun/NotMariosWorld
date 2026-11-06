@@ -1,8 +1,8 @@
 # Original game assets
 
-## Power HUD icons
+## Historical power HUD icons
 
-The sticky boot, reversed arrows, ice skate, and ink cloud in `public/game/power-ui.js` are original code-drawn pixel-grid icons authored for this game on 2026-11-06. They use no external artwork or licensed game assets. The canvas renderer scales them with the power inventory card.
+The sticky boot, reversed arrows, ice skate, and ink cloud were original code-drawn pixel-grid icons authored for this game on 2026-11-06, with no external artwork or licensed game assets. They were subsequently removed from the power HUD at the user's request to eliminate overlap with its text. The current power slot displays text and an activation button without an icon.
 
 ## Whimsical Woods expansion
 

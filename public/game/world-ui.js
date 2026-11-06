@@ -1,5 +1,6 @@
 // Broadcasts are drawn into the same logical viewport as the world.
 import { POWER_HUD_RECT } from './power-ui.js';
+import { GAME_CARD_SCALE } from './overlay-layout.js';
 const WIDTH = 960, HEIGHT = 540;
 const box = (x,y,w,h) => ({x,y,w,h});
 function lines(text, length) {
@@ -54,7 +55,8 @@ export function worldUIModel(room,{now=Date.now(),viewerId=null,isHost=false}={}
   const a=room?.announcement;
   const announcementX=isHost?60:room?.status==='running'?POWER_HUD_RECT.x+POWER_HUD_RECT.w+16:130;
   const announcementRight=countdown!==null?740:isHost?900:946;
-  const announcement=!question&&a&&a.endsAt>now?{...a,remainingSeconds:Math.max(0,Math.ceil((a.endsAt-now)/1000)),queuedPowerCount:room.powerQueue?.length||0,rect:box(announcementX,18,announcementRight-announcementX,68)}:null;
+  const announcementY=!isHost&&room?.status==='running'?POWER_HUD_RECT.y:18;
+  const announcement=!question&&a&&a.endsAt>now?{...a,remainingSeconds:Math.max(0,Math.ceil((a.endsAt-now)/1000)),queuedPowerCount:room.powerQueue?.length||0,rect:isHost?box(6,6,948,528):box(announcementX,announcementY,announcementRight-announcementX,68)}:null;
   return {question,announcement,countdown};
 }
 const rect=(ctx,color,x,y,w,h)=>{ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
@@ -69,17 +71,27 @@ function canvasText(ctx,value,x,y,size=12,color='#ecf4d6',align='left') {
 export function renderWorldUI(canvasOrContext,room,options={}) {
   const model=worldUIModel(room,options);
   model.textRows=[];
-  let htmlText=!!options.domText;
+  const htmlText=!!options.domText;
+  const cardScale=options.isHost?1:GAME_CARD_SCALE;
+  let card=null;
   const text=(ctx,value,x,y,size=12,color='#ecf4d6',align='left')=>{
-    if(htmlText)model.textRows.push({value:String(value),x,y,size,color,align,bold:size>=15});
+    if(htmlText)model.textRows.push({value:String(value),x:card?card.x+(x-card.base.x)*cardScale:x,y:card?card.y+(y-card.base.y)*cardScale:y,size:card?size*cardScale:size,color,align,bold:size>=15});
     else canvasText(ctx,value,x,y,size,color,align);
   };
   const ctx=canvasOrContext.canvas?canvasOrContext:canvasOrContext.getContext('2d');
   ctx.save();ctx.setTransform(ctx.canvas.width/WIDTH,0,0,ctx.canvas.height/HEIGHT,0,0);ctx.imageSmoothingEnabled=false;
+  const beginCard=(r,anchor='center')=>{
+    const s=cardScale;
+    card={base:r,x:anchor==='left'?r.x:anchor==='right'?r.x+r.w*(1-s):r.x+r.w*(1-s)/2,y:anchor==='center'?r.y+r.h*(1-s)/2:r.y};
+    ctx.setTransform(ctx.canvas.width/WIDTH*s,0,0,ctx.canvas.height/HEIGHT*s,(card.x-r.x*s)*ctx.canvas.width/WIDTH,(card.y-r.y*s)*ctx.canvas.height/HEIGHT);
+  };
+  const scaledRect=r=>({x:card.x+(r.x-card.base.x)*cardScale,y:card.y+(r.y-card.base.y)*cardScale,w:r.w*cardScale,h:r.h*cardScale});
+  const endCard=()=>{card=null;ctx.setTransform(ctx.canvas.width/WIDTH,0,0,ctx.canvas.height/HEIGHT,0,0);};
   const q=model.question;
   if(q) {
     rect(ctx,'#0a201d63',0,0,WIDTH,HEIGHT);
-    panel(ctx,q.panel,'#172b29fa','#b7ef51');
+    beginCard(q.panel);
+    panel(ctx,q.panel,'#172c25f5','#b7ef51');
     const x=q.panel.x+22,y=q.panel.y;
     text(ctx,`WORLD BROADCAST / ICEBREAKER ${q.index+1}`,x,y+23,11,'#b7ef51');
     text(ctx,q.closed?'VOTING CLOSED':`${q.remaining}s TO PICK A SIDE`,q.panel.x+q.panel.w-22,y+23,11,q.closed?'#ffdb81':'#8ce4ee','right');
@@ -99,32 +111,41 @@ export function renderWorldUI(canvasOrContext,room,options={}) {
     const footerY=q.panel.y+q.panel.h-16;
     text(ctx,`${q.total}/${q.playerCount} VOTED / ${q.closed?'THE TEAM HAS SPOKEN':q.isHost?'LIVE NAMED VOTES':'CLICK A CHOICE OR PRESS 1 / 2'}`,x,footerY,10,'#9cbba5');
     if(q.isHost){panel(ctx,q.dismiss,'#304c36','#a3cf67');text(ctx,q.closed?'DISMISS QUESTION >':'SKIP QUESTION >',q.dismiss.x+9,q.dismiss.y+16,10,'#d9edb7');}
+    q.choices.forEach(choice=>choice.rect=scaledRect(choice.rect));q.dismiss=scaledRect(q.dismiss);q.panel=scaledRect(q.panel);
+    endCard();
   }
   if(model.announcement) {
-    htmlText=false;
     const a=model.announcement,r=a.rect;
+    const host=!!options.isHost;
+    beginCard(r,options.isHost?'top':'left');
     panel(ctx,r,'#172c25f5','#b7ef51');
-    text(ctx,a.kind==='power-quiz'?(powerQuizNotice(room,options.viewerId,options.isHost)||(a.phase==='attack'?'ATTACK QUESTION':'DEFENSE QUESTIONS')):a.kind==='power'?(room.powerDuel?.outcome==='blocked'?'ATTACK BLOCKED':room.powerDuel?.outcome==='attackerFailed'?'POWER BACKFIRED':'POWER ACTIVE'):'WORLD BROADCAST',r.x+16,r.y+20,10,'#b7ef51');
+    text(ctx,a.kind==='power-quiz'?(powerQuizNotice(room,options.viewerId,options.isHost)||(a.phase==='attack'?'ATTACK QUESTION':'DEFENSE QUESTIONS')):a.kind==='power'?(room.powerDuel?.outcome==='blocked'?'ATTACK BLOCKED':room.powerDuel?.outcome==='attackerFailed'?'POWER BACKFIRED':'POWER ACTIVE'):'WORLD BROADCAST',r.x+(host?32:16),r.y+(host?48:20),host?20:10,'#b7ef51');
     if(a.kind==='power'||a.kind==='power-quiz'){
-      text(ctx,`${a.remainingSeconds}s${a.queuedPowerCount?` / ${a.queuedPowerCount} QUEUED`:''}`,r.x+r.w-16,r.y+20,10,'#8ce4ee','right');
+      text(ctx,`${a.remainingSeconds}s${a.queuedPowerCount?` / ${a.queuedPowerCount} QUEUED`:''}`,r.x+r.w-(host?(model.countdown!==null?232:32):16),r.y+(host?48:20),host?20:10,'#8ce4ee','right');
       rect(ctx,'#355449',r.x+16,r.y+r.h-6,r.w-32,3);
       rect(ctx,'#b7ef51',r.x+16,r.y+r.h-6,(r.w-32)*Math.max(0,Math.min(1,(a.endsAt-(options.now??Date.now()))/(a.durationMs||5000))),3);
     }
-    const messageLines=lines(a.text,Math.floor((r.w-32)/8.4));
-    messageLines.slice(0,2).forEach((line,i)=>text(ctx,line,r.x+16,r.y+40+i*16,14));
+    const messageSize=host?32:14,lineHeight=host?44:16;
+    const messageLines=lines(a.text,Math.floor((r.w-(host?64:32))/(messageSize*.6)));
+    const visibleLines=host?messageLines:messageLines.slice(0,2);
+    const messageY=host?r.y+Math.max(160,(r.h-visibleLines.length*lineHeight)/2)+messageSize:r.y+40;
+    visibleLines.forEach((line,i)=>text(ctx,line,r.x+(host?32:16),messageY+i*lineHeight,messageSize));
+    a.rect=scaledRect(r);endCard();
   }
   if(model.countdown!==null) {
-    htmlText=!!options.domText;
     if(model.countdown>0){
-      const r=box(758,14,188,104);panel(ctx,r,'#342b2bf2','#ffcf87');
+      const r=box(758,14,188,104);beginCard(r,'right');panel(ctx,r,'#342b2bf2','#ffcf87');
       text(ctx,'FINAL SECONDS',r.x+r.w/2,r.y+20,11,'#ffcf87','center');
       text(ctx,model.countdown,r.x+r.w/2,r.y+67,43,'#fff2cf','center');
       text(ctx,'KEEP GOING! SCORE IS LIVE',r.x+r.w/2,r.y+90,9,'#e8c99a','center');
+      endCard();
     } else {
       rect(ctx,'#102c2566',0,0,WIDTH,HEIGHT);
+      beginCard(box(280,175,400,150));
       panel(ctx,box(280,175,400,150),'#152b27f5','#ffcf87');
       text(ctx,'TIME!',480,241,48,'#ffdf97','center');
       text(ctx,'TELEPORTING TO THE PODIUM',480,285,14,'#daebbf','center');
+      endCard();
     }
   }
   ctx.restore();return model;

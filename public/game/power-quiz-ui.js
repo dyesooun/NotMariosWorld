@@ -1,3 +1,5 @@
+import { GAME_CARD_SCALE } from './overlay-layout.js';
+
 function wrap(value,width=56){const output=[];let line='';for(const word of String(value||'').split(/\s+/)){if(line&&line.length+word.length+1>width){output.push(line);line='';}line+=(line?' ':'')+word;}if(line)output.push(line);return output;}
 export function powerQuizModel(player,{now=Date.now(),isHost=false}={}){
   const quiz=player?.powerQuiz;if(!quiz||quiz.answered&&!isHost)return null;
@@ -16,8 +18,13 @@ export function renderPowerQuiz(canvas,player,options={}){
   const rect=(color,x,y,w,h)=>{ctx.fillStyle=color;ctx.fillRect(x,y,w,h);};
   const text=(value,x,y,size=12,color='#eaf5dc')=>{ctx.fillStyle=color;ctx.font=`${size>=16?'bold ':''}${size}px monospace`;ctx.fillText(value,x,y);};
   ctx.save();ctx.setTransform(canvas.width/960,0,0,canvas.height/540,0,0);
-  rect('#10272366',0,0,960,540);rect('#08151299',r.x+6,r.y+6,r.w,r.h);
-  rect('#b7ef51',r.x,r.y,r.w,r.h);rect('#172e2bfc',r.x+2,r.y+2,r.w-4,r.h-4);
+  rect('#10272366',0,0,960,540);
+  // Host preview keeps its full-viewport shade, while the quiz card follows
+  // the same reduced world-card scale as the DOM controls.
+  ctx.translate(r.x+r.w/2,r.y+r.h/2);ctx.scale(GAME_CARD_SCALE,GAME_CARD_SCALE);ctx.translate(-(r.x+r.w/2),-(r.y+r.h/2));
+  rect('#08161288',r.x+5,r.y+5,r.w,r.h);
+  rect('#b7ef51',r.x,r.y,r.w,r.h);rect('#172c25f5',r.x+2,r.y+2,r.w-4,r.h-4);
+  for(const [x,y] of [[r.x,r.y],[r.x+r.w-5,r.y],[r.x,r.y+r.h-5],[r.x+r.w-5,r.y+r.h-5]])rect('#b7ef51',x,y,5,5);
   text(model.title,r.x+24,r.y+27,12,'#b7ef51');
   const countdown=model.answered?'ANSWER LOCKED':`${model.remaining}s LEFT`;
   ctx.textAlign='right';text(countdown,r.x+r.w-24,r.y+27,12,'#8ce4ee');ctx.textAlign='left';

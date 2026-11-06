@@ -42,9 +42,9 @@ test('renders a real DOM question card and positions it in canvas logical space'
   controls.update(f.model(), { canvas: f.canvas });
   const panel = controls.root.querySelector('.power-quiz-panel');
   assert.equal(controls.root.hidden, false);
-  assert.equal(panel.style.left, '280px');
-  assert.equal(panel.style.top, '150px');
-  assert.equal(panel.style.transform, 'scale(1)');
+  assert.equal(panel.style.left, '411.25px');
+  assert.equal(panel.style.top, '202.5px');
+  assert.equal(panel.style.transform, 'scale(0.5625)');
   assert.equal(controls.root.querySelector('.power-quiz-prompt').textContent, 'What is 2 + 2?');
 });
 
@@ -82,9 +82,9 @@ test('centers a letterboxed logical canvas in a fullscreen-style viewport', () =
   f.canvas.rect = { left: 0, top: 0, width: 1600, height: 900 };
   const controls = createPowerQuizControls(f.viewport); controls.update(f.model(), { canvas: f.canvas });
   const panel = controls.root.querySelector('.power-quiz-panel');
-  assert.equal(panel.style.transform, 'scale(1.6666666666666667)');
-  assert.equal(panel.style.left, '300px');
-  assert.ok(Math.abs(parseFloat(panel.style.top) - 166.66666666666666) < 0.000001);
+  assert.equal(panel.style.transform, 'scale(0.9375)');
+  assert.equal(panel.style.left, '518.75px');
+  assert.ok(Math.abs(parseFloat(panel.style.top) - 254.16666666666666) < 0.000001);
 });
 
 test('a hidden challenge is closable and the same key is treated as new when it reappears', () => {

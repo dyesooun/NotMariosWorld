@@ -398,6 +398,8 @@ function renderPlayer() {
   }
   wrapWorldCanvas($('#game-canvas'));
   $('#game-canvas').parentElement.append($('#death-caption'));
+  $('#game-canvas').parentElement.append($('#finish-overlay'));
+  $('#finish-overlay>div').classList.add('pixel-world-panel');
   renderPlayerProgress();
   renderPlayerPanels();
 }
@@ -433,7 +435,9 @@ function syncPlayerProgress(canvas) {
   hud.hidden=!!room?.question;
   const viewport=canvas.parentElement.getBoundingClientRect(),bounds=canvas.getBoundingClientRect();
   const scale=Math.min(bounds.width/960,bounds.height/540);
-  const now=serverNow(),top=countdownSeconds(room,now)!==null?132:room?.announcement?.endsAt>now?100:14;
+  const now=serverNow(),top=countdownSeconds(room,now)!==null?132:14;
+  const death=$('#death-caption');if(death)death.style.transform=`translate(-50%,-50%) scale(${scale*GAME_CARD_SCALE})`;
+  const finish=$('#finish-overlay>div');if(finish)finish.style.transform=`scale(${scale*GAME_CARD_SCALE})`;
   hud.style.left=`${bounds.left-viewport.left+(bounds.width-960*scale)/2+(946-260*GAME_CARD_SCALE)*scale}px`;
   hud.style.top=`${bounds.top-viewport.top+(bounds.height-540*scale)/2+top*scale}px`;
   hud.style.transform=`scale(${scale*GAME_CARD_SCALE})`;
