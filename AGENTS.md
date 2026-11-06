@@ -25,6 +25,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 ## Session and host flow
 
 - The host creates a room, configures it, and **starts the race manually**. Joining or spawning must not start the round.
+- Clicking **Host a game** in the homepage header immediately creates a room and opens its host dashboard using the normal authenticated creation flow and default settings. Keep the existing duplicate-click guard and error handling; room creation does not start the race. The separate Host a room tab may still expose the create/resume controls.
 - Room states are lobby, running, settling, and ended. Settling stops gameplay and collects final reports for at most two seconds before publishing immutable ranks. Host actions are authenticated separately from player access; a room code must not grant host control.
 - Host settings are editable in the lobby. Round duration defaults to **10 minutes** and is configurable from **1–60 minutes**.
 - The host can reorder every catalog level in Game settings, including putting ocean or inferno first for testing. Every sequence includes each configured race level exactly once. The catalog order is the default (currently forest → ocean → inferno); there is no three-level limit. The selected order is room-specific and fixed when a run starts. Late joins and refreshed runs begin at the first world in that selected order, with the shared remaining time.

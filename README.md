@@ -39,7 +39,7 @@ After editing the catalog or a level JSON, restart the game server and refresh p
 
 ## Host a game
 
-1. Choose **Host a room → Create a game room**.
+1. Click **Host a game** in the homepage header to create a room immediately, or choose **Host a room → Create a game room**.
 2. Copy the room code or invite link and send it to the team. The host is separate from the 25 player slots.
 3. Open **Game settings**. Choose the **World order** using the stage selectors (choosing a world swaps its position), then set a 1–60 minute round, scoring weights, separate power/attack/defense durations (1–60 seconds each), and power strengths. Defaults are 10 minutes, 10 points per coin, and 1 point per 32-pixel tile reached.
 4. Five default icebreakers are included, including the executive dashboard and pillows/blankets questions. Edit or remove any in settings; at most five are allowed, each with exactly two choices. **Launch** each question manually. It appears as a pixel broadcast inside every player's game viewport and the host's world broadcast stage. Players click a choice or press **1 / 2**. Everyone sees named votes live; voting closes after 15 seconds. Use the in-world **Skip question** or **Dismiss question** control to clear it. Questions run in the lobby.

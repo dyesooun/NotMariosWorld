@@ -200,7 +200,7 @@ function renderEntry() {
   screen='entry'; screenKey='entry'; role=null; rosterKey=scoreKey=questionKey='';
   updateMusicScene();
   const code = new URLSearchParams(location.search).get('room') || '';
-  app.innerHTML = `${header(`<button class="button small ghost" data-action="host-tab">HOST A GAME ${icon('diagonal')}</button>`)}
+  app.innerHTML = `${header(`<button class="button small ghost" data-action="create">HOST A GAME ${icon('diagonal')}</button>`)}
   <main class="landing"><section class="hero"><div class="hero-copy"><div class="eyebrow"><i class="dot"></i> CLOCK IN. ZONE OUT.</div>
     <h1>YOUR NEXT<br><em>BAD IDEA.</em></h1><p class="hero-description">${LEVEL_CATALOG.length} worlds. One timer. A suspicious number of coins.<br>Welcome to your team's newest friendly rivalry.</p>
     <div class="entry-box"><div class="tabs" role="tablist" aria-label="Enter a game"><button class="tab ${entryTab==='join'?'active':''}" role="tab" aria-selected="${entryTab==='join'}" data-action="join-tab">Join the adventure</button><button class="tab ${entryTab==='host'?'active':''}" role="tab" aria-selected="${entryTab==='host'}" data-action="host-tab">Host a room</button></div>
