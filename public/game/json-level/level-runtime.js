@@ -45,7 +45,7 @@ export class LevelRuntime {
     this._coyoteMs = 0;
     this._motionEpochMs = 0;
     this.deathCause = null;
-    this.coins = 0; this.collected = new Set(); this.checkpoint = null; this.reachedCheckpoints = new Set();
+    this.coins = 0; this.collected = new Set(); this.collectedAtMs = new Map(); this.claimedChests = new Map(); this.checkpoint = null; this.reachedCheckpoints = new Set(); this.checkpointReachedAtMs = new Map();
     this.farthestX = 0; this.progress = 0; this.finished = false; this._roleContacts = new Set();
     this._checkpointOrders = this._buildCheckpointOrders();
     this._spawn = this._chooseSpawn(options.spawn);
@@ -130,16 +130,22 @@ export class LevelRuntime {
         permanentGone: this.permanentGone.has(placement.id),
         vanishRestored: this._vanishRestored.has(placement.id),
       });
+      // Effects use the run clock; motion/beam cycles use their respawn epoch.
+      state.timeMs=timeMs;
       if (actor) this._actorSimulation.applyActorState(actor, state, timeMs);
       const gameplay = state.gameplay || resolveGameplay(definition, placement);
       state.gameplay = gameplay;
-      if (this.collected.has(placement.id)) {
-        state.collected = true; state.vanished = true;
+      const chestId = gameplay.chestId || placement.id;
+      if (gameplay.role === 'power-chest' && this.claimedChests.has(chestId)) {
+        state.collected = true; state.vanished = true; state.collectedAtMs = this.claimedChests.get(chestId);
+        state.physics = { ...(state.physics || {}), mode: 'none', solidShapes: [], hazardShapes: [], interactionShapes: [] };
+      } else if (this.collected.has(placement.id)) {
+        state.collected = true; state.vanished = true; state.collectedAtMs = this.collectedAtMs.get(placement.id) ?? null;
         state.physics = { ...(state.physics || {}), mode: 'none', solidShapes: [], hazardShapes: [], interactionShapes: [] };
       } else if (gameplay.role && gameplay.role !== 'none' && gameplay.nonblocking === true) {
         state.physics = { ...(state.physics || {}), mode: 'none', solidShapes: [] };
       }
-      if (gameplay.role === 'checkpoint' && this.reachedCheckpoints.has(placement.id)) state.checkpointReached = true;
+      if (gameplay.role === 'checkpoint' && this.reachedCheckpoints.has(placement.id)) { state.checkpointReached = true; state.checkpointReachedAtMs = this.checkpointReachedAtMs.get(placement.id) ?? null; }
       return { placement, state };
     });
     for (const shot of this._projectiles.values()) result.push(this._actorSimulation.projectileState(shot, timeMs));
@@ -147,6 +153,22 @@ export class LevelRuntime {
   }
 
   getStates() { return this.getStatesAt(this.timeMs); }
+
+  /** Apply server-confirmed power-chest claims; geometry/contact remains local. */
+  claimPowerChests(ids) {
+    if (!Array.isArray(ids)) return [];
+    const claimed = [];
+    for (const rawId of ids) {
+      const chestId = typeof rawId === 'string' ? rawId : String(rawId ?? '');
+      if (!chestId || this.claimedChests.has(chestId)) continue;
+      const entry = this.document.placements.map(placement => ({ placement, gameplay: resolveGameplay(this.document.definitions[placement.definitionId], placement) }))
+        .find(item => item.gameplay.role === 'power-chest' && (item.gameplay.chestId || item.placement.id) === chestId);
+      if (!entry) continue;
+      this.claimedChests.set(chestId, this.timeMs);
+      claimed.push(chestId);
+    }
+    return claimed;
+  }
 
   setEntityState(id, stateName) {
     const placement = this.document.placements.find(item => item.id === id);
@@ -163,7 +185,7 @@ export class LevelRuntime {
     }
     this.timeMs = 0; this._motionEpochMs = 0; this.deaths = 0; this.deathCause = null; this.deadRemainingMs = 0; this.events = [];
     this.triggerTimes.clear(); this.permanentGone.clear(); this._vanishInside.clear(); this._vanishRestored.clear(); this._vanishEmitted.clear(); this._activeInteractions.clear(); this._previousStates.clear(); this._entities.clear(); this._actors.clear(); this._projectiles.clear(); this._accumulator = 0; this._coyoteMs = 0; this._jumpHeld = false; this._jumpBufferRemainingMs = 0;
-    this.coins = 0; this.collected.clear(); this.checkpoint = null; this.reachedCheckpoints.clear(); this.farthestX = 0; this.progress = 0; this.finished = false; this._roleContacts.clear();
+    this.coins = 0; this.collected.clear(); this.collectedAtMs.clear(); this.claimedChests.clear(); this.checkpoint = null; this.reachedCheckpoints.clear(); this.checkpointReachedAtMs.clear(); this.farthestX = 0; this.progress = 0; this.finished = false; this._roleContacts.clear();
     this._putAtSpawn();
     this._initActors();
     return this.getStates();
@@ -174,8 +196,8 @@ export class LevelRuntime {
   _kill(cause) {
     if (this.deadRemainingMs > 0) return;
     this.deaths += 1; this.deathCause = cause?.state?.definition?.name || 'Hazard'; this.deadRemainingMs = this.respawnMs; this.player.vx = 0; this.player.vy = 0; this.player.grounded = false; this.player.standingId = null;
-    this.coins = this.checkpoint?.coins ?? 0;
-    this.collected = new Set(this.checkpoint?.collected ?? []);
+    // Collected coins and their points persist for this level/run. Only
+    // traversal progress is checkpoint-protected and rolled back on death.
     this.farthestX = this.checkpoint?.farthestX ?? 0;
     this.progress = this.checkpoint?.progress ?? 0;
     this._emit({ type: 'death', cause: cause ? { id: cause.placement.id, kind: cause.state.definition.kind, name: cause.state.definition.name } : null });
@@ -183,11 +205,11 @@ export class LevelRuntime {
   }
 
   _respawn() {
-    this.deadRemainingMs = 0; this._motionEpochMs = this.timeMs; this.triggerTimes.clear(); this._vanishInside.clear(); this._vanishRestored.clear(); this._vanishEmitted.clear(); this._activeInteractions.clear(); this._previousStates.clear(); this._entities.clear(); this._initActors(); this._jumpHeld = false; this._coyoteMs = 0; this._jumpBufferRemainingMs = 0; this.deathCause = null;
+    this.deadRemainingMs = 0; this._motionEpochMs = this.timeMs; this.triggerTimes.clear(); this._vanishInside.clear(); this._vanishRestored.clear(); this._vanishEmitted.clear(); this._activeInteractions.clear(); this._previousStates.clear(); this._entities.clear(); this.collectedAtMs.clear(); this._initActors(); this._jumpHeld = false; this._coyoteMs = 0; this._jumpBufferRemainingMs = 0; this.deathCause = null;
     if (this.checkpoint) {
-      this.coins = this.checkpoint.coins; this.collected = new Set(this.checkpoint.collected); this.farthestX = this.checkpoint.farthestX; this.progress = this.checkpoint.progress;
+      this.farthestX = this.checkpoint.farthestX; this.progress = this.checkpoint.progress;
       Object.assign(this.player, { x: this.checkpoint.x, y: this.checkpoint.y, vx: 0, vy: 0, grounded: false, standingId: null });
-    } else { this.coins = 0; this.collected.clear(); this.farthestX = 0; this.progress = 0; this._putAtSpawn(); }
+    } else { this.farthestX = 0; this.progress = 0; this._putAtSpawn(); }
     this._roleContacts.clear(); this._emit({ type: 'respawn' });
   }
 
@@ -216,11 +238,11 @@ export class LevelRuntime {
     }
     for (const entry of overlapping.filter(item => item.state.gameplay.role === 'coin')) {
       const id = entry.placement.id, gameplay = entry.state.gameplay;
-      if (!this.collected.has(id)) { const value = Math.max(0, Math.trunc(Number(gameplay.coinValue) || 1)); this.collected.add(id); this.coins += value; this._emit({ type: 'coin', id, value, total: this.coins }); }
+      if (!this.collected.has(id)) { const value = Math.max(0, Math.trunc(Number(gameplay.coinValue) || 1)); this.collected.add(id); this.collectedAtMs.set(id, this.timeMs); this.coins += value; this._emit({ type: 'coin', id, value, total: this.coins }); }
     }
     for (const entry of overlapping.filter(item => item.state.gameplay.role === 'checkpoint').sort((a, b) => (Number.isFinite(a.state.gameplay.order) ? a.state.gameplay.order : this._checkpointOrders.get(a.placement.id) || 0) - (Number.isFinite(b.state.gameplay.order) ? b.state.gameplay.order : this._checkpointOrders.get(b.placement.id) || 0))) {
       const id = entry.placement.id, gameplay = entry.state.gameplay, order = Number.isFinite(gameplay.order) ? gameplay.order : this._checkpointOrders.get(id) || 0;
-      this.reachedCheckpoints.add(id);
+      this.reachedCheckpoints.add(id); if (!this.checkpointReachedAtMs.has(id)) this.checkpointReachedAtMs.set(id, this.timeMs);
       if (!this.checkpoint || order > this.checkpoint.order) { const anchor = gameplayAnchor(entry.state, this.player.width, this.player.height); this.checkpoint = { id, order, x: anchor.x, y: anchor.y, coins: this.coins, collected: [...this.collected], farthestX: this.farthestX, progress: this.progress }; this.reachedCheckpoints.add(id); this._emit({ type: 'checkpoint', id, order }); }
     }
     const exit = overlapping.find(entry => entry.state.gameplay.role === 'exit');

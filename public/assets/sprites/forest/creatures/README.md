@@ -63,7 +63,7 @@ Each enemy also has a single-frame `hurt` animation (column 6) and `death` anima
 
 ## Behavior wiring for Codex
 
-1. **Brambleback Boar:** patrol along valid platforms, detect player within range, run toward them, then telegraph and lunge. Body contact can deal damage while alive. Only enable the lunge hitbox on the designated attack frame.
+1. **Brambleback Boar:** patrol along valid platforms, detect player within range, run toward them, then telegraph and lunge. Body contact is harmless. Only enable the lunge hitbox on the designated attack frame of a mapped runtime sequence.
 2. **Sporecap Troll:** slower platform patrol, approach player, wind up with frame 4, then ground-slam at frame 5. Restrict the slam damage to a localized forward/ground attack region.
 3. **Leafwing Owl:** follow a flight path without gravity, animate the wingbeat hover, then dip/dive at a target and return to hover. Use the dive damage frame only as specified.
 4. **Snapvine Pod:** stand rooted to a platform; at regular cooldowns, face/aim toward player and play `fire`. On the specified release frame, spawn one independently simulated `glowseed` projectile at `spawn_offset_from_pivot_px`, accounting for left/right sprite flipping. The drawn orb in the release sprite is *only* a visual cue.

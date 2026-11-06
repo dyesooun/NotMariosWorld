@@ -56,7 +56,7 @@ test('hazards and beam timing kill, while reset clears cycles', () => {
   assert.equal(runtime.triggerTimes.size, 0);
 });
 
-test('forest start and checkpoint banner midpoints land safely above solid ground', () => {
+test('forest start and checkpoint banners use their authored foot anchors and land safely', () => {
   const samplePath = new URL('../../../public/assets/sprites/forest/tileset/WhimsicalForest.json', import.meta.url);
   if (!fs.existsSync(samplePath)) return;
   const document = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
@@ -69,7 +69,8 @@ test('forest start and checkpoint banner midpoints land safely above solid groun
     const landingDocument = structuredClone(document);
     setLevelSpawn(landingDocument, banner.id);
     const landing = new LevelRuntime(landingDocument);
-    const anchor = { x: banner.x + banner.width / 2 - landing.player.width / 2, y: banner.y + banner.height / 2 - landing.player.height };
+    const foot = banner.gameplay.anchor || [.5, .5];
+    const anchor = { x: banner.x + banner.width * foot[0] - landing.player.width / 2, y: banner.y + banner.height * foot[1] - landing.player.height };
     assert.deepEqual(landing.spawn, anchor);
     advanceFor(landing, 1);
     assert.equal(landing.deaths, 0, `${banner.id} must not drop the player through the ground`);
@@ -315,21 +316,21 @@ function coreFixture(){
 }
 function touch(runtime,doc,id){const p=doc.placements.find(p=>p.id===id);Object.assign(runtime.player,{x:p.x,y:p.y,vx:0,vy:0});return runtime.advance(.02);}
 
-test('checkpoint rollback protects earlier coins and restores later coins without duplicating gains',()=>{
+test('checkpoint rollback preserves all collected coins without duplicating gains',()=>{
   const {doc,add}=coreFixture();add('coin-a','coin',40,{coinValue:2});add('cp-a','checkpoint',100);add('coin-b','coin',200,{coinValue:3});add('cp-b','checkpoint',300);add('trap','decoy-chest',500);
   const r=new LevelRuntime(doc,{spawn:{x:0,y:100},gravity:0,respawnMs:20});touch(r,doc,'coin-a');touch(r,doc,'cp-a');assert.equal(r.checkpoint.order,1);assert.equal(r.checkpoint.coins,2);
   touch(r,doc,'coin-b');assert.equal(r.coins,5);touch(r,doc,'trap');advanceFor(r,.04);
-  assert.equal(r.coins,2);assert.deepEqual([...r.collected],['coin-a']);assert.equal(r.player.x,r.checkpoint.x);
-  assert.equal(r.getStates().find(e=>e.placement.id==='coin-b').state.collected,undefined);
+  assert.equal(r.coins,5);assert.deepEqual([...r.collected],['coin-a','coin-b']);assert.equal(r.player.x,r.checkpoint.x);
+  assert.equal(r.getStates().find(e=>e.placement.id==='coin-b').state.collected,true);
   touch(r,doc,'coin-b');touch(r,doc,'coin-a');assert.equal(r.coins,5);
   touch(r,doc,'cp-b');const saved={...r.checkpoint};touch(r,doc,'cp-a');assert.deepEqual(r.checkpoint,saved);
   assert.equal(r.getStates().find(e=>e.placement.id==='cp-a').state.checkpointReached,true);assert.equal(r.getStates().find(e=>e.placement.id==='cp-b').state.checkpointReached,true);
 });
 
-test('death before any checkpoint clears collection and auto-order uses placement roles and authored X',()=>{
+test('death before any checkpoint preserves collection and auto-order uses placement roles and authored X',()=>{
   const {doc,add}=coreFixture();add('later','checkpoint',300);add('earlier','checkpoint',100);add('coin','coin',40);add('trap','decoy-chest',500);
   const r=new LevelRuntime(doc,{spawn:{x:0,y:100},gravity:0,respawnMs:20});touch(r,doc,'coin');touch(r,doc,'trap');advanceFor(r,.04);
-  assert.equal(r.coins,0);assert.equal(r.collected.size,0);assert.equal(r.checkpoint,null);
+  assert.equal(r.coins,1);assert.equal(r.collected.size,1);assert.equal(r.checkpoint,null);
   touch(r,doc,'later');assert.equal(r.checkpoint.order,2);touch(r,doc,'earlier');assert.equal(r.checkpoint.id,'later');assert.equal(r.reachedCheckpoints.has('earlier'),true);
 });
 
@@ -385,4 +386,24 @@ test('chosen asset provides initial respawn while reached checkpoints take over'
   touch(runtime,doc,'trap');advanceFor(runtime,.04);
   assert.equal(runtime.player.x,checkpointX);
   runtime.reset();assert.equal(runtime.player.x,runtime.spawn.x);assert.equal(runtime.checkpoint,null);
+});
+
+test('confirmed reward claims remove artwork and collision across death, leaving decoys intact',()=>{
+  const {doc,add}=coreFixture();
+  add('reward','power-chest',100,{chestId:'reward-id'});
+  add('decoy','decoy-chest',500,{chestId:'decoy-id'});
+  const runtime=new LevelRuntime(doc,{spawn:{x:40,y:100},gravity:0,respawnMs:20});
+  assert.deepEqual(runtime.claimPowerChests(['reward-id','decoy-id','unknown']),['reward-id']);
+  const reward=()=>runtime.getStates().find(e=>e.placement.id==='reward').state;
+  assert.equal(reward().vanished,true);
+  assert.equal(reward().collectedAtMs,0);
+  assert.equal(reward().physics.mode,'none');
+  assert.notEqual(runtime.getStates().find(e=>e.placement.id==='decoy').state.vanished,true);
+  touch(runtime,doc,'decoy');advanceFor(runtime,.04);
+  assert.equal(runtime.deaths,1);
+  assert.equal(reward().vanished,true);
+  assert.deepEqual(runtime.claimPowerChests(['reward-id']),[]);
+  runtime.reset();
+  assert.notEqual(reward().vanished,true);
+  assert.equal(runtime.claimedChests.size,0);
 });

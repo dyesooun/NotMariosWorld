@@ -40,7 +40,7 @@ Precise named animation sequences, frame rates, one-shot flags, damage frames, p
 
 ## Recommended behavior
 
-- **Ember Hound (land #1):** platform patrol → chase → lunge/bite; deals contact damage while alive.
+- **Ember Hound (land #1):** platform patrol → chase → lunge/bite; body contact is harmless, with damage limited to designated attack frames of a mapped runtime sequence.
 - **Slag Minotaur (land #2):** slow platform patrol → windup → ground slam; activate the hammer hitbox on the impact frame only.
 - **Cinder Imp (flying #1):** hover/wave along a flight path → pursue → dive; gravity disabled.
 - **Infernal Cannon (projectile #1):** mostly stationary; fire animation spawns a **separate `fireball` entity** once on the specified frame. The fireball loops its four flight frames, then plays a one-shot impact and despawns.

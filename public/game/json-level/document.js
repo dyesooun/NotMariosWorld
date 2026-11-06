@@ -31,12 +31,13 @@ export function resolvePlacement(document, placement) {
   const definition = document.definitions[placement.definitionId];
   if (!definition) throw new Error(`Missing definition: ${placement.definitionId}`);
   return {
-    definition, visual: definition.visual, physics: definition.physics,
+    id: placement.id, definition, visual: definition.visual, physics: definition.physics,
     behavior: { ...definition.behavior, ...placement.settings },
     x: placement.x, y: placement.y, width: placement.width, height: placement.height,
     layer: placement.layer, flipX: !!placement.flipX, rotation: Number.isFinite(placement.rotation) ? placement.rotation : 0,
     animation: placement.animation || definition.visual.defaultAnimation || null,
     gameplay: resolveGameplay(definition, placement),
+    vfx: { ...definition.vfx, ...placement.vfx },
   };
 }
 
@@ -61,6 +62,25 @@ export function validateDocument(document) {
     if (!/^#[0-9a-f]{6}$/i.test(document.world.backgroundColor)) error('world.backgroundColor', 'must be a six-digit hex color');
     if(document.world.spawn!=null&&(!object(document.world.spawn)||!['x','y'].every(key=>finite(document.world.spawn[key])&&Math.abs(document.world.spawn[key])<=2000000)))error('world.spawn','must contain finite x/y coordinates in logical pixels');
     if (document.world.spawnPlacementId != null && (typeof document.world.spawnPlacementId !== 'string' || !document.world.spawnPlacementId.trim() || document.world.spawnPlacementId.length > 200)) error('world.spawnPlacementId', 'must be a nonempty string of at most 200 characters');
+    const atmosphere = document.world.atmosphere;
+    if (atmosphere != null) {
+      if (!object(atmosphere)) error('world.atmosphere', 'must be an object');
+      else {
+        if (atmosphere.enabled != null && typeof atmosphere.enabled !== 'boolean') error('world.atmosphere.enabled', 'must be a boolean');
+        if (atmosphere.color != null && !/^#[0-9a-f]{6}$/i.test(atmosphere.color)) error('world.atmosphere.color', 'must be a six-digit hex color');
+        if (atmosphere.opacity != null && (!finite(atmosphere.opacity) || atmosphere.opacity < 0 || atmosphere.opacity > 1)) error('world.atmosphere.opacity', 'must be between 0 and 1');
+        if (atmosphere.cards != null) {
+          if (!Array.isArray(atmosphere.cards) || atmosphere.cards.length > 100) error('world.atmosphere.cards', 'must contain at most 100 fog cards');
+          else for (const [i, card] of atmosphere.cards.entries()) {
+            const path = `world.atmosphere.cards[${i}]`;
+            if (!object(card)) { error(path, 'must be an object'); continue; }
+            for (const key of ['x', 'y', 'width', 'height']) if (!finite(card[key]) || Math.abs(card[key]) > 2000000 || (['width', 'height'].includes(key) && card[key] <= 0)) error(`${path}.${key}`, 'must contain finite logical geometry with positive width/height');
+            if (card.drift != null && (!finite(card.drift) || card.drift < 0 || card.drift > 500)) error(`${path}.drift`, 'must be between 0 and 500 pixels');
+            if (card.speed != null && (!finite(card.speed) || Math.abs(card.speed) > 100)) error(`${path}.speed`, 'must be within ±100 pixels/second');
+          }
+        }
+      }
+    }
   }
   for (const key of ['assets', 'definitions']) if (!object(document[key])) error(key, 'must be an object');
   if (!Array.isArray(document.placements)) error('placements', 'must be an array');
@@ -162,6 +182,13 @@ export function validateDocument(document) {
     if (value.decoyKind != null && !['spikes', 'bomb'].includes(value.decoyKind)) error(`${path}.decoyKind`, 'must be spikes or bomb');
     if (value.nonblocking != null && typeof value.nonblocking !== 'boolean') error(`${path}.nonblocking`, 'must be a boolean');
   }
+  function vfx(value, path) {
+    if (value == null) return;
+    if (!object(value)) { error(path, 'must be an object'); return; }
+    if (value.enabled != null && typeof value.enabled !== 'boolean') error(`${path}.enabled`, 'must be a boolean');
+    if (value.color != null && !/^#[0-9a-f]{6}$/i.test(value.color)) error(`${path}.color`, 'must be a six-digit hex color');
+    if (value.hazardType != null && !['auto', 'mushroom', 'thorns', 'spike', 'generic'].includes(value.hazardType)) error(`${path}.hazardType`, 'must be auto, mushroom, thorns, spike, or generic');
+  }
   for (const [definitionId, definition] of Object.entries(document.definitions)) {
     const path = `definitions.${definitionId}`;
     if (!object(definition)) { error(path, 'must be an object'); continue; }
@@ -196,6 +223,7 @@ export function validateDocument(document) {
       if (physics.walkSurfaces != null && (!Array.isArray(physics.walkSurfaces) || physics.walkSurfaces.some(s => !['horizontal','slope'].includes(s.kind) || !['x1','y1','x2','y2'].every(k => finite(s[k]))))) error(path, 'invalid walking surfaces');
     }
     behavior(definition.behavior, `${path}.behavior`);
+    vfx(definition.vfx, `${path}.vfx`);
     if (definition.behavior?.type === 'projectile' && definition.kind !== 'projectile') error(path, 'projectile behavior requires projectile kind');
     if (definition.kind === 'projectile' && definition.behavior?.type !== 'projectile') error(path, 'projectile kind requires projectile behavior');
     if (definition.behavior?.actorType === 'shooter' && definition.behavior?.projectileDefinitionId && document.definitions[definition.behavior.projectileDefinitionId]?.kind !== 'projectile') error(path, 'projectile definition must have projectile kind');
@@ -233,6 +261,7 @@ export function validateDocument(document) {
     }
     if (placementBehavior.type === 'projectile' && definition.kind !== 'projectile') error(`${path}.settings`, 'projectile behavior requires projectile kind');
     gameplay(placement.gameplay, `${path}.gameplay`);
+    vfx(placement.vfx, `${path}.vfx`);
     const supportId = placement.settings?.supportId;
     if (supportId && !document.placements.some(p => p.id === supportId && document.definitions[p.definitionId]?.kind === 'platform')) error(path, 'support platform does not exist');
   }

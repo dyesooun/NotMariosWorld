@@ -12,12 +12,18 @@ import { mountSequenceEditor } from './sequence-editor.js';
 import {getGroupBounds,transformGroup} from './group-transforms.js';
 import {GAMEPLAY_ROLES,resolveGameplay,gameplayTriggerPolygons,setLevelSpawn} from './gameplay.js';
 import {renderGameplayControls} from './gameplay-controls.js';
+import {renderVfxControls} from './vfx-controls.js';
+import {renderAtmosphereControls} from './atmosphere-controls.js';
+import {drawAtmosphere} from '../../public/game/json-level/atmosphere.js';
+import {vfxBounds} from '../../public/game/json-level/vfx.js';
+import {drawDetectionRanges,drawProjectileSpawns} from './range-overlay.js';
+import {projectileSpawnOffset} from '../../public/game/projectiles.js';
 
 const $ = selector => document.querySelector(selector);
 const stage = $('#stage'), context = stage.getContext('2d'), STORAGE_KEY = 'nmw-level-editor';
 let doc, history, images = new Map(), selectedId = null, selectedDef = null;
 const selectedIds=new Set();
-let mode = 'select', tab = 'placement', filter = 'all', showGrid = true, showCollisions = false;
+let mode = 'select', tab = 'placement', filter = 'all', showGrid = true, showCollisions = false, showRanges = true;
 let view = { x: -32, y: -32, zoom: 1 }, pointer = null, playing = true, timeMs = 0, lastFrame = 0;
 const triggerTimes = new Map(), LIBRARY_REVISION = 2;
 const previewStates = new Map();
@@ -130,11 +136,16 @@ function draw() {
     context.stroke();
   }
   for (const placement of [...doc.placements].sort((a, b) => a.layer - b.layer)) {
-    const state = previewState(placement),box=placementBounds(state);
+    const state = previewState(placement),box=vfxBounds(state);
     if (!selectedIds.has(placement.id)&&(box.x + box.width < view.x || box.x > view.x + bounds.width / view.zoom || box.y + box.height < view.y || box.y > view.y + bounds.height / view.zoom)) continue;
     drawPlacement(context, doc, placement, images, { timeMs, ...previewOptions(placement), collisions: showCollisions, selected: selectedIds.has(placement.id) });
     if(showCollisions)for(const polygon of gameplayTriggerPolygons(state)){context.beginPath();polygon.forEach((p,i)=>i?context.lineTo(p.x,p.y):context.moveTo(p.x,p.y));context.closePath();context.strokeStyle='#f5d778';context.lineWidth=1/view.zoom;context.stroke();}
   }
+  drawAtmosphere(context,doc,{timeMs,camera:view,width:bounds.width/view.zoom,height:bounds.height/view.zoom});
+  const rangePlacements = selectedIds.size ? doc.placements.filter(p => selectedIds.has(p.id)) : selectedDef ? doc.placements.filter(p => p.definitionId === selectedDef) : [];
+  const overlayStates = rangePlacements.map(previewState), overlayView = { zoom: view.zoom, viewport: { x: view.x, y: view.y, width: bounds.width / view.zoom, height: bounds.height / view.zoom } };
+  if (showRanges) drawDetectionRanges(context, overlayStates, overlayView);
+  drawProjectileSpawns(context, overlayStates, overlayView);
   const selected=selectedPlacement();
   if(selected){
     const group=selectedPlacements(),state=group.length>1?getGroupBounds(group.map(previewState)):previewState(selected),handles=group.length===1&&editingTrigger&&state.behavior.vanish?triggerHandles(state):getTransformHandles(state,view),top=handles.find(h=>h.id==='n'),rotate=handles.find(h=>h.id==='rotate');
@@ -184,33 +195,34 @@ function renderRuntimeBehavior(parent, definition, onChange) {
   const behavior = definition.behavior || {}, animations = Object.keys(definition.visual?.animations || {});
   const runtime = section(parent, 'Runtime behavior');
   const isProjectile = definition.kind === 'projectile' || behavior.type === 'projectile';
-  const role = behavior.actorType || (behavior.type === 'enemy' ? 'creature' : 'none');
+  const role = behavior.actorType || 'none';
   field(runtime, 'Actor type', isProjectile ? 'projectile' : role, value => onChange(d => {
     if (value === 'projectile') d.kind = 'projectile', d.behavior = { type:'projectile', flightAnimation: animations[0] || null, impactAnimation:null, speed:120, bodySize:[16,16], lifetimeMs:3000, fireIntervalMs:4800 };
     else if (value === 'creature' || value === 'shooter') d.kind='enemy', d.behavior={ type:'enemy', actorType:value, states:{idle:animations[0]||null,...(value==='shooter'?{shooting:null}:{moving:null}),playerDetected:null,dead:null}, speed:value==='shooter'?0:42, detectRange:value==='shooter'?500:400, fireIntervalMs:4800, detectedMode:'once' };
     else if (d.kind==='enemy'||d.kind==='projectile') d.kind='character', d.behavior={ type:'static' };
   }), { choices:[['none','None'],['creature','Creature'],['shooter','Shooter'],['projectile','Projectile']] });
-  const current = () => doc().definitions[definition.id];
+  const current = () => doc.definitions[definition.id];
   const choose = (label, key, available) => field(runtime, label, current().behavior?.states?.[key] || '', value => onChange(d => { d.behavior.states ||= {}; d.behavior.states[key]=value||null; }), { choices:[['','Not assigned'], ...available.map(name=>[name,name])] });
   if (!isProjectile && (role==='creature'||role==='shooter')) {
     const slots = role==='shooter' ? [['idle','Idle animation'],['shooting','Shooting animation'],['playerDetected','Player detected animation'],['dead','Dead animation']] : [['idle','Idle animation'],['moving','Moving animation'],['playerDetected','Player detected animation'],['dead','Dead animation']];
     slots.forEach(([key,label])=>choose(label,key,animations));
     if (role==='shooter') {
-      const projectiles=Object.values(doc().definitions).filter(d=>d.kind==='projectile');
+      const projectiles=Object.values(doc.definitions).filter(d=>d.kind==='projectile');
       field(runtime,'Projectile asset',behavior.projectileDefinitionId||'',value=>onChange(d=>{if(value)d.behavior.projectileDefinitionId=value;else delete d.behavior.projectileDefinitionId;}),{choices:[['','Not assigned'],...projectiles.map(d=>[d.id,d.name])]});
       const shooting=animations.includes(behavior.states?.shooting)?behavior.states.shooting:'';
       if (shooting) field(runtime,'Fire on frame',(current().visual.animations[shooting].spawn_projectile_at_index ?? 0)+1,value=>onChange(d=>{const a=d.visual.animations[shooting];const n=Number(value)-1;if(!Number.isInteger(n)||n<0||n>=a.frames.length)throw new Error(`Fire on frame must be between 1 and ${a.frames.length}.`);a.spawn_projectile_at_index=n;}),{type:'number'});
-      for(const [axis,label] of [[0,'Projectile spawn offset X'],[1,'Projectile spawn offset Y']])field(runtime,label,behavior.spawnOffset?.[axis]??0,value=>onChange(d=>{d.behavior.spawnOffset=[...(d.behavior.spawnOffset||[0,0])];d.behavior.spawnOffset[axis]=value;}),{type:'number'});
-      element('p',runtime,'Spawn offsets are fractions of the actor size, measured from its visual pivot.','muted');
+      for(const [axis,label] of [[0,'Projectile spawn offset X'],[1,'Projectile spawn offset Y']])field(runtime,label,projectileSpawnOffset(definition.visual,behavior)[axis],value=>onChange(d=>{d.behavior.spawnOffset=[...projectileSpawnOffset(d.visual,d.behavior)];d.behavior.spawnOffset[axis]=value;}),{type:'number'});
+      element('p',runtime,'The cyan crosshair marks projectile spawn for selected shooters. Adjust the offsets to move it. Offsets are fractions of actor size from its visual pivot; unassigned offsets use the forward edge at half height. Explicit 0, 0 fires at the pivot.','muted');
     }
     field(runtime,'Movement speed',behavior.speed ?? (role==='shooter'?0:42),value=>onChange(d=>{d.behavior.speed=value;}),{type:'number'});
     field(runtime,'Detection range',behavior.detectRange ?? (role==='shooter'?500:400),value=>onChange(d=>{d.behavior.detectRange=value;}),{type:'number'});
+    element('p',runtime,'Ranges shows the world-aligned horizontal ± range and player-feet ±140 px gate used by the runtime. Creatures also require the same supporting platform.','muted');
     field(runtime,'Fire interval ms',behavior.fireIntervalMs ?? 4800,value=>onChange(d=>{d.behavior.fireIntervalMs=value;}),{type:'number'});
   } else if (isProjectile) {
     field(runtime,'Flight animation',behavior.flightAnimation || '',value=>onChange(d=>{d.behavior.flightAnimation=value||null;}),{choices:[['','Not assigned'],...animations.map(name=>[name,name])]});
     field(runtime,'Impact animation',behavior.impactAnimation || '',value=>onChange(d=>{d.behavior.impactAnimation=value||null;}),{choices:[['','Not assigned'],...animations.map(name=>[name,name])]});
   }
-  element(runtime,'p',isProjectile?'Engine uses the flight/impact mappings and shared 120 px/s, 16×16, 3-second projectile defaults.':'Engine uses these functional state mappings; sequence preview remains local to the editor.','muted');
+  element('p',runtime,isProjectile?'Engine uses the flight/impact mappings and shared 120 px/s, 16×16, 3-second projectile defaults.':'Engine uses these functional state mappings; sequence preview remains local to the editor.','muted');
 }
 function renderDefinition(parent, definition) {
   element('h3', parent, definition.name);
@@ -228,10 +240,13 @@ function renderDefinition(parent, definition) {
     if(p&&previousRole!=='spawnpoint'&&resolveGameplay(d,p).role==='spawnpoint')project.world.spawnPlacementId=p.id;
   })});
   renderRuntimeBehavior(parent, definition, callback => editDefinition(callback));
+  renderVfxControls(section(parent,'Prop VFX defaults'),{definition,onChange:value=>editDefinition(d=>{d.vfx=value;})});
   field(parent,'Asset role',definition.kind,value=>editDefinition(d=>{
     d.kind=value;
     if(value==='platform')d.behavior={type:'static'};
     else if(value==='beam')d.behavior={type:'beam',onMs:1000,offMs:1000,startMs:0,phaseMs:0,startState:'on'};
+    else if(value==='projectile'&&d.behavior.type!=='projectile')d.behavior={type:'projectile',flightAnimation:d.visual.defaultAnimation||Object.keys(d.visual.animations||{})[0]||null,impactAnimation:null,speed:120,lifetimeMs:3000};
+    else if(value==='enemy'&&d.behavior.type!=='enemy')d.behavior={type:'enemy'};
     else if(!['enemy','projectile','beam'].includes(value))d.behavior={type:'static'};
   }),{choices:['platform','prop','chest','hazard','background','character','enemy','beam','projectile']});
   field(parent, 'Default width', definition.size.width, value => editDefinition(d => { d.size.width = value; }), { type: 'number' });
@@ -241,6 +256,8 @@ function renderDefinition(parent, definition) {
   field(visual, 'Atlas asset', definition.visual.assetId, value => editDefinition((d, project) => {
     const frameId = Object.keys(project.assets[value].frames)[0];
     d.visual = { assetId: value, frameId, ...(d.kind === 'beam' ? { onFrameId: frameId, offFrameId: frameId } : {}) };
+    if(d.behavior.states)for(const key of Object.keys(d.behavior.states))d.behavior.states[key]=null;
+    delete d.behavior.flightAnimation;delete d.behavior.impactAnimation;
     for (const p of project.placements.filter(p => p.definitionId === d.id)) delete p.animation;
   }), { choices: Object.values(doc.assets).map(a => [a.id, a.name]) });
   const choices = Object.entries(doc.assets[definition.visual.assetId].frames).map(([key, value]) => [key, value.name || value.display_name || key]);
@@ -248,6 +265,8 @@ function renderDefinition(parent, definition) {
     for (const [key, label] of [['onFrameId','ON frame'],['offFrameId','OFF frame']]) field(visual, label, definition.visual[key], value => editDefinition(d => { d.visual[key] = value; }), { choices });
   } else field(visual, 'Static frame', definition.visual.frameId, value => editDefinition((d, project) => {
     d.visual.frameId = value; delete d.visual.animations; delete d.visual.defaultAnimation;
+    if(d.behavior.states)for(const key of Object.keys(d.behavior.states))d.behavior.states[key]=null;
+    delete d.behavior.flightAnimation;delete d.behavior.impactAnimation;
     for (const p of project.placements.filter(p => p.definitionId === d.id)) delete p.animation;
   }), { choices });
   element('p', visual, 'Image changes preserve placement and collision geometry. Selecting a static frame replaces its animation mapping.', 'muted');
@@ -288,6 +307,7 @@ function renderPlacement(parent, placement) {
     p.gameplay=value;
     if(previousRole!=='spawnpoint'&&resolveGameplay(project.definitions[p.definitionId],p).role==='spawnpoint')project.world.spawnPlacementId=p.id;
   })});
+  renderVfxControls(section(parent,'Prop VFX'),{definition,placement,onChange:value=>editPlacement(p=>{p.vfx=value;})});
   const area = section(parent, 'Placement behavior');
   const number = (label, key, fallback) => field(area, label, behavior[key] ?? fallback, value => editPlacement(p => { p.settings[key] = value; }), { type: 'number' });
   const activeMotion=behavior.motion===undefined?(behavior.type==='moving'?behavior:null):behavior.motion;
@@ -299,7 +319,7 @@ function renderPlacement(parent, placement) {
     element('p',area,'One complete back-and-forth cycle uses this duration. Movement runs alongside animations and beam timing.','muted');
   }
   if (definition.kind === 'platform') {
-    field(area,'Vanish after trigger entry',!!behavior.vanish,value=>{triggerTimes.delete(placement.id);editPlacement(p=>{p.settings.vanish=value?{triggerVolume:[0,-.5,1,.5],countdownMs:1000}:null;});},{type:'checkbox'});
+    field(area,'Vanish after trigger entry',!!behavior.vanish,value=>{triggerTimes.delete(placement.id);editPlacement(p=>{p.settings.vanish=value?{triggerVolume:[0,-.5,1,.5],countdownMs:3000}:null;});},{type:'checkbox'});
     if(behavior.vanish){
       const vanish=behavior.vanish;
       field(area,'Vanish countdown seconds',vanish.countdownMs/1000,value=>{triggerTimes.delete(placement.id);editPlacement(p=>{p.settings.vanish={...vanish,countdownMs:value*1000};});},{type:'number'});
@@ -315,6 +335,7 @@ function renderPlacement(parent, placement) {
       button(area,'Simulate trigger entry',()=>{triggerTimes.set(placement.id,timeMs);playing=true;lastFrame=0;$('#playBtn').textContent='Pause';});
       element('p',area,'Waiting for trigger entry','muted').id='vanishStatus';
       element('p',area,'Timed platforms return automatically and also reset on respawn. Permanent platforms stay gone across deaths until Restart. Reset restores all platforms in this editor preview.','muted');
+      element('p',area,'The platform blinks faster during its countdown. Timed platforms poof away; platforms restored on death break into fragments. Collision stays active until the countdown ends.','muted');
     }
   }
   if (definition.kind === 'beam') {
@@ -332,7 +353,7 @@ function renderPlacement(parent, placement) {
     element('p',area,'State selection is preview-only. The engine controls actual state changes.','muted');
   }
   if (definition.kind === 'enemy') {
-    number('Movement speed', 'speed', 42); number('Detection range', 'detectRange', 400); number('Fire interval ms', 'fireIntervalMs', 4800);
+    number('Movement speed', 'speed', 42); number('Detection range', 'detectRange', behavior.actorType === 'shooter' ? 500 : 400); number('Fire interval ms', 'fireIntervalMs', 4800);
     const platforms = doc.placements.filter(p => doc.definitions[p.definitionId].kind === 'platform');
     field(area, 'Support platform', placement.settings.supportId || '', value => editPlacement(p => { if (value) p.settings.supportId = value; else delete p.settings.supportId; }), { choices: [['','Not assigned'], ...platforms.map(p => [p.id, `${doc.definitions[p.definitionId].name} (${Math.round(p.x)}, ${Math.round(p.y)})`])] });
   }
@@ -342,6 +363,11 @@ function renderPlacement(parent, placement) {
 }
 function renderInspector() {
   const node = $('#inspectorContent'); node.replaceChildren();
+  document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  if(tab==='atmosphere'){
+    renderAtmosphereControls(node,{project:doc,center:{x:view.x+stage.clientWidth/view.zoom/2,y:view.y+stage.clientHeight/view.zoom/2},onChange:value=>change(project=>{if(value==null)delete project.world.atmosphere;else project.world.atmosphere=value;})});
+    return;
+  }
   if(selectedPlacements().length>1){
     element('h3',node,`${selectedIds.size} objects selected`);
     element('p',node,'Group transforms change placements together. Scale preserves proportions; rotation and flips use the group center.','muted');
@@ -543,6 +569,7 @@ function bind() {
   $('#flipSelectionY').onclick=()=>groupOperation({type:'flip',axis:'y',center:groupCenter()});
   $('#gridBtn').onclick = () => { showGrid = !showGrid; $('#gridBtn').classList.toggle('active', showGrid); };
   $('#collisionBtn').onclick = () => { showCollisions = !showCollisions; $('#collisionBtn').classList.toggle('active', showCollisions); };
+  $('#rangesBtn').onclick = () => { showRanges = !showRanges; $('#rangesBtn').classList.toggle('active', showRanges); $('#rangesBtn').setAttribute('aria-pressed', String(showRanges)); draw(); };
   $('#fitBtn').onclick = () => { view.zoom = Math.max(.02, Math.min(stage.clientWidth / doc.world.width, stage.clientHeight / doc.world.height) * .9); view.x = (doc.world.width - stage.clientWidth / view.zoom) / 2; view.y = (doc.world.height - stage.clientHeight / view.zoom) / 2; };
   $('#homeBtn').onclick = () => { view = { x: -32, y: -32, zoom: 1 }; }; $('#zoomIn').onclick = () => zoomAt(1.25); $('#zoomOut').onclick = () => zoomAt(.8);
   $('#playBtn').onclick = () => { playing = !playing; $('#playBtn').textContent = playing ? 'Pause' : 'Resume'; }; $('#resetPreview').onclick = resetPreview; $('#scrub').oninput = e => { timeMs = Number(e.target.value);lastFrame=0; };

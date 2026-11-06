@@ -1,5 +1,5 @@
 import { LEVELS, platformAt, enemyAt } from './levels.js';
-import { PROJECTILE_RULES } from './projectiles.js';
+import { PROJECTILE_RULES, projectileHeadTarget } from './projectiles.js';
 import { powerStrength } from './powers.js';
 import { DEFAULT_WORLD_ORDER, normalizeWorldOrder, worldOrdinal } from './world-order.js';
 import LevelRuntime from './json-level/level-runtime.js';
@@ -125,11 +125,12 @@ export function advanceStage(s) {
 }
 function restoreCheckpoint(s) {
   if (!s.checkpoint) {
-    s.current = 0; s.coins = 0; s.collected = []; s.progress = 0; s.distanceMax = 0;
+    // Collected coins and their points persist for this level/run. Death only
+    // rewinds traversal progress when no checkpoint has been reached.
+    s.progress = 0; s.distanceMax = 0;
     return;
   }
   const cp = s.checkpoint;
-  s.current = cp.current; s.coins = cp.coins; s.collected = [...cp.collected];
   s.progress = cp.progress; s.distanceMax = cp.distanceMax;
 }
 function respawn(s) {
@@ -172,8 +173,9 @@ function updateEnemies(s, level, dt) {
     if (e.x >= maxX) { e.x = maxX; e.patrolDirection = -1; e.facing = -1; }
     e.cooldown = Math.max(0, e.cooldown - dt);
     if (e.shooter && e.cooldown <= 0 && Math.abs(s.x - e.x) < 500 && sameBand) {
-      const dx = s.x - e.x, dy = (s.y - 22) - (e.y + e.h / 2), len = Math.hypot(dx, dy) || 1;
-      s.projectiles.push({ id: `${e.id}-shot-${Math.floor(s.elapsed * 10)}`, x: e.x + e.w / 2, y: e.y + e.h / 2, vx: dx / len * PROJECTILE_RULES.speed, vy: dy / len * PROJECTILE_RULES.speed, life: PROJECTILE_RULES.lifetime, ownerId: e.id, w: PROJECTILE_RULES.width, h: PROJECTILE_RULES.height });
+      const body = avatarBox(s), target = projectileHeadTarget({ x: body.x, y: body.y, width: body.w, height: body.h });
+      const x = e.x + e.w / 2, y = e.y + e.h / 2, dx = target.x - x, dy = target.y - y, len = Math.hypot(dx, dy) || 1;
+      s.projectiles.push({ id: `${e.id}-shot-${Math.floor(s.elapsed * 10)}`, x, y, vx: dx / len * PROJECTILE_RULES.speed, vy: dy / len * PROJECTILE_RULES.speed, life: PROJECTILE_RULES.lifetime, ownerId: e.id, w: PROJECTILE_RULES.width, h: PROJECTILE_RULES.height });
       e.cooldown = PROJECTILE_RULES.fireInterval;
     }
   }
@@ -222,7 +224,7 @@ export function step(s, input = {}, dt = 1 / 60, config = {}) {
   const b = avatarBox(s); let dead = false;
   for (const h of level.hazards) if ((h.kind === 'pit' && s.y > 590 && s.x > h.x && s.x < h.x + h.w) || (h.kind !== 'pit' && hit(b, hazardBox(h)))) { const e = die(s, h, s.elapsed, cfg); if (e) events.push(e); dead = true; break; }
   if (!dead && s.y > 590) { const e = die(s, { x: s.x, y: 500, kind: 'pit', actualKind: 'pit', label: level.theme === 'ocean' ? 'Took the scenic route into the sea.' : level.theme === 'hell' ? 'The lava was warmer than expected.' : 'Found a shortcut. It went straight down.' }, s.elapsed, cfg); if (e) events.push(e); dead = true; }
-  if (!dead) { for (const e of s.enemies) { if (e.dead || e.y >= 700 || !hit(b, e)) continue; if (s.vy > 0 && oldY <= e.y + e.h * .5) { e.dead = true; e.deathTimer = .5; s.vy = -cfg.jumpSpeed * .65; s.y = e.y; s.enemyKills = (s.enemyKills || 0) + 1; events.push({ type: 'enemyKill', id: e.id, kind: e.kind, x: e.x + e.w / 2, y: e.y }); } else { const name=e.kind.replaceAll('_',' ');const d = die(s, { ...e, kind: 'enemy', label: `Bonked by ${/^[aeiou]/i.test(name)?'an':'a'} ${name}` }, s.elapsed, cfg); if (d) events.push(d); dead = true; } break; } }
+  if (!dead) { for (const e of s.enemies) { if (e.dead || e.y >= 700 || !hit(b, e)) continue; if (s.vy > 0 && oldY <= e.y + e.h * .5) { e.dead = true; e.deathTimer = .5; s.vy = -cfg.jumpSpeed * .65; s.y = e.y; s.enemyKills = (s.enemyKills || 0) + 1; events.push({ type: 'enemyKill', id: e.id, kind: e.kind, x: e.x + e.w / 2, y: e.y }); } break; } }
   if (!dead) for (const p of s.projectiles) if (hit(b, { x: p.x - (p.w || PROJECTILE_RULES.width) / 2, y: p.y - (p.h || PROJECTILE_RULES.height) / 2, w: p.w || PROJECTILE_RULES.width, h: p.h || PROJECTILE_RULES.height })) { const d = die(s, { x: p.x, y: p.y, kind: 'projectile', label: 'A projectile found its mark.' }, s.elapsed, cfg); if (d) events.push(d); dead = true; break; }
   if (!dead) for (const c of level.coins) if (!s.collected.includes(c.id) && Math.hypot(s.x - c.x, s.y - c.y) < 34) { s.collected.push(c.id); s.coins += 1; s.current += cfg.coinPoints; }
   if (!dead && !s.finished && Array.isArray(level.checkpoints)) for (const cp of level.checkpoints) {

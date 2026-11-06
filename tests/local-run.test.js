@@ -134,13 +134,13 @@ test('a cutoff between catchup steps captures intermediate progress with millise
   assert.ok(final.summary.progress>90/14000);assert.ok(final.summary.progress<end);
 });
 
-test('death sends checkpoint replacement totals and clears chest contact in the same report',()=>{
+test('death preserves coin totals while rewinding traversal and clears chest contact in the same report',()=>{
   const events=[];const {runtime,reports}=make({now:()=>0,onEvent:event=>events.push(event)});
   const cp=LEVELS[1].checkpoints[0];runtime.state.checkpoint={...cp,current:20,coins:2,collected:['saved-coin'],distanceMax:cp.x-90,progress:.25};
   Object.assign(runtime.state,{current:50,coins:5,collected:['saved-coin','later-coin'],x:3940,y:620,distanceMax:4000,progress:.3});
   runtime.lastChestId=LEVELS[1].powerChests[0].id;runtime.tick(FIXED_STEP_SECONDS,{serverNow:100});
-  const report=reports.at(-1);assert.equal(report.chestId,null);assert.equal(report.summary.current,20);assert.equal(report.summary.coins,2);assert.equal(report.summary.deaths,1);
-  assert.deepEqual(runtime.state.collected,['saved-coin']);assert.equal(events.some(e=>e.type==='coin'),false);
+  const report=reports.at(-1);assert.equal(report.chestId,null);assert.equal(report.summary.current,50);assert.equal(report.summary.coins,5);assert.equal(report.summary.deaths,1);
+  assert.deepEqual(runtime.state.collected,['saved-coin','later-coin']);assert.equal(events.some(e=>e.type==='coin'),false);
 });
 
 test('local runtime follows the shared engine through all ordered worlds', () => {

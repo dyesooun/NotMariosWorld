@@ -14,21 +14,19 @@ test('authored forest JSON is the live forest course', () => {
   assert.deepEqual(LEVELS[1].jsonDocument.placements, forest.placements);
   assert.equal(forest.format, 'not-marios-world-level');
   assert.equal(forest.version, 2);
-  assert.equal(forest.world.width, 14200);
-  assert.equal(forest.world.spawnPlacementId, forest.placements.find(p => role(p) === 'spawnpoint')?.id);
+  assert.ok(Number.isFinite(forest.world.width) && forest.world.width > 0);
+  assert.equal(LEVELS[1].width, forest.world.width);
+  assert.equal(role(forest.placements.find(p => p.id === forest.world.spawnPlacementId)), 'spawnpoint');
 });
 
-test('authored forest contains the agreed gameplay roles and counts', () => {
+test('live forest interaction metadata follows the authored JSON without inserting old objects', () => {
   const placements = forest.placements;
-  assert.equal(placements.filter(p => role(p) === 'coin').length, 89);
-  assert.equal(placements.filter(p => role(p) === 'checkpoint').length, 2);
-  assert.equal(placements.filter(p => role(p) === 'power-chest').length, 0);
-  assert.equal(placements.filter(p => role(p) === 'decoy-chest').length, 0);
-  assert.equal(placements.filter(p => role(p) === 'creature').length, 0);
-  assert.deepEqual(placements.filter(p => role(p) === 'checkpoint').map(p => p.x), [2605, 5075]);
+  assert.deepEqual(LEVELS[1].coins.map(c => c.id), placements.filter(p => role(p) === 'coin').map(p => p.id));
+  assert.deepEqual(new Set(LEVELS[1].checkpoints.map(c => c.id)), new Set(placements.filter(p => role(p) === 'checkpoint').map(p => p.id)));
+  assert.equal(LEVELS[1].powerChests.length, placements.filter(p => role(p) === 'power-chest').length);
   const exit = placements.find(p => role(p) === 'exit');
   assert.ok(exit);
-  assert.equal(exit.x, 5740);
+  assert.equal(LEVELS[1].endX, exit.x);
 });
 
 test('authored forest placements retain stable ids and valid transforms', () => {

@@ -34,7 +34,7 @@ export function summarizeRun(state, { finishedAt = null } = {}) {
 const nonnegative = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER;
 
 // These are protocol/lifecycle checks, not a replay or anti-cheat simulation.
-// In particular, current points, coins, and progress may decrease on death.
+// Distance and progress may decrease on death; collected coin points persist.
 export function validateRunSummary(value, worldOrder) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const order = normalizeWorldOrder(worldOrder);

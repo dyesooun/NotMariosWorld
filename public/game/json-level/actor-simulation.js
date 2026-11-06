@@ -1,11 +1,22 @@
 import { getPreviewState } from './preview.js';
 import { boxPolygon, shapePolygons, polygonsOverlap, polygonBounds } from './runtime-geometry.js';
 import { localToWorld } from './transforms.js';
-import { PROJECTILE_RULES } from '../projectiles.js';
+import { PROJECTILE_RULES, projectileHeadTarget } from '../projectiles.js';
+import { projectileSpawnPoint } from './projectile-origin.js';
 
 const duration = animation => animation?.frames?.length && animation.fps > 0 ? animation.frames.length / animation.fps * 1000 : 0;
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const rectShapes = rect => rect ? [{ kind: 'rect', rect }] : [];
+
+function localRectPolygon(state, rect) {
+  if (!rect) return [];
+  return [[
+    localToWorld(state, { x: rect[0] * state.width, y: rect[1] * state.height }),
+    localToWorld(state, { x: (rect[0] + rect[2]) * state.width, y: rect[1] * state.height }),
+    localToWorld(state, { x: (rect[0] + rect[2]) * state.width, y: (rect[1] + rect[3]) * state.height }),
+    localToWorld(state, { x: rect[0] * state.width, y: (rect[1] + rect[3]) * state.height }),
+  ]];
+}
 
 function platformBounds(state) {
   const polygons = shapePolygons(state, 'solid');
@@ -88,6 +99,7 @@ export class ActorSimulation {
       actor.lastAuthoredX = authored.x; actor.lastAuthoredY = authored.y;
       const support = states.find(entry => entry.placement.id === actor.supportId);
       const bounds = support && !support.state.vanished ? platformBounds(support.state) : null;
+      actor.supportVisible = !actor.supportId || !!bounds;
       if (bounds) {
         actor.x += actor.lastSupportX == null ? 0 : support.state.x - actor.lastSupportX;
         actor.lastSupportX = support.state.x;
@@ -99,11 +111,11 @@ export class ActorSimulation {
       const dx = r.player.x + r.player.width / 2 - (actor.x + actor.placement.width / 2);
       const samePlatform = !!bounds && r.player.grounded && r.player.standingId === actor.supportId;
       const dy = Math.abs(r.player.y + r.player.height - (actor.y + actor.footOffset));
-      const eligible = Math.abs(dx) <= (b.detectRange ?? (creature ? 400 : 500)) && dy <= 140
+      const eligible = actor.supportVisible && Math.abs(dx) <= (b.detectRange ?? (creature ? 400 : 500)) && dy <= 140
         && (!creature || samePlatform);
       if (!eligible) {
         actor.detected = false;
-        this.transition(actor, creature && bounds && Number(b.speed ?? 42) > 0 ? 'moving' : 'idle');
+        this.transition(actor, creature && ((bounds && Number(b.speed ?? 42) > 0) || authored.behavior.motion) ? 'moving' : 'idle');
       } else {
         if (!actor.detected) {
           actor.detected = true;
@@ -147,15 +159,26 @@ export class ActorSimulation {
   applyActorState(actor, state, timeMs) {
     state.x = actor.x; state.y = actor.y; state.flipX = actor.facing < 0;
     state.actorState = actor.state; state.animation = actor.stateName;
+    if(actor.supportVisible===false)state.vanished=true;
     const animation = actor.definition.visual.animations?.[actor.stateName];
-    if (animation && ['playerDetected', 'shooting', 'dead'].includes(actor.state)) {
-      const index = clamp(Math.floor(Math.max(0, timeMs - actor.animationStartMs) / 1000 * animation.fps), 0, animation.frames.length - 1);
+    const animationElapsed = Math.max(0, timeMs - actor.animationStartMs);
+    if (animation?.frames?.length && animation.fps > 0) {
+      const frameIndex = Math.floor(animationElapsed / 1000 * animation.fps);
+      const oneShot = !animation.loop || ['playerDetected', 'shooting', 'dead'].includes(actor.state);
+      const index = oneShot ? clamp(frameIndex, 0, animation.frames.length - 1) : frameIndex % animation.frames.length;
       state.frameId = animation.frames[index];
+      // Actor transitions are one-shot cues even when their artwork loops.
+      // End their damage with the cue; explicitly looping movement/idle
+      // sequences retain their authored attack windows on each cycle.
+      if (Array.isArray(animation.damage_active_indices)) {
+        state.damageActive = (!oneShot || animationElapsed < duration(animation)) && animation.damage_active_indices.includes(index);
+      }
     }
-    // Actor body contact stays lethal independently of artistic attack windows.
-    const contact = state.physics.collider || state.physics.hitbox;
-    state.physics = { ...state.physics, mode: 'trigger', solidShapes: [], lethal: true, hitbox: contact, hazardShapes: rectShapes(contact) };
-    state.damageActive = true;
+    // The authored body is used for stomp detection only.  Lethal contact is
+    // restricted to an explicitly authored attack window and its hazard
+    // geometry; never replace that geometry with the body collider.
+    const attackAnimation = animation && Array.isArray(animation.damage_active_indices) && animation.damage_active_indices.length > 0;
+    state.physics = { ...state.physics, mode: 'trigger', solidShapes: [], lethal: !!attackAnimation && state.damageActive === true };
     if (actor.dead) {
       state.physics = { ...state.physics, lethal: false, mode: 'none', hazardShapes: [], interactionShapes: [], solidShapes: [] };
       if (!animation || timeMs - actor.deadAtMs + 1e-6 >= duration(animation)) state.vanished = true;
@@ -177,13 +200,16 @@ export class ActorSimulation {
     for (const entry of states) {
       const actor = r._actors.get(entry.placement.id);
       if (!actor || actor.dead || entry.state.vanished) continue;
-      const polygons = shapePolygons(entry.state, 'hazard');
-      if (!polygonsOverlap([body], polygons)) continue;
-      const top = Math.min(...polygons.flat().map(point => point.y));
-      if (r.player.vy > 0 && previousPlayer.y + previousPlayer.height <= top + 2) {
+      const bodyPolygons = localRectPolygon(entry.state, entry.state.physics?.collider || entry.state.physics?.hitbox);
+      const bodyOverlap = polygonsOverlap([body], bodyPolygons);
+      const hazardPolygons = shapePolygons(entry.state, 'hazard');
+      const hazardOverlap = polygonsOverlap([body], hazardPolygons);
+      if (!bodyOverlap && !hazardOverlap) continue;
+      const top = bodyPolygons.length ? Math.min(...bodyPolygons[0].map(point => point.y)) : Infinity;
+      if (bodyOverlap && r.player.vy > 0 && previousPlayer.y + previousPlayer.height <= top + 2) {
         this.kill(actor.id); r.player.y = top - r.player.height; r.player.vy = -r.jumpSpeed * .65;
         r._emit({ type: 'enemy-stomp', id: actor.id });
-      } else { r._kill(entry); return true; }
+      } else if (hazardOverlap) { r._kill(entry); return true; }
     }
     return false;
   }
@@ -193,9 +219,9 @@ export class ActorSimulation {
     if (!definition || definition.kind !== 'projectile') return;
     const state = r.getStates().find(entry => entry.placement.id === actor.id)?.state;
     if (!state || state.vanished) return;
-    const pivot = state.visual.pivot || [.5, 1], offset = actor.behavior.spawnOffset || [0, 0];
-    const muzzle = localToWorld(state, { x: (pivot[0] + offset[0]) * state.width, y: (pivot[1] + offset[1]) * state.height });
-    const dx = r.player.x + r.player.width / 2 - muzzle.x, dy = r.player.y + r.player.height / 2 - muzzle.y, length = Math.hypot(dx, dy) || 1;
+    const muzzle = projectileSpawnPoint({ ...state, behavior: actor.behavior });
+    const target = projectileHeadTarget(r.player);
+    const dx = target.x - muzzle.x, dy = target.y - muzzle.y, length = Math.hypot(dx, dy) || 1;
     const speed = definition.behavior.speed ?? PROJECTILE_RULES.speed;
     const id = `${actor.id}:shot:${++this.sequence}`;
     r._projectiles.set(id, { id, ownerId: actor.id, definitionId, definition, x: muzzle.x, y: muzzle.y,

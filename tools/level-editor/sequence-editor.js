@@ -9,8 +9,8 @@ export function remapRuntimeSequenceReferences(behavior, oldName, nextName = nul
 }
 
 /**
- * Character sequence editor. A state is editor metadata only: the game engine
- * remains responsible for choosing states at runtime. The selected state and
+ * Character sequence editor. Functional mappings choose states at runtime.
+ * The selected preview state and
  * preview clock are intentionally kept outside the document.
  */
 export function mountSequenceEditor({ getDocument, getImages, change, onMessage }) {
@@ -24,7 +24,7 @@ export function mountSequenceEditor({ getDocument, getImages, change, onMessage 
   const title = el('strong', header, 'Character states and sequences');
   const close = button(header, 'Close', () => dialog.close());
   const note = el('p', dialog,
-    'States and sequences are preview metadata only. The engine chooses and changes the active state at runtime.', 'hint');
+    'Map gameplay animations in Shared Definition → Runtime behavior. This preview does not change the actor’s current gameplay state.', 'hint');
   const controls = el('div', dialog, null, 'sequence-controls');
   const preview = el('div', dialog, null, 'sequence-preview');
   const canvas = el('canvas', preview); canvas.width = 420; canvas.height = 300;
@@ -129,7 +129,10 @@ export function mountSequenceEditor({ getDocument, getImages, change, onMessage 
         animations[next] = animations[old]; delete animations[old];
         if (project.definitions[definitionId].visual.defaultAnimation === old) project.definitions[definitionId].visual.defaultAnimation = next;
         remapRuntimeSequenceReferences(project.definitions[definitionId].behavior, old, next);
-        for (const placement of project.placements || []) if (placement.definitionId === definitionId && placement.animation === old) placement.animation = next;
+        for (const placement of project.placements || []) if (placement.definitionId === definitionId) {
+          if (placement.animation === old) placement.animation = next;
+          remapRuntimeSequenceReferences(placement.settings, old, next);
+        }
       })) stateName = old;
       else { elapsed = 0; last = 0; }
     });
@@ -144,7 +147,7 @@ export function mountSequenceEditor({ getDocument, getImages, change, onMessage 
       if (Object.keys(animationMap()).length <= 1) return onMessage?.('A character must keep at least one state.', true);
       const names = Object.keys(animationMap()), next = names.find(name => name !== stateName);
       const old = stateName; stateName = next;
-      if (!mutate(project => { const d = project.definitions[definitionId]; delete d.visual.animations[old]; if (d.visual.defaultAnimation === old) d.visual.defaultAnimation = next; remapRuntimeSequenceReferences(d.behavior, old, null); for (const placement of project.placements || []) if (placement.definitionId === definitionId && placement.animation === old) delete placement.animation; })) stateName = old;
+      if (!mutate(project => { const d = project.definitions[definitionId]; delete d.visual.animations[old]; if (d.visual.defaultAnimation === old) d.visual.defaultAnimation = next; remapRuntimeSequenceReferences(d.behavior, old, null); for (const placement of project.placements || []) if (placement.definitionId === definitionId) { if (placement.animation === old) delete placement.animation; remapRuntimeSequenceReferences(placement.settings, old, null); } })) stateName = old;
       else { elapsed = 0; last = 0; }
     });
     el('h4', stateEditor, 'Ordered frames');

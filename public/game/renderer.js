@@ -5,6 +5,8 @@ import { worldOrdinal } from './world-order.js';
 import { loadImages as loadJsonImages, getPreviewState } from './json-level/preview.js';
 import { drawLevelScene } from './json-level/level-renderer.js';
 import { getJsonRuntime } from './engine.js';
+import { collectionVisuals } from './collection-visuals.js';
+import { drawPlacementVfx } from './json-level/vfx.js';
 
 const W=960,H=540;
 const rect=(c,color,x,y,w,h)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
@@ -73,7 +75,7 @@ export async function prepareLevelArt() {
     if (error) throw error;
   }));
 }
-function renderAuthored(ctx, state, level, time, compact) {
+function renderAuthored(ctx, state, level, time, compact, powerChestClaims) {
   const document = level.jsonDocument, images = ensureJsonImages(level), canvas = ctx.canvas;
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = document.world.backgroundColor || '#183c38'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -84,8 +86,9 @@ function renderAuthored(ctx, state, level, time, compact) {
   ctx.setTransform(canvas.width / W * zoom, 0, 0, canvas.height / H * zoom, -camera.x * canvas.width / W * zoom, -camera.y * canvas.height / H * zoom);
   ctx.imageSmoothingEnabled = false;
   const runtime = getJsonRuntime(state);
+  runtime?.claimPowerChests(powerChestClaims);
   const states = runtime ? runtime.getStates() : document.placements.map(placement => ({ placement, state: getPreviewState(document, placement, time * 1000) }));
-  drawLevelScene(ctx, document, states, images, { camera, width: viewWidth, height: viewHeight });
+  drawLevelScene(ctx, document, states, images, { camera, width: viewWidth, height: viewHeight, timeMs: runtime?.timeMs ?? time * 1000 });
   if (state.respawnRemaining > 0) {
     const age = 3 - state.respawnRemaining;
     ctx.globalAlpha = Math.max(0, 1 - age / 2.3);
@@ -211,7 +214,8 @@ function enemyPoof(ctx,e){
 export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstructions=false,powerChestClaims=[]}={}){
   if(!canvasOrContext||!state)return;
   const ctx=canvasOrContext.canvas?canvasOrContext:canvasOrContext.getContext('2d'),canvas=ctx.canvas,level=LEVELS[state.level]||LEVELS[0];
-  if (level.authored && level.jsonDocument) { renderAuthored(ctx, state, level, time, compact); return; }
+  if (level.authored && level.jsonDocument) { renderAuthored(ctx, state, level, time, compact, powerChestClaims); return; }
+  const collections = collectionVisuals(state, powerChestClaims, time * 1000);
   const theme=level.theme,p=palette[theme]||palette.forest,camera=Math.round(Math.max(0,Math.min(Math.max(0,level.width-W),state.x-330))),worldTime=state._levelTime??time;
   ctx.save();ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);ctx.imageSmoothingEnabled=false;background(ctx,p,theme,camera,time);ctx.save();ctx.translate(-camera,0);
   for(const base of level.platforms){const plat=platformAt(base,worldTime);if(plat.x+plat.w<camera-30||plat.x>camera+W+30||!plat.visible)continue;platform(ctx,plat,theme,p,worldTime);}
@@ -224,8 +228,18 @@ export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstr
   const enemies=Array.isArray(state.enemies)&&state.enemies.length?state.enemies:level.enemies.map(base=>{const p=platformAt(level.platforms[base.platformIndex],worldTime),min=p.x+8,max=p.x+p.w-base.w-8;return {...base,x:Math.max(min,Math.min(max,base.x)),y:p.visible?p.y-base.h:1000,facing:1};});
   for(const e of enemies){if(e.x+e.w<camera-20||e.x>camera+W+20||e.y>700)continue;if(e.dead){if(e.deathTimer>0)enemyPoof(ctx,e);continue;}drawSprite(ctx,e.kind,e.x,e.y,e.w,e.h,{flip:e.facing<0});if(e.shooter&&e.cooldown<.35)rect(ctx,'#ffd166',e.x+e.w/2-2,e.y-6,4,4);}
   for(const shot of (state.projectiles||[])){if(shot.x<camera-20||shot.x>camera+W+20)continue;fireball(ctx,shot,time);}
-  const claimed = new Set(powerChestClaims);
+  const claimed = collections.chests;
   for (const chest of (level.powerChests || [])) if(!claimed.has(chest.id)&&chest.x>camera-60&&chest.x<camera+W+60){drawSprite(ctx,theme==='forest'?'forest_chest':'chest',chest.x,chest.y-chest.h,chest.w,chest.h);rect(ctx,'#b7f5ff',chest.x+chest.w/2-2,chest.y-chest.h-8,4,4);rect(ctx,'#e8fbff',chest.x+chest.w/2-1,chest.y-chest.h-12,2,3);}
+  for (const [items, timestamps, role] of [[level.coins, collections.coins, 'coin'], [level.powerChests || [], collections.chests, 'power-chest']]) {
+    for (const item of items) {
+      const at = timestamps.get(item.id);
+      if (at == null || time * 1000 - at >= 850 || item.x < camera - 70 || item.x > camera + W + 70) continue;
+      const width = item.w || 18, height = item.h || 18;
+      ctx.save(); ctx.translate(role === 'coin' ? item.x - 9 : item.x, role === 'coin' ? item.y - 9 : item.y - height);
+      drawPlacementVfx(ctx, { id: item.id, width, height, gameplay: { role }, collected: true, vanished: true, collectedAtMs: at }, { timeMs: time * 1000 });
+      ctx.restore();
+    }
+  }
   for(const checkpoint of level.checkpoints||[])if(checkpoint.x>camera-70&&checkpoint.x<camera+W+70)checkpointFlag(ctx,checkpoint,!!state.checkpoint&&state.checkpoint.x>=checkpoint.x,time,Math.round(checkpoint.x/level.endX*100));
   if(state.level>0&&level.endX<camera+W+100){rect(ctx,'#172f2855',level.endX-12,495,65,5);rect(ctx,'#e9e7b9',level.endX+17,320,5,180);drawSprite(ctx,'flag',level.endX+14,321,70,95);rect(ctx,'#20362b',level.endX-28,460,95,24);ctx.fillStyle='#d1f59b';ctx.font='bold 10px monospace';ctx.fillText('ESCAPE →',level.endX-18,476);}
   if(showInstructions&&state.level===0){sign(ctx,160,309,'A LITTLE PRACTICE',['A / D or arrows: move','Space / W / Up: jump']);sign(ctx,695,208,'THE IMPORTANT BITS',['Clear world: bank points','Every 25%: checkpoint']);sign(ctx,1110,309,'WAITING FOR YOUR HOST',['Same levels. Separate runs.','Collect coins. Keep moving!']);}

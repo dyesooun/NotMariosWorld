@@ -2,6 +2,10 @@
 
 Run `npm run editor` from the project folder, then open http://127.0.0.1:10001/. This is a local tool; no schema is required and no game files are changed. `EDITOR_PORT` selects another loopback port.
 
+## Enemy detection ranges
+
+The editor's **Ranges** toolbar toggle is enabled by default. Select one or more enemy placements to show their world-aligned detection rectangles; when an asset is selected without placement selection, all instances of that definition are shown. The overlay uses each placement's resolved detection range, the runtime's player-feet ±140 px gate, and labels creature ranges as requiring the same supporting platform. It is editor-only and never changes exported level data or live gameplay.
+
 ## Image-first workflow
 
 1. Expand **Add a tileset**, choose **Atlas image**, and select Automatic alpha regions or Grid. Set optional pack name, initial level tags, default role, and automatic collision generation.
@@ -36,7 +40,7 @@ Optional custom sequence JSON contains a `frames` map with pixel `x,y,w,h` crops
 
 Character atlases can include both `enemies`/`characters` and a separate `projectiles` list. Import allocates stable definitions and links a shooter's `projectile_id` to its projectile asset. All animation frames and authored sequence names are retained.
 
-Configure the actor type and animation mappings in **States and sequences**:
+Select the asset, open **Shared Definition → Runtime behavior**, and configure its actor type and animation mappings. Use **States and sequences** to edit the frames, speed and loop flag of each animation:
 
 | Actor type | Functional animation slots |
 | --- | --- |
@@ -50,7 +54,13 @@ For ground creatures, select a **Support platform** in the Placement inspector, 
 
 For a shooter, select its **Projectile asset** and **Fire on frame** in its shooting sequence. The UI uses frame numbers starting at 1; exported `spawn_projectile_at_index` starts at 0. The projectile spawns once when that frame is reached, including when a simulation update advances over it. Spawn offsets are measured relative to the actor's visual pivot and follow its orientation. Projectile flight and optional impact animation play independently of the shooter. The existing default tuning remains 120 pixels/second, a 16×16 collision body, a 4.8-second firing interval and a 3-second lifetime.
 
-The JSON runner and live game choose actor states automatically. Lethal side contact and the existing stomp-to-defeat behavior apply; there is no health system. Dead actors stop dealing contact damage, play their death sequence once and disappear. Player respawn/restart restores actor cycles and clears fired projectiles. Choosing **Preview state** in the editor only changes the editing preview, and does not save a runtime state into a placement.
+The JSON runner and live game choose actor states automatically. Touching creature bodies is harmless; projectile hits and active authored melee hits kill instantly, with no health system. Melee uses the currently mapped sequence's explicit `damage_active_indices` and authored hazard shapes/hitbox; missing or empty damage windows cause no damage. Attack artwork outside the mapped sequences does not run automatically. Stomping from above still defeats creatures and bounces the player, using the body collider independently of melee timing. Dead actors stop dealing attack damage, play their death sequence once and disappear. Player respawn/restart restores actor cycles and clears fired projectiles. Choosing **Preview state** in the editor only changes the editing preview, and does not save a runtime state into a placement.
+
+Shooters without an assigned spawn offset use the forward edge at half their visual height. The spawn offset fields show this effective default (usually X `0.5`, Y `-0.5` for a bottom-center pivot). Explicit offsets remain relative to the pivot; `0, 0` places the shot at the pivot and can overlap supporting terrain. Adjust the offsets to match the artwork's mouth or weapon.
+
+Select a shooter placement, or its asset in the drawer, to see the cyan **Projectile spawn** crosshair on the canvas. A dotted line connects its visual pivot to the spawn point. Editing **Projectile spawn offset X/Y** moves the marker, following flips, rotations, size and preview movement with the same calculation as the game. The marker remains visible with **Ranges** off and is never exported or drawn during gameplay.
+
+Shooters aim at the player's head position when the projectile is fired. Shots then travel straight along that direction; the muzzle offsets control where they start.
 
 ## Core-game roles and tags
 
@@ -58,7 +68,7 @@ Use **Gameplay tags** during import review, **Shared Definition → Gameplay def
 
 Each role has an independent normalized **Gameplay trigger**. **Nonblocking marker** is an explicit setting that makes the marker an interaction volume in playtest while preserving the asset's stored physical geometry. Turn it off when the marker should also retain physical blocking. Foot anchors use fractions of placement width and height; spawn points and checkpoints default to `[0.5, 0.5]`, placing the player's feet at the banner's midpoint before landing. They follow rotation/flip. Explicit custom anchors are preserved; for an older draft with a bottom anchor, set **Foot anchor Y** to `0.5` to use the midpoint.
 
-- **Coin:** **Coin units** controls its collection value (default 1). Each placed coin collects once and hides. Death restores checkpoint-protected coins and collection IDs; gains after the checkpoint reappear. Before the first checkpoint, death restores the initial coin state.
+- **Coin:** **Coin units** controls its collection value (default 1). Each placed coin collects once and hides. Collected coins and their points survive every death, including before the first checkpoint. Coins stay hidden until Restart or a new run; their collection burst does not replay on respawn.
 - **Checkpoint:** explicit **Checkpoint order**, or leave it blank for deterministic order by authored X position. Checkpoints advance monotonically, save collection/progress and their foot anchor, and remain reached after death. A gold marker indicates reached checkpoints in playtest.
 - **Spawn point:** Select any placed asset and click **Placement → Gameplay tags → Use as level spawn**, or change its **Gameplay role** to **Spawn point**. The chosen placement is saved as the level start and marked **Level spawn** in the object list. Choose another asset to switch the start. Moving/resizing it or editing its foot anchor updates the start automatically. **Playtest** uses this asset before legacy coordinate spawns; explicit viewer-session overrides still win. Without a chosen placement, **Spawn priority** selects among tagged markers, with placement order breaking ties, then `world.spawn` or safe geometry provides a fallback. Place the foot anchor on supported safe ground.
 - **Exit:** touching the trigger emits one completion event and holds the player safely. **Target level ID** is exported for future core-game integration; the local viewer does not automatically load another level.
@@ -93,11 +103,25 @@ Every placed asset has a **Movable** checkbox under Placement behavior: props, b
 
 Platforms can vanish after a trigger independently of movement. Enable **Vanish after trigger entry**, enter a countdown in seconds, then use **Edit trigger handles** to move/resize the blue volume or enter its local pixel coordinates. The volume follows movement, rotation, flip and size. **After vanishing** selects **Restore on respawn**, **Restore after delay** (set **Restore delay seconds**), or **Gone until Restart**. Existing files default to restoring on respawn. Timed platforms return automatically, then require leaving and re-entering the trigger before another countdown starts. Temporary platforms also reset on player respawn; permanent removal survives player deaths for that playtest run. **Restart**, loading another level, or the editor's **Reset** restores every platform.
 
-**Simulate trigger entry** previews the countdown and timed restoration in the editor; selected hidden platforms remain faint editing ghosts. **Playtest** detects actual player entry and removes both the artwork and collision when a platform vanishes.
+**Simulate trigger entry** previews the countdown and timed restoration in the editor; selected hidden platforms remain faint editing ghosts. **Playtest** detects actual player entry and removes both the artwork and collision when a platform vanishes. Platforms blink increasingly quickly during the countdown. Timed platforms disappear with a pixel poof; platforms restored on player death break apart. New vanishing behaviors default to a three-second warning; existing authored countdowns are retained. Collision remains active until the countdown ends.
 
 Beams expose **Start time seconds** (initial delay), **ON duration seconds**, **OFF duration seconds**, **Time offset seconds** (cycle phase), and initial cycle state. The beam remains off before the start time. Afterward, its cycle uses elapsed time minus start time plus offset. A distinct OFF frame is shown when configured; a single-frame beam is hidden while off.
 
 Timing and trigger settings are per placement and exported in JSON. Trigger simulation timestamps are temporary and never saved. Enemy animation selection, support links and layering remain available.
+
+### Prop VFX and atmosphere
+
+**Prop VFX defaults** in Shared Definition and **Prop VFX** in Placement control cosmetic effects shared with the JSON runner and live game. Effects are automatic by default and can be enabled/disabled per asset or placement. Coins shimmer and burst on collection. Checkpoint banners have subtle blue beams and become gold when reached; reached colors survive death. Moving platforms shed small motes. Active beams glow/spark, while inactive beams suppress their effects. Choose **Hazard VFX type** for mushroom spores, thorn motes, spike glints, or generic danger particles; Automatic uses the name and tags when they are descriptive. This categorization does not change the hitbox or lethal behavior.
+
+Moving and vanishing platforms get floating motes automatically. Set **Prop effects → Enabled** to add these motes to a stationary floating platform as well.
+
+Effect visibility is tuned about 60% stronger than the initial pass, with brighter particles/glows, larger bursts and clearer warning blinks. Automatic forest mist defaults to 24% opacity; custom mist opacity stays at its authored value. Gameplay timing and restoration behavior are unchanged.
+
+Fog cards render over all authored background/prop layers and below the player and UI. Their soft texture has a fuller core to remain visible against pale forest artwork; card boundaries still fade to transparent. Changing an asset's layer cannot put it in front of the fog pass.
+
+For beams and assets with the Exit gameplay role, set **Glow color source → Custom color**, then choose **Beam glow color** or **Exit portal glow color**. This uses a configured color rather than sampling the atlas every frame. Shared defaults are stored in `definition.vfx`; placement overrides in `placement.vfx`. Save metadata retains asset defaults; Export JSON also retains placement overrides.
+
+The **Atmosphere** inspector tab configures localized drifting fog cards. Automatic gives forest-biome documents sparse mist pockets, leaving clear space between them. Choose Custom fog cards to tune **Mist color**, **Mist opacity percent**, and individual cards' X/Y, width/height, drift amplitude and speed. **Add fog card at view center** places a card in the current viewport; **Use sparse forest pockets** supplies a starting arrangement. Clear fog cards keeps an explicitly empty list, and Off disables mist. Cards use logical world coordinates and have no collision. Changes are Undo-backed and exported as `world.atmosphere`; draft edits never replace production JSON automatically.
 
 Autosave shows **Saving…** while writes are queued, then **Saved in this tool** after the latest project and library reach IndexedDB. Let that indicator finish before reloading.
 

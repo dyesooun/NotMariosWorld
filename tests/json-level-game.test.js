@@ -57,7 +57,7 @@ test('authored spawn is initialized before the first frame and snapshots stay co
   assert.ok(validateRunSummary(summarizeRun(state), state.worldOrder));
 });
 
-test('JSON coins, checkpoint reports, immediate rollback, and respawn share saved weighted totals', t => {
+test('JSON coins and points survive death while checkpoint rollback restores traversal state', t => {
   const state = useFixture(t), config = { coinPoints: 17, distancePoints: 3 };
   contact(state, 85, 200, config);
   assert.equal(state.coins, 2); assert.equal(state.current, 34);
@@ -70,16 +70,16 @@ test('JSON coins, checkpoint reports, immediate rollback, and respawn share save
   assert.equal(state.current, 68);
   const death = contact(state, 300, 800, config);
   assert.ok(death.some(event => event.type === 'death' && event.respawnIn === 3));
-  assert.equal(score(state, config), saved.score);
+  assert.ok(score(state, config) > saved.score, 'post-checkpoint coin points remain after death');
   assert.equal(state.distanceMax, saved.distance);
-  assert.deepEqual(state.collected, saved.collected);
+  assert.deepEqual(state.collected, [...saved.collected, 'coin-b']);
   assert.equal(state.deaths, 1);
   for (let i = 0; i < 181; i++) step(state, {}, 1 / 60, config);
   assert.equal(state.respawnRemaining, 0);
   assert.equal(state.checkpoint.id, 'flag-a');
-  assert.equal(state.current, 34);
+  assert.equal(state.current, 68);
   contact(state, 185, 200, config);
-  assert.equal(state.current, 68, 'post-checkpoint coins return after rollback');
+  assert.equal(state.current, 68, 'collected coins do not respawn after rollback');
 });
 
 test('JSON exit contact banks once, reports a valid cue hold, and advances through the existing lifecycle', t => {

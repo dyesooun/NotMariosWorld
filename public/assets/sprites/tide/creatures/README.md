@@ -91,7 +91,7 @@ To render at a stable world-space pivot `(worldX, worldY)` (rather than top-left
 6. Keep all animation frames untrimmed to maintain stable pivots. If you trim, compensate offsets using the per-frame `trim` rectangle.
 7. Move the independent orb with the engine's projectile entity; don't confuse its movement with sprite animation. Transition to `impact` on collision and despawn when complete.
 8. Use nearest-neighbor sampling, disable smoothing/antialiasing, tune hitboxes and spawn offsets in your actual scene scale.
-9. Stop contact and attack damage once an enemy dies; avoid relying on a nonexistent Stormwing corpse pose.
+9. Body contact is harmless. Stop attack damage once an enemy dies; avoid relying on a nonexistent Stormwing corpse pose.
 
 ## Limitations
 

@@ -1,18 +1,19 @@
 import {drawPlacement,loadImages} from './preview.js';
-import {placementBounds,localToWorld} from './transforms.js';
 import {shapePolygons} from './runtime-geometry.js';
 import {gameplayTriggerPolygons} from './gameplay.js';
+import {vfxBounds} from './vfx.js';
+import {drawAtmosphere} from './atmosphere.js';
 
 export {loadImages};
-export function drawLevelScene(c,document,states,images,{camera={x:0,y:0,zoom:1},width=document.world.width,height=document.world.height,collisions=false}={}){
+export function drawLevelScene(c,document,states,images,{camera={x:0,y:0,zoom:1},width=document.world.width,height=document.world.height,collisions=false,timeMs}={}){
   const v=camera;
     for(const {placement,state}of states.sort((a,b)=>a.state.layer-b.state.layer)){
-      const box=placementBounds(state);if(box.x+box.width<v.x||box.x>v.x+width||box.y+box.height<v.y||box.y>v.y+height)continue;
-      drawPlacement(c,document,placement,images,{state,collisions});
+      const bounds=vfxBounds(state);if(bounds.x+bounds.width<v.x||bounds.x>v.x+width||bounds.y+bounds.height<v.y||bounds.y>v.y+height)continue;
+      drawPlacement(c,document,placement,images,{state,collisions,timeMs:timeMs ?? state.timeMs ?? 0});
       if(collisions)for(const polygon of shapePolygons(state,'vanish')){c.beginPath();polygon.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.closePath();c.fillStyle='#70c8ff18';c.strokeStyle='#70c8ff';c.lineWidth=1/v.zoom;c.fill();c.stroke();}
       if(collisions)for(const polygon of gameplayTriggerPolygons(state)){c.beginPath();polygon.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.closePath();c.strokeStyle='#f5d778';c.lineWidth=1/v.zoom;c.stroke();}
-      if(state.checkpointReached&&!state.vanished){const point=localToWorld(state,{x:state.width/2,y:0});c.fillStyle='#ffd166';c.beginPath();c.arc(point.x,point.y-5,4,0,Math.PI*2);c.fill();}
     }
+    drawAtmosphere(c,document,{timeMs:timeMs ?? states[0]?.state.timeMs ?? 0,camera:v,width,height});
 }
 
 
@@ -37,7 +38,7 @@ export class LevelRenderer {
     const {canvas,context:c,camera:v}=this,b=canvas.getBoundingClientRect(),dpr=globalThis.devicePixelRatio||1,w=Math.max(1,Math.round(b.width*dpr)),h=Math.max(1,Math.round(b.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
     c.setTransform(dpr,0,0,dpr,0,0);c.fillStyle='#10191c';c.fillRect(0,0,b.width,b.height);c.save();c.scale(v.zoom,v.zoom);c.translate(-v.x,-v.y);c.imageSmoothingEnabled=false;
     const world=this.document.world;c.fillStyle=world.backgroundColor;c.fillRect(0,0,world.width,world.height);
-    drawLevelScene(c,this.document,runtime.getStates(),this.images,{camera:v,width:b.width/v.zoom,height:b.height/v.zoom,collisions});
+    drawLevelScene(c,this.document,runtime.getStates(),this.images,{camera:v,width:b.width/v.zoom,height:b.height/v.zoom,collisions,timeMs:runtime.timeMs});
     this.drawPlayer(runtime);
     c.strokeStyle='#86b6a6';c.lineWidth=1/v.zoom;c.strokeRect(0,0,world.width,world.height);c.restore();
   }
