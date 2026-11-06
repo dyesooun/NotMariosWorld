@@ -81,7 +81,7 @@ test('ink darkens the fog scene by another 75 percent before drawing the HUD',()
   renderPowerUI({width:960,height:540,getContext:()=>ctx},p,{now:0});
   const darkness=calls.findIndex(call=>call.color==='rgba(0,0,0,0.75)');
   assert.ok(darkness>0);assert.deepEqual(calls[darkness].rect,[0,0,960,540]);
-  assert.equal(calls[darkness+1].color,'#142a29ec');
+  assert.equal(calls[darkness+1].color,'#08161288');
 });
 
 test('a quiz participant cannot activate another power while answering',()=>{

@@ -1,7 +1,10 @@
 import { POWER_DEFINITIONS } from './powers.js';
 import { LEVELS } from './levels.js';
+import { GAME_CARD_SCALE } from './overlay-layout.js';
 
-export const POWER_HUD_RECT = Object.freeze({ x: 14, y: 14, w: 308, h: 80 });
+// This is the rendered logical bounds (not the former unscaled design size).
+// Keep it authoritative so shared announcements can avoid the actual card.
+export const POWER_HUD_RECT = Object.freeze({ x: 14, y: 14, w: 308 * GAME_CARD_SCALE, h: 80 * GAME_CARD_SCALE });
 export const INK_EXTRA_DARKNESS = .75;
 
 export function activePowerEffects(player, now = Date.now()) {
@@ -14,13 +17,32 @@ export function powerUIModel(player, { now = Date.now(), running = true, isHost 
   const queued = !!slot?.queued, testing=!!slot?.testing, held = slot?.claimed && (!slot.used || queued || testing);
   const canUse = !!(visible && held && !queued && !testing && (!player.powerQuiz||player.powerQuiz.answered) && !state.respawnRemaining && player.connected && !isHost);
   const active = activePowerEffects(player, now), darkness = Math.max(0, Math.min(.95, Number(active.fog?.strength?.darknessPercent ?? 75) / 100));
+  const powerName = slot?.power?.name || null, powerType = slot?.power?.type || null;
   return { visible, held, queued, testing, queuePosition:slot?.queuePosition??null, canUse, fog: !!active.fog, darkness,
+    powerName, powerType,
     heading: testing ? 'POWER QUIZ' : queued ? `${slot.power.name} / QUEUED` : held ? slot.power.name : slot?.used ? 'POWER USED / FIND ANOTHER' : 'FIND A POWER CHEST',
     detail: testing ? 'Answer in the world / one attempt' : queued ? `Waiting / #${slot.queuePosition??'?'} in room queue` : held ? 'Everyone else / quiz to attack' : `Chests opened: ${player?.powerChestClaims?.length||0}/${LEVELS[state?.level]?.powerChests?.length||0} / one slot`,
-    button: { x: 232, y: 38, w: 74, h: 34 },
+    button: { x: POWER_HUD_RECT.x + 218 * GAME_CARD_SCALE, y: POWER_HUD_RECT.y + 24 * GAME_CARD_SCALE, w: 74 * GAME_CARD_SCALE, h: 34 * GAME_CARD_SCALE },
     effects: Object.entries(activePowerEffects(player, now)).map(([type, effect]) => ({ type, name: POWER_DEFINITIONS.find(p => p.type === type)?.name || type, seconds: Math.ceil((effect.endsAt - now) / 1000) }))
   };
 }
+
+function drawPowerIcon(ctx, type, x, y, size, color = '#b7ef51') {
+  // Deliberately blocky, original marks: all geometry stays on a pixel grid.
+  const u = Math.max(1, Math.round(size / 8));
+  ctx.fillStyle = color;
+  const block = (gx, gy, gw = 1, gh = 1) => ctx.fillRect(x + gx * u, y + gy * u, gw * u, gh * u);
+  if (type === 'slow') { // Sticky boot
+    block(1, 1, 4, 2); block(2, 3, 3, 2); block(1, 5, 5, 1); block(0, 6, 7, 1); block(5, 4, 2, 2);
+  } else if (type === 'reverse') { // Opposite arrows
+    block(0, 2, 5, 2); block(0, 1, 2, 1); block(0, 4, 2, 1); block(3, 5, 5, 2); block(6, 4, 2, 1); block(6, 7, 2, 1);
+  } else if (type === 'slippery') { // Ice skate
+    block(1, 1, 4, 1); block(2, 2, 3, 3); block(4, 4, 2, 1); block(0, 6, 7, 1); block(1, 7, 5, 1);
+  } else if (type === 'fog') { // Ink cloud
+    block(2, 1, 3, 1); block(1, 2, 6, 3); block(0, 4, 8, 2); block(2, 6, 4, 1); block(1, 7, 2, 1); block(5, 7, 2, 1);
+  }
+}
+
 export function renderPowerUI(canvas, player, options = {}) {
   const model = powerUIModel(player, options), ctx = canvas.getContext('2d');
   if (!model.visible) return model;
@@ -34,22 +56,39 @@ export function renderPowerUI(canvas, player, options = {}) {
     // Reduce the existing ink scene's remaining brightness by 75%, keeping HUDs readable.
     ctx.fillStyle = `rgba(0,0,0,${model.darkness})`; ctx.fillRect(0, 0, 960, 540);
   }
-  const text = (value, x, y, size = 11, color = '#e9f4d5') => { ctx.fillStyle = color; ctx.font = `${size}px monospace`; ctx.fillText(value, x, y); };
+  // The player viewport renders these labels as sharp HTML text above the pixel canvas.
+  model.textRows=[];
+  const text = (value, x, y, size = 11, color = '#e9f4d5') => {
+    size=Math.max(10,size)*(GAME_CARD_SCALE/0.75);x=Math.round(x);y=Math.round(y);
+    model.textRows.push({value,x,y,size,color});
+    if(options.domText)return;
+    ctx.fillStyle = color; ctx.font = `${size}px monospace`; ctx.fillText(value,x,y);
+  };
   const r = POWER_HUD_RECT;
-  ctx.fillStyle = '#142a29ec'; ctx.fillRect(r.x, r.y, r.w, r.h);
-  ctx.strokeStyle = model.held ? '#b7ef51' : '#709083'; ctx.strokeRect(r.x + .5, r.y + .5, r.w - 1, r.h - 1);
-  text('CHEST POWER / ONE SLOT', r.x + 12, r.y + 18, 9, '#a2c8aa');
-  text(model.heading, r.x + 12, r.y + 36, 13, model.held ? '#b7ef51' : '#e9f4d5');
-  text(model.detail, r.x + 12, r.y + 70, 9, '#aac3b5');
+  const panel = (x,y,w,h) => {
+    const edge=2*GAME_CARD_SCALE,corner=5*GAME_CARD_SCALE,shadow=5*GAME_CARD_SCALE;
+    ctx.fillStyle='#08161288';ctx.fillRect(x+shadow,y+shadow,w,h);
+    ctx.fillStyle='#b7ef51';ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#172c25f5';ctx.fillRect(x+edge,y+edge,w-edge*2,h-edge*2);
+    ctx.fillStyle='#b7ef51';
+    for(const [cx,cy] of [[x,y],[x+w-corner,y],[x,y+h-corner],[x+w-corner,y+h-corner]])ctx.fillRect(cx,cy,corner,corner);
+  };
+  panel(r.x,r.y,r.w,r.h);
+  const iconColor = '#b7ef51';
+  if (model.powerType) drawPowerIcon(ctx, model.powerType, r.x + 12*GAME_CARD_SCALE, r.y + (8/0.75)*GAME_CARD_SCALE, 22 * GAME_CARD_SCALE, iconColor);
+  text(model.powerName || 'POWER SLOT', r.x + 36 * GAME_CARD_SCALE, r.y + 18 * GAME_CARD_SCALE, 10, '#b7ef51');
+  const status=model.testing?'ANSWER YOUR QUESTION':model.queued?`QUEUED / #${model.queuePosition??'?'}`:model.held?'READY TO ACTIVATE':model.heading;
+  text(status, r.x + 12 * GAME_CARD_SCALE, r.y + 38 * GAME_CARD_SCALE, 10, model.held ? '#b7ef51' : '#e9f4d5');
+  text(model.detail, r.x + 12 * GAME_CARD_SCALE, r.y + 70 * GAME_CARD_SCALE, 9, '#aac3b5');
   if (model.held) {
     const button = model.button;
     ctx.fillStyle = model.canUse || options.isHost ? '#b7ef51' : '#75896a'; ctx.fillRect(button.x, button.y, button.w, button.h);
-    text(model.testing ? 'QUIZ' : model.queued ? 'QUEUED' : options.isHost ? 'READY [F]' : 'USE [F]', button.x + 8, button.y + 21, 10, '#142a29');
+    text(model.testing ? 'QUIZ' : model.queued ? 'QUEUED' : '[F] USE', button.x + 6 * GAME_CARD_SCALE, button.y + 21 * GAME_CARD_SCALE, 10, '#142a29');
   }
   model.effects.forEach((effect, i) => {
-    const y = r.y + r.h + 10 + i * 26;
-    ctx.fillStyle = '#2f2541ed'; ctx.fillRect(r.x, y, r.w, 23);
-    text(`${effect.name.toUpperCase()} / ${effect.seconds}s`, r.x + 11, y + 16, 11, '#e6caff');
+    const y = r.y + r.h + 10 * GAME_CARD_SCALE + i * 26 * GAME_CARD_SCALE;
+    panel(r.x, y, r.w, 23 * GAME_CARD_SCALE);
+    text(`${effect.name.toUpperCase()} / ${effect.seconds}s`, r.x + 11 * GAME_CARD_SCALE, y + 16 * GAME_CARD_SCALE, 10, '#b7ef51');
   });
   ctx.restore(); return model;
 }

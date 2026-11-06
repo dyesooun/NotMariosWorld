@@ -63,11 +63,17 @@ function panel(ctx,r,fill='#152a29f5',edge='#b7ef51') {
   rect(ctx,edge,r.x,r.y,r.w,r.h);rect(ctx,fill,r.x+2,r.y+2,r.w-4,r.h-4);
   for(const [x,y] of [[r.x,r.y],[r.x+r.w-5,r.y],[r.x,r.y+r.h-5],[r.x+r.w-5,r.y+r.h-5]])rect(ctx,edge,x,y,5,5);
 }
-function text(ctx,value,x,y,size=12,color='#ecf4d6',align='left') {
+function canvasText(ctx,value,x,y,size=12,color='#ecf4d6',align='left') {
   ctx.font=`${size>=15?'bold ':''}${size}px monospace`;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(String(value),Math.round(x),Math.round(y));ctx.textAlign='left';
 }
 export function renderWorldUI(canvasOrContext,room,options={}) {
   const model=worldUIModel(room,options);
+  model.textRows=[];
+  let htmlText=!!options.domText;
+  const text=(ctx,value,x,y,size=12,color='#ecf4d6',align='left')=>{
+    if(htmlText)model.textRows.push({value:String(value),x,y,size,color,align,bold:size>=15});
+    else canvasText(ctx,value,x,y,size,color,align);
+  };
   const ctx=canvasOrContext.canvas?canvasOrContext:canvasOrContext.getContext('2d');
   ctx.save();ctx.setTransform(ctx.canvas.width/WIDTH,0,0,ctx.canvas.height/HEIGHT,0,0);ctx.imageSmoothingEnabled=false;
   const q=model.question;
@@ -95,6 +101,7 @@ export function renderWorldUI(canvasOrContext,room,options={}) {
     if(q.isHost){panel(ctx,q.dismiss,'#304c36','#a3cf67');text(ctx,q.closed?'DISMISS QUESTION >':'SKIP QUESTION >',q.dismiss.x+9,q.dismiss.y+16,10,'#d9edb7');}
   }
   if(model.announcement) {
+    htmlText=false;
     const a=model.announcement,r=a.rect;
     panel(ctx,r,'#172c25f5','#b7ef51');
     text(ctx,a.kind==='power-quiz'?(powerQuizNotice(room,options.viewerId,options.isHost)||(a.phase==='attack'?'ATTACK QUESTION':'DEFENSE QUESTIONS')):a.kind==='power'?(room.powerDuel?.outcome==='blocked'?'ATTACK BLOCKED':room.powerDuel?.outcome==='attackerFailed'?'POWER BACKFIRED':'POWER ACTIVE'):'WORLD BROADCAST',r.x+16,r.y+20,10,'#b7ef51');
@@ -107,6 +114,7 @@ export function renderWorldUI(canvasOrContext,room,options={}) {
     messageLines.slice(0,2).forEach((line,i)=>text(ctx,line,r.x+16,r.y+40+i*16,14));
   }
   if(model.countdown!==null) {
+    htmlText=!!options.domText;
     if(model.countdown>0){
       const r=box(758,14,188,104);panel(ctx,r,'#342b2bf2','#ffcf87');
       text(ctx,'FINAL SECONDS',r.x+r.w/2,r.y+20,11,'#ffcf87','center');

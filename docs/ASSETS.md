@@ -1,5 +1,9 @@
 # Original game assets
 
+## Power HUD icons
+
+The sticky boot, reversed arrows, ice skate, and ink cloud in `public/game/power-ui.js` are original code-drawn pixel-grid icons authored for this game on 2026-11-06. They use no external artwork or licensed game assets. The canvas renderer scales them with the power inventory card.
+
 ## Whimsical Woods expansion
 
 `public/assets/forest-sprites.png` is an additional original transparent PNG atlas generated with the built-in imagegen tool on 2026-10-30. It is 1254×1254 pixels. `public/game/forest-sprites.js` defines explicit crop regions and trims transparent margins; the generated rows are not perfectly uniform, so do not replace these regions with a generic grid calculation.

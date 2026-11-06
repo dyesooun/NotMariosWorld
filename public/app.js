@@ -13,6 +13,8 @@ import { powerChestOfferModel, createPowerChestControls } from './game/power-che
 import { POWER_DEFINITIONS } from './game/powers.js';
 import { LocalRunRuntime } from './game/local-run.js';
 import { LEVEL_CATALOG } from './game/level-catalog.js';
+import { createLobbyProfileControls } from './game/lobby-profile-controls.js';
+import { GAME_CARD_SCALE } from './game/overlay-layout.js';
 
 await prepareLevelArt();
 
@@ -54,6 +56,7 @@ let stageVictory = null;
 let podiumArrivedAt=0,lastCountdownSecond=null,lastCountdownRoom=null,finalSentRound=null;
 let playerQuizControls=null,playerQuizViewport=null;
 let playerChestControls=null,playerChestViewport=null;
+let lobbyProfileControls=null,lobbyProfileViewport=null;
 const demo = createState({level:DEFAULT_WORLD_ORDER[0],name:'A perfectly normal adventure'});
 demo.x = 310; demo.y = 500;
 const app = $('#app'), modal = $('#modal');
@@ -89,7 +92,7 @@ function ensureLocalRun(me) {
       } });
   }
   localRun.settings = {...room.settings,powerEffects:activePowerEffects(me,serverNow())};
-  Object.assign(localRun.state,{name:me.name,avatar:me.avatar,color:me.color});
+  Object.assign(localRun.state,room.status==='lobby'?{...profile,name:profile.name.trim()||'Player'}:{name:me.name,avatar:me.avatar,color:me.color});
   if (room?.status === 'running' && me.spawned && !localRun.state.started) localRun.begin(room.settings?.worldOrder);
   me.state=localRun.state;
   return localRun;
@@ -173,6 +176,9 @@ function onMessage(msg) {
   if(!clockOffsetReady){clockOffset=msg.serverTime-Date.now();clockOffsetReady=true;}
   const previous = room; room = msg.room; you = msg.you; if (!role) role = you ? 'player' : 'host';
   const metaMe = room.players.find(p => p.id === you);
+  if (role==='player' && metaMe && (previous?.players.find(p=>p.id===you)==null || room.status!=='lobby')) {
+    profile={name:metaMe.name,avatar:metaMe.avatar,color:metaMe.color};persistProfile();
+  }
   if (role === 'player' && metaMe && ['lobby','running'].includes(room.status)) ensureLocalRun(metaMe);
   if(room.status==='settling'&&role==='player')finalizeLocal(room.cutoffAt??room.endsAt);
   if(ceremony()&&!['settling','ended'].includes(previous?.status)){podiumArrivedAt=performance.now();closeModal();zeroInput();playTone('teleport','results');}
@@ -190,6 +196,7 @@ function header(content = '') {
 }
 function renderEntry() {
   cancelStageVictory();
+  lobbyProfileControls?.destroy();lobbyProfileControls=null;lobbyProfileViewport=null;
   screen='entry'; screenKey='entry'; role=null; rosterKey=scoreKey=questionKey='';
   updateMusicScene();
   const code = new URLSearchParams(location.search).get('room') || '';
@@ -214,9 +221,10 @@ function renderRoom(force=false) {
   }
   updateMusicScene();
   updateConnection();
-  if (ceremony()) { updateResults(); updateAnnouncement();syncPlayerQuiz();syncPlayerChest();return; }
+  if (ceremony()) { updateResults(); updateAnnouncement();syncLobbyProfile();syncPlayerQuiz();syncPlayerChest();return; }
   updateQuestion(); updateAnnouncement();
   if (role==='host') updateHost(); else updatePlayer();
+  syncLobbyProfile();
   syncPlayerQuiz();
   syncPlayerChest();
 }
@@ -232,6 +240,39 @@ function worldScreenMarkup(id,label,{width=960,height=540,controls=true}={}){
 function wrapWorldCanvas(canvas){
   if(!canvas||canvas.parentElement.classList.contains('world-screen'))return;
   const viewport=document.createElement('div');viewport.className='world-screen';canvas.replaceWith(viewport);viewport.append(canvas);viewport.insertAdjacentHTML('beforeend',worldControlsMarkup());
+}
+function changeLobbyProfile(patch) {
+  if(role!=='player'||room?.status!=='lobby'||!connected||runtimeError)return;
+  Object.assign(profile,patch);persistProfile();
+  const display={...profile,name:profile.name.trim()||'Player'};
+  if(localRun)Object.assign(localRun.state,display);
+  const me=room.players.find(p=>p.id===you);if(me)Object.assign(me,display);
+  send('profile',profile);syncLobbyProfile();updatePlayer();
+}
+function syncLobbyProfile() {
+  const playerCanvas=role==='player'?$('#game-canvas'):null;
+  if(playerCanvas)fitPlayerGame(playerCanvas);
+  if(playerCanvas)syncPlayerProgress(playerCanvas);
+  const canvas=room?.status==='lobby'?playerCanvas:null;
+  if(!canvas){lobbyProfileControls?.destroy();lobbyProfileControls=null;lobbyProfileViewport=null;return;}
+  const viewport=canvas.parentElement;
+  if(viewport!==lobbyProfileViewport){
+    lobbyProfileControls?.destroy();lobbyProfileViewport=viewport;
+    lobbyProfileControls=createLobbyProfileControls(viewport,{
+      onChange:changeLobbyProfile,onFocus:zeroInput,
+      onPlay:()=>canvas.focus({preventScroll:true}),drawAvatar,
+    });
+  }
+  lobbyProfileControls.update({profile,status:room.status,connected:connected&&!runtimeError,obscured:!!room.question},{canvas});
+}
+function fitPlayerGame(canvas) {
+  const shell=canvas.closest('.game-shell');if(!shell||document.fullscreenElement)return;
+  const availableWidth=shell.parentElement.clientWidth;
+  const viewportHeight=window.visualViewport?.height||window.innerHeight;
+  const chrome=$('.game-topbar',shell).getBoundingClientRect().height+$('.game-bottom',shell).getBoundingClientRect().height+2;
+  const availableHeight=viewportHeight-(shell.getBoundingClientRect().top+window.scrollY)-12;
+  const width=Math.floor(Math.max(1,Math.min(availableWidth,(availableHeight-chrome)*16/9+2)));
+  if(shell.style.width!==`${width}px`)shell.style.width=`${width}px`;
 }
 function syncWorldControls(canvas,model){
   const controls=canvas.parentElement.querySelector('.world-controls');if(!controls)return;
@@ -249,10 +290,24 @@ function syncWorldControls(canvas,model){
   const status=$('.world-status',controls);if(status.textContent!==stateText)status.textContent=stateText;
 }
 function drawWorldBroadcasts(canvas,{viewerId=you,isHost=role==='host',now=Date.now()+clockOffset}={}){
-  const model=renderWorldUI(canvas,room,{now,viewerId,isHost});syncWorldControls(canvas,model);return model;
+  const model=renderWorldUI(canvas,room,{now,viewerId,isHost,domText:true});syncWorldControls(canvas,model);
+  let labels=$('.world-text-layer',canvas.parentElement);
+  if(!labels){labels=document.createElement('div');labels.className='world-text-layer';labels.setAttribute('aria-hidden','true');canvas.parentElement.append(labels);}
+  const viewport=canvas.parentElement.getBoundingClientRect(),bounds=canvas.getBoundingClientRect(),scale=Math.min(bounds.width/960,bounds.height/540);
+  labels.style.left=`${bounds.left-viewport.left+(bounds.width-960*scale)/2}px`;
+  labels.style.top=`${bounds.top-viewport.top+(bounds.height-540*scale)/2}px`;
+  labels.style.transform=`scale(${scale})`;
+  const rows=model.textRows;
+  while(labels.children.length>rows.length)labels.lastElementChild.remove();
+  rows.forEach((row,index)=>{
+    let label=labels.children[index];if(!label){label=document.createElement('span');labels.append(label);}
+    if(label.textContent!==row.value)label.textContent=row.value;
+    label.style.cssText=`left:${row.x}px;top:${row.y-row.size*.82}px;font-size:${row.size}px;font-weight:${row.bold?'700':'400'};color:${row.color};transform:translateX(${row.align==='center'?-50:row.align==='right'?-100:0}%)`;
+  });
+  return model;
 }
 function drawPlayerPowers(canvas,player,{now=Date.now()+clockOffset,time=0,isHost=role==='host'}={}) {
-  const model=renderPowerUI(canvas,player,{now,time,isHost,running:room?.status==='running'});
+  const model=renderPowerUI(canvas,player,{now,time,isHost,domText:!isHost,running:room?.status==='running'});
   if(isHost||!canvas.parentElement.classList.contains('world-screen'))return;
   let controls=canvas.parentElement.querySelector('.power-controls');
   if(!controls){controls=document.createElement('div');controls.className='power-controls';controls.innerHTML='<button data-action="use-power" aria-label="Use held power, shortcut F"></button><span class="sr-only" role="status" aria-live="polite"></span>';canvas.parentElement.append(controls);}
@@ -263,7 +318,20 @@ function drawPlayerPowers(canvas,player,{now=Date.now()+clockOffset,time=0,isHos
     button.style.cssText=`left:${bounds.left-viewport.left+(bounds.width-960*scale)/2+r.x*scale}px;top:${bounds.top-viewport.top+(bounds.height-540*scale)/2+r.y*scale}px;width:${r.w*scale}px;height:${r.h*scale}px`;
     button.setAttribute('aria-label',model.queued?`${model.heading}. ${model.detail}.`:`Use ${model.heading} on ${model.detail}. Shortcut F.`);
   }
-  const status=$('span',controls),text=`${model.heading}. ${model.detail}${model.effects.length?'. Active effects: '+model.effects.map(e=>e.name).join(', '):''}`;
+  let labels=$('.power-text-layer',controls);
+  if(!labels){labels=document.createElement('div');labels.className='power-text-layer';labels.setAttribute('aria-hidden','true');controls.append(labels);}
+  const viewport=canvas.parentElement.getBoundingClientRect(),bounds=canvas.getBoundingClientRect(),scale=Math.min(bounds.width/960,bounds.height/540);
+  labels.style.left=`${bounds.left-viewport.left+(bounds.width-960*scale)/2}px`;
+  labels.style.top=`${bounds.top-viewport.top+(bounds.height-540*scale)/2}px`;
+  labels.style.transform=`scale(${scale})`;
+  const rows=model.textRows||[];
+  while(labels.children.length>rows.length)labels.lastElementChild.remove();
+  rows.forEach((row,index)=>{
+    let label=labels.children[index];if(!label){label=document.createElement('span');labels.append(label);}
+    if(label.textContent!==String(row.value))label.textContent=row.value;
+    label.style.cssText=`left:${row.x}px;top:${row.y-row.size*.82}px;font-size:${row.size}px;color:${row.color}`;
+  });
+  const status=$('.sr-only',controls),text=`${model.heading}. ${model.detail}${model.effects.length?'. Active effects: '+model.effects.map(e=>e.name).join(', '):''}`;
   if(status.textContent!==text)status.textContent=text;
 }
 function syncPlayerQuiz({focus=false}={}) {
@@ -312,25 +380,78 @@ function renderHost() {
   const existingReports=$('#host-run-reports');
   if(existingReports)hostReportsOpen=existingReports.open;
   app.innerHTML = `${shellTop('The control room.',running?'Follow scores, checkpoints, and escapes as they happen.':'Gather the team, break the ice, then let the chaos begin.',`${running?'<span class="pill lime"><i class="dot"></i> LIVE ROUND</span>':`<button class="button ghost small" data-action="settings">${icon('settings')} Game settings</button>`}<button class="button ${running?'danger':'primary'}" data-action="${running?'end-confirm':'start'}">${icon(running?'stop':'play')}${running?'End round':'Start the race'}</button>`)}
-  <div class="session-strip"><div class="session-stat"><div class="stat-label">${running?'TIME REMAINING':'ROUND DURATION'}</div><div class="stat-value lime" id="host-timer">${clock(room.settings.durationMinutes*60000)}</div></div><div class="session-stat"><div class="stat-label">PLAYERS CONNECTED</div><div class="stat-value" id="host-player-count">0 <em>/ 25</em></div></div><div class="session-stat"><div class="stat-label">${running?'TOTAL RESPAWNS':'READY TO EXPLORE'}</div><div class="stat-value" id="host-death-count">0 <em>${running?'second chances':'spawned in lobby'}</em></div></div><div class="session-stat"><div class="stat-label">${running?'FINISHED ALL WORLDS':'SCORING'}</div><div class="stat-value" id="host-finish-count">${running?'0':room.settings.coinPoints} <em>${running?'runners':'pts / coin'}</em></div></div></div>
+  <div class="session-strip"><div class="session-stat"><div class="stat-label">${running?'TIME REMAINING':'ROUND DURATION'}</div><div class="stat-value lime" id="host-timer">${clock(room.settings.durationMinutes*60000)}</div></div><div class="session-stat"><div class="stat-label">PLAYERS CONNECTED</div><div class="stat-value" id="host-player-count">0 <em>/ 25</em></div></div><div class="session-stat"><div class="stat-label">${running?'TOTAL RESPAWNS':'READY TO EXPLORE'}</div><div class="stat-value" id="host-death-count">0 <em>${running?'second chances':'exploring the lobby'}</em></div></div><div class="session-stat"><div class="stat-label">${running?'FINISHED ALL WORLDS':'SCORING'}</div><div class="stat-value" id="host-finish-count">${running?'0':room.settings.coinPoints} <em>${running?'runners':'pts / coin'}</em></div></div></div>
   <div class="host-layout"><section><details id="host-run-reports" class="host-reports" ${hostReportsOpen?'open':''}><summary><span class="live-section-head"><span><h2>${running?'Run reports':'Lobby roster'} <span class="pill lime" style="margin-left:8px">LIGHTWEIGHT</span></h2><small>Updates at milestones and gameplay events</small></span><span class="report-toggle" aria-hidden="true">${hostReportsOpen?'HIDE':'SHOW'}</span></span></summary><div id="feed-grid" class="feed-grid"></div></details><section class="game-shell broadcast-stage"><div class="game-topbar"><span>WORLD BROADCAST</span><span class="pill lime">SHARED ANNOUNCEMENTS</span><button class="link-button" data-action="fullscreen" aria-label="Full screen world broadcast">${icon('expand')}</button></div>${worldScreenMarkup('host-world-canvas','Shared announcements stage')}</section></section><aside class="aside-stack host-aside"><section class="panel"><div class="panel-head"><h2>${running?'The leaderboard':'The guest list'}</h2><small id="leader-count">0 PLAYERS</small></div><div id="leaderboard" class="leaderboard"></div></section><section class="panel host-power-panel" id="host-power-panel"><div class="panel-head"><h2>Launch a power</h2><span class="pill" id="host-power-status">RUNNING ONLY</span></div><p class="host-power-help">Challenge every active player directly. No attack question.</p><div id="host-power-actions" class="host-power-actions"></div></section><section class="panel" id="host-question-panel"><div class="panel-head"><h2>Break the ice</h2><span class="pill">15s / VOTE</span></div><div id="host-questions" class="host-questions"></div></section><p class="host-note">${running?'Scores and progress come from each player’s local run report.':'Share the room code or copy an invite link.'}</p><button class="button ghost wide small" data-action="copy-link">${icon('copy')} Copy invite link</button></aside></div></main>`;
 }
 function renderPlayer() {
   app.innerHTML = `${shellTop(room.status==='running'?'Run. Collect. Question everything.':'Your adventure starts here.',room.status==='running'?'Coins are good. The floor is negotiable.':'Pick your character, find your color, and take a practice jump.')}
-  <div class="player-layout"><section><div class="game-shell"><div class="game-topbar"><span class="level-label" id="level-label">LOBBY / THE WAITING WOODS</span><span class="pill lime" id="player-timer">WAITING FOR HOST</span></div><canvas id="game-canvas" class="game-canvas" width="960" height="540" tabindex="0" aria-label="Your game. A and D or arrow keys to move, Space, W, or up arrow to jump."></canvas><div class="game-bottom"><div class="keyboard-note"><kbd>A</kbd><kbd>D</kbd><span>MOVE &nbsp;</span><kbd>SPACE</kbd><span>JUMP &nbsp;</span><kbd>F</kbd><span>USE POWER</span></div><div class="progress-dots" id="world-dots">${normalizeWorldOrder(room.settings.worldOrder).map(()=>'<i></i>').join('')}</div><button class="link-button" data-action="fullscreen" title="Full screen game" aria-label="Full screen game">${icon('expand')}</button></div><div id="spawn-overlay" class="spawn-overlay"><div><div class="eyebrow">PLAYER SELECT</div><h2>Make a little trouble.</h2><p>Choose your character and color, then spawn into ${room.status==='running'?'the race. The clock is already running!':'the lobby. Your host will start the race.'}</p><button class="button primary" data-action="spawn">${icon('play')} ${room.status==='running'?'Enter the race':'Spawn into the lobby'}</button></div></div><div id="finish-overlay" class="finish-overlay" hidden><div><div class="trophy">🏁</div><h2>YOU MADE IT OUT.</h2><p>All worlds cleared. Your points are safe.<br>Catch your breath while everyone else catches up.</p></div></div><div id="death-caption" class="death-caption" hidden></div></div>
-  <div class="player-stats"><div class="mini-stat"><div class="stat-label">TOTAL SCORE</div><div class="stat-value lime" id="my-score">0</div></div><div class="mini-stat"><div class="stat-label">LEVELS BANKED</div><div class="stat-value" id="my-banked">0</div></div><div class="mini-stat"><div class="stat-label">CURRENT WORLD</div><div class="stat-value" id="my-current">0</div></div></div><div class="game-under-note"><span id="game-note">The lobby is a safe place to practice.</span><span id="scoring-note">${room.settings.coinPoints} PTS / COIN · ${room.settings.distancePoints} PT / TILE</span></div></section>
-  <aside class="aside-stack"><section class="panel" id="profile-section"></section><section class="panel"><div class="panel-head"><h2>How to stay in one piece</h2></div><div class="instructions"><div class="instruction-line"><span>Move left / right</span><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd></span></div><div class="instruction-line"><span>Jump</span><span><kbd>SPACE</kbd> / <kbd>W</kbd> / <kbd>↑</kbd></span></div></div><div class="rule-note">Collect coins. Go farther. <b>Clearing a world banks your points.</b> Coins and their points are protected immediately. Collected coins and treasure chests disappear with sparkles and stay collected after death; decoys remain. Checkpoints save your position and distance. Death loses distance progress since that flag. Respawn there after <b>3 seconds</b>, or at the world start if you haven't reached it.<br><br>Power chests appear where authored in each world. Hold one power at a time; at the next chest, <b>Attack</b> with the current power or <b>Replace</b> it. Press <b>F</b> or <b>USE</b> to answer a question and challenge <b>everyone else</b>. Up to three uses per world. Unused powers and opened chests survive deaths. One power turn runs across the room at a time; other uses queue. Wrong attackers hit themselves; correct defenders block. Wrong or missing defense answers are affected. Answers ignore case.<br><br>Power: <b>${room.settings.powerDurationSeconds??5}s</b> · Attack: <b>${room.settings.attackWindowSeconds??10}s</b> · Defend: <b>${room.settings.defendWindowSeconds??10}s</b>. One answer per question.<br><br>Same levels. Separate worlds. A little sabotage.</div></section><section class="panel"><div class="panel-head"><h2>The friendly rivalry</h2><small id="leader-count">LIVE</small></div><div id="leaderboard" class="leaderboard"></div></section></aside></div></main>`;
-  wrapWorldCanvas($('#game-canvas'));
-  renderProfile();
-}
-function renderProfile() {
-  const me=room.players.find(p=>p.id===you), target=$('#profile-section'); if (!target) return;
-  if (me?.spawned) {
-    target.innerHTML=`<div class="running-profile"><div class="eyebrow">${room.status==='lobby'?'YOU’RE IN':'YOUR ADVENTURE'}</div><div class="big-name"><i class="player-color" style="background:${esc(me?.color||profile.color)}"></i>${esc(me?.name||profile.name)}</div><p>${room.status==='lobby'?'Practice your jumps. Your host will start the race when everyone is ready.':'Every little bit of progress counts. Every level clear makes it permanent.'}</p><div class="level-progress"><i id="my-progress"></i></div><div class="progress-caption"><span id="my-progress-label">WORLD 0</span><span id="my-deaths">0 RESPAWNS</span></div></div>`;
-  } else {
-    target.innerHTML=`<div class="profile-panel"><h2>Your tiny alter ego.</h2><p>Big personality. Small hitbox.</p><label class="field"><span class="field-label">PLAYER NAME</span><input id="profile-name" value="${esc(profile.name)}" maxlength="24" aria-label="Player name"></label><div class="field-label">CHOOSE A CHARACTER</div><div class="avatars">${AVATARS.map(a=>`<button class="avatar-button ${profile.avatar===a?'selected':''}" data-avatar="${a}" aria-label="Choose ${a}" aria-pressed="${profile.avatar===a}" title="${a}"><canvas width="80" height="80" data-avatar-canvas="${a}"></canvas></button>`).join('')}</div><div class="field-label">YOUR SIGNATURE COLOR</div><div class="colors">${COLORS.map((c,i)=>`<button class="color-button ${profile.color===c?'selected':''}" style="--swatch:${c}" data-color="${c}" aria-label="Choose color ${['lime','pink','blue','purple','gold','coral'][i]}" aria-pressed="${profile.color===c}"></button>`).join('')}</div><button class="button primary wide" data-action="spawn">${icon('play')} Spawn into lobby</button></div>`;
+  <div class="player-layout"><section><div class="game-shell"><div class="game-topbar"><span class="level-label" id="level-label">LOBBY / THE WAITING WOODS</span><div class="player-timer-group"><span id="scoring-note">${room.settings.coinPoints} PTS / COIN · ${room.settings.distancePoints} PT / TILE</span><span class="pill lime" id="player-timer">WAITING FOR HOST</span></div></div><canvas id="game-canvas" class="game-canvas" width="960" height="540" tabindex="0" aria-label="Your game. A and D or arrow keys to move, Space, W, or up arrow to jump."></canvas><div class="game-bottom"><div class="keyboard-note"><kbd>A</kbd><kbd>D</kbd><span>MOVE &nbsp;</span><kbd>SPACE</kbd><span>JUMP &nbsp;</span><kbd>F</kbd><span>USE POWER</span></div><div class="progress-dots" id="world-dots">${normalizeWorldOrder(room.settings.worldOrder).map(()=>'<i></i>').join('')}</div><button class="link-button" data-action="fullscreen" title="Full screen game" aria-label="Full screen game">${icon('expand')}</button></div><div id="finish-overlay" class="finish-overlay" hidden><div><div class="trophy">🏁</div><h2>YOU MADE IT OUT.</h2><p>All worlds cleared. Your points are safe.<br>Catch your breath while everyone else catches up.</p></div></div><div id="death-caption" class="death-caption" hidden></div></div>
+  </section>
+  <aside class="aside-stack"><section class="panel"><div class="panel-head"><h2>How to stay in one piece</h2></div><div class="instructions"><div class="instruction-line"><span>Move left / right</span><span><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd></span></div><div class="instruction-line"><span>Jump</span><span><kbd>SPACE</kbd> / <kbd>W</kbd> / <kbd>↑</kbd></span></div></div><div class="rule-note">Collect coins. Go farther. <b>Clearing a world banks your points.</b> Coins and their points are protected immediately. Collected coins and treasure chests disappear with sparkles and stay collected after death; decoys remain. Checkpoints save your position and distance. Death loses distance progress since that flag. Respawn there after <b>3 seconds</b>, or at the world start if you haven't reached it.<br><br>Power chests appear where authored in each world. Hold one power at a time; at the next chest, <b>Attack</b> with the current power or <b>Replace</b> it. Press <b>F</b> or <b>USE</b> to answer a question and challenge <b>everyone else</b>. Up to three uses per world. Unused powers and opened chests survive deaths. One power turn runs across the room at a time; other uses queue. Wrong attackers hit themselves; correct defenders block. Wrong or missing defense answers are affected. Answers ignore case.<br><br>Power: <b>${room.settings.powerDurationSeconds??5}s</b> · Attack: <b>${room.settings.attackWindowSeconds??10}s</b> · Defend: <b>${room.settings.defendWindowSeconds??10}s</b>. One answer per question.<br><br>Same levels. Separate worlds. A little sabotage.</div></section><section class="panel"><div class="panel-head"><h2>The friendly rivalry</h2><small id="leader-count">LIVE</small></div><div id="leaderboard" class="leaderboard"></div></section></aside></div></main>`;
+  $('.workspace',app)?.classList.add('player-workspace');
+  const siteHeader=$('.site-header',app),intro=$('.workspace-header>div',app);
+  if(siteHeader&&intro){
+    intro.classList.add('header-adventure');
+    siteHeader.classList.add('player-site-header');
+    siteHeader.insertBefore(intro,$('.nav-actions',siteHeader));
+    $('.workspace-header',app).remove();
   }
-  if(me?.spawned)$('.running-profile',target).insertAdjacentHTML('beforeend','<p id="checkpoint-status" class="checkpoint-status"></p>');
+  wrapWorldCanvas($('#game-canvas'));
+  $('#game-canvas').parentElement.append($('#death-caption'));
+  renderPlayerProgress();
+  renderPlayerPanels();
+}
+function panelPixelIcon(kind) {
+  const rows=kind==='help'?['001100','001100','001100','001100','000000','001100']:['01111110','11011011','11011011','01111110','00011000','00011000','00111100','01111110'];
+  return '<svg class="world-panel-icon" viewBox="0 0 24 24" aria-hidden="true" shape-rendering="crispEdges">'+rows.flatMap((row,y)=>[...row].map((cell,x)=>cell==='1'?'<rect x="'+(x*2+4)+'" y="'+(y*2+4)+'" width="2" height="2"/>':'')).join('')+'</svg>';
+}
+function renderPlayerPanels() {
+  const canvas=$('#game-canvas'),aside=$('.player-layout>.aside-stack');if(!canvas||!aside)return;
+  canvas.closest('.player-layout').classList.add('in-world-layout');
+  const controls=document.createElement('div');controls.className='player-world-panels';
+  [...aside.children].forEach((section,index)=>{
+    const panel=document.createElement('details');panel.className='player-world-panel pixel-world-panel';panel.open=false;
+    const title=$('h2',section)?.textContent||'Leaderboard';
+    const summary=document.createElement('summary');summary.setAttribute('aria-label',title);summary.title=title;
+    summary.innerHTML=panelPixelIcon(index===0?'help':'trophy')+'<span>'+esc(title)+'</span>';
+    const body=document.createElement('div');body.className='world-panel-body';
+    const head=$('.panel-head',section);head?.remove();
+    if(index===1&&head)body.append(head);
+    while(section.firstChild)body.append(section.firstChild);
+    panel.append(summary,body);controls.append(panel);
+    panel.addEventListener('toggle',zeroInput);
+    panel.addEventListener('focusin',zeroInput);
+  });
+  canvas.parentElement.append(controls);aside.remove();
+}
+function renderPlayerProgress() {
+  const viewport=$('#game-canvas')?.parentElement;if(!viewport)return;
+  viewport.insertAdjacentHTML('beforeend',`<div class="player-world-score pixel-world-panel" aria-label="Total score"><span>TOTAL SCORE</span><strong id="my-score">0</strong></div><div class="player-world-progress pixel-world-panel" aria-label="Your race progress"><div class="world-progress-caption"><span id="my-progress-label">WORLD 0 · 0%</span><span id="my-deaths">0 RESPAWNS</span></div><div class="world-progress-track" role="progressbar" aria-label="Current world progress" aria-valuemin="0" aria-valuemax="100"><i id="my-progress"></i></div></div>`);
+}
+function syncPlayerProgress(canvas) {
+  const hud=$('.player-world-progress',canvas.parentElement);if(!hud)return;
+  hud.hidden=!!room?.question;
+  const viewport=canvas.parentElement.getBoundingClientRect(),bounds=canvas.getBoundingClientRect();
+  const scale=Math.min(bounds.width/960,bounds.height/540);
+  const now=serverNow(),top=countdownSeconds(room,now)!==null?132:room?.announcement?.endsAt>now?100:14;
+  hud.style.left=`${bounds.left-viewport.left+(bounds.width-960*scale)/2+(946-260*GAME_CARD_SCALE)*scale}px`;
+  hud.style.top=`${bounds.top-viewport.top+(bounds.height-540*scale)/2+top*scale}px`;
+  hud.style.transform=`scale(${scale*GAME_CARD_SCALE})`;
+  const scoreHUD=$('.player-world-score',canvas.parentElement);
+  if(scoreHUD){
+    scoreHUD.hidden=hud.hidden;
+    scoreHUD.style.left=`${bounds.left-viewport.left+(bounds.width-960*scale)/2+(946-(260+12+244)*GAME_CARD_SCALE)*scale}px`;
+    scoreHUD.style.top=hud.style.top;
+    scoreHUD.style.transform=hud.style.transform;
+  }
+  const panels=$('.player-world-panels',canvas.parentElement);
+  if(panels){
+    const quiz=room?.players.find(p=>p.id===you)?.powerQuiz;
+    panels.hidden=!!room?.question||!!(quiz&&!quiz.answered);
+    panels.style.left=`${bounds.left-viewport.left+(bounds.width-960*scale)/2+(946-516*GAME_CARD_SCALE)*scale}px`;
+    panels.style.top=`${bounds.top-viewport.top+(bounds.height-540*scale)/2+(top+64*GAME_CARD_SCALE)*scale}px`;
+    panels.style.transform=`scale(${scale*GAME_CARD_SCALE})`;
+  }
 }
 function updateHost() {
   const players=room.players;
@@ -339,7 +460,7 @@ function updateHost() {
     setHTML('#host-death-count',`${number(players.reduce((n,p)=>n+(p.summary?.deaths||0),0))} <em>second chances</em>`);
     setHTML('#host-finish-count',`${players.filter(p=>p.summary?.finished).length} <em>/ ${players.length} runners</em>`);
   } else {
-    setHTML('#host-death-count',`${players.filter(p=>p.spawned).length} <em>spawned in lobby</em>`);
+    setHTML('#host-death-count',`${players.filter(p=>p.spawned).length} <em>exploring the lobby</em>`);
     setHTML('#host-finish-count',`${room.settings.coinPoints} <em>pts / coin</em>`);
   }
   const key='players:'+players.map(p=>p.id).sort().join('|');
@@ -393,27 +514,22 @@ function updatePlayer() {
   if(localRun) me.state=localRun.state;
   const s=me.state;
   if(!s)return;
-  setText('#level-label',!me.spawned?'LOBBY / CHOOSE YOUR CHARACTER':s.level?`0${racePosition(s.level,s)} / ${levelNames[s.level].toUpperCase()}`:'LOBBY / THE WAITING WOODS');
-  const spawnButton=$('#profile-section [data-action="spawn"]');
-  if(spawnButton&&room.status==='running')spawnButton.innerHTML=`${icon('play')} Enter the race`;
+  setText('#level-label',s.level?`0${racePosition(s.level,s)} / ${levelNames[s.level].toUpperCase()}`:'LOBBY / THE WAITING WOODS');
   const localScore=localRun ? scoreLocal(localRun.state) : me.score;
-  setText('#my-score',number(localScore)); setText('#my-banked',number(s.banked)); setText('#my-current',number(Math.max(0,localScore-s.banked)));
+  setText('#my-score',number(localScore));
+  setText('#scoring-note',`${room.settings.coinPoints} PTS / COIN · ${room.settings.distancePoints} PT / TILE`);
   const broadcastVisible=!!room.question||!!room.announcement||countdownSeconds(room,Date.now()+clockOffset)!==null;
-  const overlay=$('#spawn-overlay'); if(overlay)overlay.hidden=me.spawned||broadcastVisible;
   const finish=$('#finish-overlay'); if(finish)finish.hidden=!s.finished||broadcastVisible;
-    if (me.spawned && !$('.running-profile')) renderProfile();
-  const progress=$('#my-progress'); if(progress)progress.style.width=`${Math.min(100,(s.progress||0)*100)}%`;
+  const progressPercent=Math.max(0,Math.min(100,(s.progress||0)*100));
+  const progress=$('#my-progress');if(progress){progress.style.width=`${progressPercent}%`;progress.parentElement.setAttribute('aria-valuenow',String(Math.floor(progressPercent)));}
   setText('#my-progress-label',`WORLD ${racePosition(s.level,s)} · ${Math.floor((s.progress||0)*100)}%`); setText('#my-deaths',`${s.deaths} RESPAWNS`);
-  setText('#checkpoint-status',room.status==='lobby'?'Collected coins are always safe. Checkpoints save position and distance.':s.checkpoint?`Checkpoint saved · ${s.coins} coins protected.`:LEVELS[s.level]?.checkpoints?.length?'Find checkpoint markers to save your progress.':'Reach the exit to bank your score.');
-  $('#checkpoint-status')?.classList.toggle('saved',!!s.checkpoint);
-  setText('#game-note',room.status==='lobby'?`Race order: ${routeLabel(room.settings.worldOrder)}`:s.finished?'Your score is banked. Waiting for the final results.':`${s.coins} COINS · ${s.checkpoint?'CHECKPOINT SAVED':'CHECKPOINT AHEAD'} · Reach the exit to bank this world.`);
   const dots=$$('#world-dots i'),progressModel=worldProgressModel(s,room.settings.worldOrder);
   dots.forEach((el,i)=>{el.classList.toggle('done',progressModel.done[i]);el.title=`${i+1}. ${levelNames[progressModel.order[i]]}${progressModel.done[i]?' / cleared':''}`;el.setAttribute('aria-label',el.title);});
   updateLeaderboard();
 }
 function updateLeaderboard() {
   const node=$('#leaderboard'); if(!node)return;
-  const key=JSON.stringify(room.players.map(p=>[p.id,p.name,p.score,p.connected,p.spawned,p.finishTime,p.state?.level||p.summary?.level,p.state?.deaths||p.summary?.deaths]));
+  const key=JSON.stringify(room.players.map(p=>[p.id,p.name,p.avatar,p.color,p.score,p.connected,p.spawned,p.finishTime,p.state?.level||p.summary?.level,p.state?.deaths||p.summary?.deaths]));
   if(key===scoreKey)return; scoreKey=key;
   setText('#leader-count',`${room.players.length} PLAYERS`);
   node.innerHTML=room.players.length?room.players.map((p,i)=>{
@@ -468,7 +584,7 @@ function openModal(title,body,footer='',className='') {
 function closeModal() { modal.close();updateMusicScene(); }
 function showHelp() {
   openModal('A field guide to questionable decisions.',`
-    <div class="help-block"><h3>01 / LEARN THE MOVES</h3><p>Use <kbd>A</kbd> / <kbd>D</kbd> or <kbd>←</kbd> / <kbd>→</kbd> to move. Jump with <kbd>SPACE</kbd>, <kbd>W</kbd>, or <kbd>↑</kbd>. Explore the lobby before your host starts the round. This game is made for a desktop keyboard.</p></div>
+    <div class="help-block"><h3>01 / LEARN THE MOVES</h3><p>Use <kbd>A</kbd> / <kbd>D</kbd> or <kbd>←</kbd> / <kbd>→</kbd> to move. Jump with <kbd>SPACE</kbd>, <kbd>W</kbd>, or <kbd>↑</kbd>. Joining puts you straight into the playable lobby. Change your name, circular avatar portrait, or color inside the world while you practice; choices lock when your host starts the race. This game is made for a desktop keyboard.</p></div>
     <div class="help-block"><h3>02 / MAKE IT COUNT</h3><p>Coins and distance add to your score. Find the checkpoint markers authored in each world. Collected coins and their points are protected immediately and never respawn on death. Claimed treasure chests disappear with sparkles and stay spent; decoys remain. Pass each new flag to save your location and distance progress. Reached flags stay gold, and only a later flag replaces your save. Death restores your saved position and distance after 3 seconds. Before the checkpoint, death resets distance progress and sends you to the world start. Your coins and coin points remain safe in both cases. Reach the exit to bank the full world score. There are unlimited respawns.</p></div>
     <div class="help-block"><h3>03 / TRUST YOUR INSTINCTS. MAYBE.</h3><p>Moving platforms move. Vanishing platforms vanish. Enemies, spikes, and some very innocent-looking objects are lethal. Watch what’s revealed when you die. Critters chase only when you stand on their platform; some shoot. Power chests and decoys appear where authored in each world. Hold one power at a time. At another chest, choose Attack with your current power or Replace it with the new one. You can use up to three chest powers per world.</p><p>Press <kbd>F</kbd> or USE to answer a general-knowledge question and attack everyone else. You have ${room?.settings.attackWindowSeconds??10} seconds and one attempt; a wrong or unanswered attack hits you. After a correct attack, everyone else gets ${room?.settings.defendWindowSeconds??10} seconds and one attempt to defend. Correct defenders block; wrong or missing answers are affected. Answers ignore case. The slow, reverse, slippery, or dark ink effect and its broadcast last ${room?.settings.powerDurationSeconds??5} seconds after defenses resolve. Unused powers survive death; opened chests stay spent. Power turns run one at a time across the room in request order. Every player gets the same layout and their own run.</p></div>
     <div class="help-block"><h3>04 / EARN THE BRAGGING RIGHTS</h3><p>The highest score wins, with the fastest full completion breaking ties. When the timer ends, banked points and your current points count. Late arrivals use the remaining room time. Refreshing resets your game, including checkpoints; rejoin with the same name to replace your disconnected entry.</p></div>`);
@@ -556,8 +672,6 @@ document.addEventListener('toggle',e=>{if(e.target.id==='host-run-reports'){host
 document.addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b||b.disabled)return;
   if(b.dataset.hostPower){if(runtimeError||!connected||role!=='host'||room?.status!=='running')return;send('hostAttack',{roundId:room.roundId,powerType:b.dataset.hostPower});return;}
-  if(b.dataset.avatar){profile.avatar=b.dataset.avatar;persistProfile();send('profile',profile);renderProfile();return;}
-  if(b.dataset.color){profile.color=b.dataset.color;persistProfile();send('profile',profile);renderProfile();return;}
   if(b.dataset.vote!==undefined){send('vote',{choice:Number(b.dataset.vote)});return;}
   if(b.dataset.launch!==undefined){send('launchQuestion',{index:Number(b.dataset.launch)});return;}
   const action=b.dataset.action;
@@ -579,10 +693,6 @@ document.addEventListener('click',async e=>{
     const label=`${audio.enabled?'Mute':'Enable'} music and sound effects`;
     b.setAttribute('aria-label',label);b.title=label;
     if(audio.enabled)void audio.unlock();
-  }
-  if(action==='spawn'){
-    const name=$('#profile-name');if(name){profile.name=name.value.trim()||profile.name;persistProfile();send('profile',profile);}
-    send('spawn');zeroInput();$('#game-canvas')?.focus({preventScroll:true});
   }
   if(action==='start'){
     if(!room.players.length){toast('Invite at least one player before starting.',true);return;}
@@ -613,14 +723,13 @@ document.addEventListener('change',e=>{
     if(other)other.value=previous;
     for(const el of selects)el.dataset.previous=el.value;
   }
-  if(e.target.id==='profile-name'){profile.name=e.target.value.trim()||profile.name;persistProfile();send('profile',profile);}
 });
 const keyMap={a:'left',ArrowLeft:'left',d:'right',ArrowRight:'right',w:'jump',ArrowUp:'jump',' ':'jump'};
 function keyboard(e,pressed){
   const quiz=room?.players.find(p=>p.id===you)?.powerQuiz;
   if(role==='player'&&quiz&&!quiz.answered){if(!e.target.closest('input,textarea,select,button')&&(keyMap[e.key]||keyMap[e.key.toLowerCase()])){e.preventDefault();if(pressed)syncPlayerQuiz({focus:true});}return;}
   if(pressed&&role==='player'&&room?.question&&!room.question.closed&&!modal.open&&!e.target.closest('input,textarea,select')&&(e.key==='1'||e.key==='2')){e.preventDefault();send('vote',{choice:Number(e.key)-1});return;}
-  if(e.target.closest('.world-controls button,.power-controls button,.power-chest-controls button')&&(e.key===' '||e.key==='Enter'))return;
+  if(e.target.closest('.world-controls button,.power-controls button,.power-chest-controls button,.lobby-profile-controls button,.player-world-panels summary')&&(e.key===' '||e.key==='Enter'))return;
   if(pressed&&!e.repeat&&e.key.toLowerCase()==='f'&&role==='player'&&room?.status==='running'&&!modal.open&&!runtimeError&&!e.target.closest('input,textarea,select')){e.preventDefault();useHeldPower();return;}
   const k=keyMap[e.key]||keyMap[e.key.toLowerCase()];if(!k)return;
   if(role!=='player'||!room||ceremony()||modal.open||runtimeError||e.target.closest('input,textarea,select'))return;
@@ -639,17 +748,14 @@ window.addEventListener('blur',zeroInput);document.addEventListener('visibilityc
 });
 window.addEventListener('pagehide',event=>{if(role==='player'&&room?.status!=='ended')send('leave');audio.setHidden(true);if(!event.persisted)audio.dispose();});
 window.addEventListener('pageshow',()=>{audio.setHidden(document.hidden);syncPlayerQuiz({focus:true});});
-window.addEventListener('resize',()=>{syncPlayerQuiz();syncPlayerChest();});
-document.addEventListener('fullscreenchange',()=>{syncPlayerQuiz();syncPlayerChest();});
-setInterval(()=>{if(document.hidden)advanceLocalSimulation();syncPlayerQuiz();syncPlayerChest();},100);
+window.addEventListener('resize',()=>{syncLobbyProfile();syncPlayerQuiz();syncPlayerChest();});
+document.addEventListener('fullscreenchange',()=>{syncLobbyProfile();syncPlayerQuiz();syncPlayerChest();});
+setInterval(()=>{if(document.hidden)advanceLocalSimulation();syncLobbyProfile();syncPlayerQuiz();syncPlayerChest();},100);
 setInterval(()=>{if(connected)send('timeSync',{clientTime:Date.now()});},10000);
 audio.setHidden(document.hidden);
 modal.addEventListener('click',e=>{if(e.target===modal){const r=modal.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal();}});
 modal.addEventListener('close',()=>{updateMusicScene();});
 
-// Avatar selection uses the same production atlas as the game.
-const atlas=new Image();atlas.src='/assets/sprites.png';
-function drawAvatarSelections(){if(!atlas.complete||!atlas.naturalWidth)return;$$('[data-avatar-canvas]').forEach(canvas=>drawAvatar(canvas,canvas.dataset.avatarCanvas,profile.color));}
 let lastHostDraw=0,lastUiDraw=0;
 function advanceLocalSimulation(){
   const now=serverNow(),me=room?.players.find(p=>p.id===you);
@@ -687,8 +793,8 @@ function frame(time){
     const me=room?.players.find(p=>p.id===you),canvas=$('#game-canvas');
     if(canvas){const visual=me?.spawned?localRun.state:createState(profile);renderGame(canvas,visual,{time:t,compact:true,powerChestClaims:me?.powerChestClaims||[],showInstructions:room.status==='lobby'||!me?.spawned});drawPlayerPowers(canvas,me,{now,time:t});drawWorldBroadcasts(canvas,{now});drawPlayerQuiz(canvas,me,{now});}
     const state=localRun?.state,death=$('#death-caption');
-    if(death&&state){const remain=state.respawnRemaining||0;death.hidden=remain<=0||!!me?.powerQuiz;if(remain>0)death.innerHTML=`<strong>WELL, THAT HAPPENED.</strong><p>${esc(state.deathCause?.label||'A surprise encounter with danger.')}</p><small>RESPAWNING IN ${Math.max(1,Math.ceil(remain))}s · ${state.checkpoint?'BACK TO YOUR CHECKPOINT · COLLECTED COINS & TREASURE SAFE':'BACK TO THE WORLD START · COLLECTED COINS & TREASURE SAFE'}</small>`;}
-    drawAvatarSelections();
+    if(death&&state){const remain=state.respawnRemaining||0;death.hidden=remain<=0||!!me?.powerQuiz;if(remain>0)death.innerHTML=`<strong>WELL, THAT HAPPENED.</strong><p>${esc(state.deathCause?.label||'A surprise encounter with danger.')}</p><span class="respawn-countdown">RESPAWNING IN ${Math.max(1,Math.ceil(remain))}s</span><small>${state.checkpoint?'BACK TO YOUR CHECKPOINT · COLLECTED COINS & TREASURE SAFE':'BACK TO THE WORLD START · COLLECTED COINS & TREASURE SAFE'}</small>`;}
+    syncLobbyProfile();
   }
   if(role==='host'&&room&&!ceremony()&&time-lastHostDraw>120){
     lastHostDraw=time;

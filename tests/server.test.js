@@ -4,6 +4,7 @@ import { WebSocket } from 'ws';
 import { createGameServer } from '../server/index.js';
 import { emptyRunSummary } from '../public/game/run-protocol.js';
 import { LEVELS } from '../public/game/levels.js';
+import { COLORS } from '../public/game/engine.js';
 
 const sleep = ms => new Promise(resolve=>setTimeout(resolve,ms));
 async function wait(check) { for(let i=0;i<400;i++){const found=check();if(found)return found;await sleep(5);}throw new Error('Condition timed out'); }
@@ -16,7 +17,7 @@ async function fixture(t,{count=1,settings={}}={}){
   const origin=`http://127.0.0.1:${server.httpServer.address().port}`,url=origin.replace('http:','ws:'),host=await open(url);
   send(host,'create',{settings});const made=await receive(host,m=>m.type==='created'),room=server.rooms.get(made.code),clients=[],players=[];
   async function join(name){const ws=await open(url);send(ws,'join',{code:made.code,name});const joined=await receive(ws,m=>m.type==='joined');return{ws,player:room.players.get(joined.id)};}
-  for(let i=0;i<count;i++){const {ws,player}=await join(`Runner ${i+1}`);clients.push(ws);players.push(player);send(ws,'spawn');await wait(()=>player.spawned);}
+  for(let i=0;i<count;i++){const {ws,player}=await join(`Runner ${i+1}`);clients.push(ws);players.push(player);await wait(()=>player.spawned);}
   async function report(index,patch={},options={}){
     const player=players[index];const data={roundId:room.roundId,runId:player.runId,seq:player.lastSeq+1,at:room.status==='settling'?room.cutoffAt:clock,summary:{...player.summary,...patch},chestId:null,final:false,...options};
     send(clients[index],'runReport',data);
@@ -65,6 +66,42 @@ test('host authorization, room creation, spawn, and manual start remain separate
   await f.start();assert.equal(f.room.status,'running');assert.equal(f.players[0].summary.level,1);assert.equal(f.players[0].spawned,true);
 });
 
+test('joining enters the playable lobby immediately and lobby profile edits preserve the run',async t=>{
+  const f=await fixture(t,{count:2}); const player=f.players[0];
+  assert.equal(player.spawned,true);
+  const runId=player.runId; player.score=42; player.summary={...player.summary,current:42};
+  f.host.inbox=[]; f.clients[1].inbox=[];
+  send(f.clients[0],'profile',{name:'  New Name  ',avatar:'cat',color:COLORS[1]});
+  await wait(()=>player.name==='New Name');
+  assert.equal(player.avatar,'cat'); assert.equal(player.color,COLORS[1]);
+  assert.equal(player.runId,runId); assert.equal(player.score,42); assert.equal(player.summary.current,42);
+  const hostState=await receive(f.host,m=>m.type==='state'&&m.room.players.some(p=>p.id===player.id&&p.name==='New Name'));
+  const peerState=await receive(f.clients[1],m=>m.type==='state'&&m.room.players.some(p=>p.id===player.id&&p.name==='New Name'));
+  for(const state of [hostState,peerState]) { const view=state.room.players.find(p=>p.id===player.id); assert.equal(view.name,'New Name'); assert.equal(view.avatar,'cat'); assert.equal(view.color,COLORS[1]); }
+  send(f.clients[0],'spawn'); await sleep(5); assert.equal(player.spawned,true);
+});
+
+test('legacy spawn remains accepted for lobby players but cannot activate ended spectators',async t=>{
+  const f=await fixture(t); const player=f.players[0]; player.spawned=false;
+  send(f.clients[0],'spawn'); await wait(()=>player.spawned);
+  await f.start(); await f.end(); await f.report(0,{}, {final:true}); await wait(()=>f.room.status==='ended');
+  const spectator=await f.join('Spectator'); send(spectator.ws,'spawn'); await sleep(10);
+  assert.equal(spectator.player.spawned,false);
+});
+
+test('race start locks identity while lobby reset makes players active again',async t=>{
+  const f=await fixture(t); const player=f.players[0]; await f.start();
+  send(f.clients[0],'profile',{name:'Too Late',avatar:'robot',color:COLORS[4]});
+  assert.equal((await receive(f.clients[0],m=>m.type==='error')).code,'PROFILE_LOCKED');
+  assert.equal(player.name,'Runner 1'); assert.equal(player.avatar,'explorer'); assert.equal(player.color,COLORS[0]);
+  await f.end(); await f.report(0,{},{final:true}); await wait(()=>f.room.status==='ended');
+  send(f.host,'reset'); await wait(()=>f.room.status==='lobby');
+  assert.equal(player.spawned,true); assert.equal(player.summary.level,0);
+  f.clients[0].inbox=[]; send(f.clients[0],'profile',{name:'Lobby Name',avatar:'wizard',color:COLORS[5]});
+  await wait(()=>player.name==='Lobby Name'); assert.equal(player.spawned,true);
+  assert.equal(player.avatar,'wizard'); assert.equal(player.color,COLORS[5]);
+});
+
 test('reports update only host detail and compact rankings, with no simulation payload',async t=>{
   const f=await fixture(t,{count:2});await f.start();f.host.inbox=[];f.clients.forEach(ws=>ws.inbox=[]);
   assert.equal((await f.report(0,{coins:2,current:20,distanceMax:65,progress:.05})).type,'reportAck');
@@ -102,11 +139,11 @@ test('death reports replace points with checkpoint totals and preserve banked wo
 
 test('late arrivals and refreshed runs start the selected first biome with shared remaining time',async t=>{
   const f=await fixture(t,{settings:{worldOrder:[3,1,2]}});await f.start();await f.advance(5000);
-  const late=await f.join('Late arrival');assert.equal(late.player.summary.level,3);const deadline=f.room.endsAt;
+  const late=await f.join('Late arrival');assert.equal(late.player.summary.level,3);assert.equal(late.player.spawned,true);const deadline=f.room.endsAt;
   const oldRun=f.players[0].runId;await f.report(0,{current:80});f.clients[0].close();await wait(()=>!f.players[0].connected);
   const refreshed=await f.join(f.players[0].name);assert.equal(refreshed.player,f.players[0]);assert.notEqual(refreshed.player.runId,oldRun);assert.equal(refreshed.player.summary.level,3);
   assert.equal(refreshed.player.score,0);assert.equal(refreshed.player.lastSeq,0);assert.equal(f.room.endsAt,deadline);
-  assert.equal(refreshed.player.spawned,false);
+  assert.equal(refreshed.player.spawned,true);
 });
 
 test('natural expiry uses the original deadline and accepts exact unbanked final totals',async t=>{
@@ -131,7 +168,7 @@ test('missing final reports fall back after two seconds and resetting waits for 
   const f=await fixture(t);await f.start();await f.report(0,{current:25});await f.end();
   send(f.host,'reset');await sleep(10);assert.equal(f.room.status,'settling');
   await f.advance(1999);assert.equal(f.room.status,'settling');await f.advance(1);assert.equal(f.room.status,'ended');assert.equal(f.room.results[0].score,25);
-  send(f.host,'reset');await wait(()=>f.room.status==='lobby');assert.equal(f.players[0].score,0);assert.equal(f.players[0].spawned,false);
+  send(f.host,'reset');await wait(()=>f.room.status==='lobby');assert.equal(f.players[0].score,0);assert.equal(f.players[0].spawned,true);
 });
 
 test('settlement protects captured runs, and ended refreshes and spectators cannot rerank results',async t=>{

@@ -171,26 +171,31 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     if (room.status!=='lobby') return;
     room.status='running'; room.roundId=randomUUID(); room.startedAt=now(); room.endsAt=room.startedAt+room.settings.durationMinutes*60000;
     room.cutoffAt=null; room.settleEndsAt=null; room.results=null; room.resultEntries=[]; room.pendingFinal=new Set(); room.question=null; clearPowers(room);
-    for (const player of room.players.values()) { const spawned=player.spawned; resetPlayer(player,room.settings.worldOrder[0]); player.spawned=spawned; }
+    // Lobby players are already active; starting only changes their world/run.
+    for (const player of room.players.values()) { resetPlayer(player,room.settings.worldOrder[0]); player.spawned=true; }
     broadcast(room);
   };
   const reset = room => {
     if (room.status!=='ended') return;
     clearPowers(room); room.status='lobby'; room.roundId=randomUUID(); room.startedAt=null; room.endsAt=null; room.cutoffAt=null; room.settleEndsAt=null;
     room.results=null; room.resultEntries=[]; room.pendingFinal=new Set(); room.question=null; room.leaderboardDirty=false;
-    for (const player of room.players.values()) resetPlayer(player);
+    // Returning to the lobby must leave every connected player immediately playable.
+    for (const player of room.players.values()) { resetPlayer(player); player.spawned=true; }
     broadcast(room);
   };
   const addPlayer = (room, msg, ws) => {
     const info=profile(msg), old=[...room.players.values()].find(p=>!p.ws&&p.name===info.name);
     if (old) {
       Object.assign(old,{ws,connected:true});
-      if (room.status!=='ended') { Object.assign(old,info); resetPlayer(old,room.status==='running'?room.settings.worldOrder[0]:0); }
+      if (room.status!=='ended') { Object.assign(old,info); resetPlayer(old,room.status==='running'?room.settings.worldOrder[0]:0); old.spawned=true; }
       return old;
     }
     if (room.players.size>=MAX_PLAYERS) return null;
     const player={id:randomUUID(),...info,room,ws,connected:true,joinedAt:now()};
-    resetPlayer(player,room.status==='running'?room.settings.worldOrder[0]:0); room.players.set(player.id,player); return player;
+    resetPlayer(player,room.status==='running'?room.settings.worldOrder[0]:0);
+    // New lobby/running joins enter as active players. Ended-room arrivals remain spectators.
+    player.spawned=room.status!=='ended';
+    room.players.set(player.id,player); return player;
   };
   const tryCollect = (room, player) => {
     const level=player.summary.level, chestId=player.chestContact;
@@ -317,7 +322,10 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     if (!player||player.ws!==ws||!player.connected) return error(ws,'Invalid player session','AUTH');
     if (['start','end','reset','settings','launchQuestion','skipQuestion','hostAttack'].includes(msg.type)) return error(ws,'Host only','AUTH');
     if (msg.type==='runReport') return acceptReport(room,player,msg,ws);
-    if (msg.type==='profile'&&['lobby','running'].includes(room.status)&&!player.spawned) { Object.assign(player,profile(msg)); return broadcast(room); }
+    if (msg.type==='profile') {
+      if (room.status!=='lobby') return error(ws,'Player identity is locked after the race starts','PROFILE_LOCKED');
+      Object.assign(player,profile(msg)); return broadcast(room);
+    }
     if (msg.type==='spawn'&&['lobby','running'].includes(room.status)) { player.spawned=true; return broadcast(room); }
     if (msg.type==='vote'&&room.status==='lobby'&&room.question&&!room.question.closed&&now()<room.question.endsAt&&(msg.choice===0||msg.choice===1)) { room.question.votes.set(player.id,msg.choice); return broadcast(room); }
     if (['usePower','powerAnswer','powerChestChoice'].includes(msg.type)) {
