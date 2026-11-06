@@ -15,6 +15,9 @@ test('editor reexports resolve to the shared browser runtime',async()=>{
   assert.match(shared.headers.get('content-type'),/javascript/);
   assert.match(await shared.text(),/export class LevelRuntime/);
   assert.equal((await fetch(base+'/public/game/json-level/document.js')).status,200);
+  const tuning=await fetch(base+'/public/game/projectiles.js');
+  assert.equal(tuning.status,200);
+  assert.match(await tuning.text(),/PROJECTILE_RULES/);
 });
 test('read-only method and traversal are rejected',async()=>{let r=await fetch(base+'/',{method:'POST'});assert.equal(r.status,405);r=await fetch(base+'/%2e%2e/%2e%2e/package.json');assert.ok([403,404].includes(r.status))});
 test('foreign Host header is forbidden',async()=>{

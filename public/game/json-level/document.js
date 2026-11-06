@@ -105,6 +105,23 @@ export function validateDocument(document) {
       for (const key of ['onMs','offMs']) if (!finite(value[key]) || value[key] < 1 || value[key] > 3600000) error(`${path}.${key}`, 'must be between 1 and 3600000 milliseconds');
       if (!['on','off'].includes(value.startState)) error(path, 'beam startState must be on or off');
     }
+    if (value.type === 'enemy') {
+      if (value.actorType != null && !['creature', 'shooter'].includes(value.actorType)) error(`${path}.actorType`, 'must be creature or shooter');
+      if (value.states != null) {
+        if (!object(value.states)) error(`${path}.states`, 'must be an object');
+        else {
+          const required = value.actorType === 'shooter' ? ['idle', 'playerDetected', 'shooting', 'dead'] : ['idle', 'moving', 'playerDetected', 'dead'];
+          for (const key of required) if (value.states[key] != null && (typeof value.states[key] !== 'string' || !value.states[key].trim() || value.states[key].length > 100)) error(`${path}.states.${key}`, 'must be an animation name');
+          if (value.detectedMode != null && !['once', 'while-detected'].includes(value.detectedMode)) error(`${path}.detectedMode`, 'must be once or while-detected');
+        }
+      }
+      if (value.spawnOffset != null && (!Array.isArray(value.spawnOffset) || value.spawnOffset.length !== 2 || !value.spawnOffset.every(finite) || value.spawnOffset.some(n => n < -100 || n > 100))) error(`${path}.spawnOffset`, 'must be a normalized pivot delta within ±100');
+      if (value.projectileDefinitionId != null && (typeof value.projectileDefinitionId !== 'string' || !value.projectileDefinitionId.trim() || value.projectileDefinitionId.length > 200)) error(`${path}.projectileDefinitionId`, 'must be a nonempty definition id');
+      if (value.supportId != null && (typeof value.supportId !== 'string' || !value.supportId.trim())) error(`${path}.supportId`, 'must be a nonempty placement id');
+    }
+    if (value.type === 'projectile') {
+      for (const key of ['flightAnimation', 'impactAnimation']) if (value[key] != null && (typeof value[key] !== 'string' || !value[key].trim())) error(`${path}.${key}`, 'must be a nonempty animation name');
+    }
     if (value.motion !== undefined && value.motion !== null) {
       if (!object(value.motion)) error(`${path}.motion`, 'motion must be null or an object');
       else {
@@ -125,7 +142,10 @@ export function validateDocument(document) {
         if (value.vanish.restoreMode === 'timed' && (!finite(value.vanish.restoreMs) || value.vanish.restoreMs < 1 || value.vanish.restoreMs > 3600000)) error(`${path}.vanish.restoreMs`, 'must be between 1 and 3600000 milliseconds for timed restore');
       }
     }
-    for (const key of ['speed','detectRange','fireIntervalMs','lifetimeMs']) if (value[key] != null && (!finite(value[key]) || value[key] < 0)) error(`${path}.${key}`, 'must be a nonnegative finite number');
+    if (value.speed != null && (!finite(value.speed) || value.speed < 0 || value.speed > 100000)) error(`${path}.speed`, 'must be between 0 and 100000');
+    if (value.detectRange != null && (!finite(value.detectRange) || value.detectRange < 0 || value.detectRange > 1000000)) error(`${path}.detectRange`, 'must be between 0 and 1000000');
+    if (value.fireIntervalMs != null && (!finite(value.fireIntervalMs) || value.fireIntervalMs < 1 || value.fireIntervalMs > 3600000)) error(`${path}.fireIntervalMs`, 'must be between 1 and 3600000 milliseconds');
+    if (value.lifetimeMs != null && (!finite(value.lifetimeMs) || value.lifetimeMs < 1 || value.lifetimeMs > 3600000)) error(`${path}.lifetimeMs`, 'must be between 1 and 3600000 milliseconds');
   }
   function gameplay(value, path) {
     if (value == null) return;
@@ -176,6 +196,17 @@ export function validateDocument(document) {
       if (physics.walkSurfaces != null && (!Array.isArray(physics.walkSurfaces) || physics.walkSurfaces.some(s => !['horizontal','slope'].includes(s.kind) || !['x1','y1','x2','y2'].every(k => finite(s[k]))))) error(path, 'invalid walking surfaces');
     }
     behavior(definition.behavior, `${path}.behavior`);
+    if (definition.behavior?.type === 'projectile' && definition.kind !== 'projectile') error(path, 'projectile behavior requires projectile kind');
+    if (definition.kind === 'projectile' && definition.behavior?.type !== 'projectile') error(path, 'projectile kind requires projectile behavior');
+    if (definition.behavior?.actorType === 'shooter' && definition.behavior?.projectileDefinitionId && document.definitions[definition.behavior.projectileDefinitionId]?.kind !== 'projectile') error(path, 'projectile definition must have projectile kind');
+    if (definition.behavior?.type === 'enemy' && object(definition.behavior.states)) {
+      const allowed = new Set(['idle', 'moving', 'playerDetected', 'shooting', 'dead']);
+      for (const [stateName, animationName] of Object.entries(definition.behavior.states)) {
+        if (!allowed.has(stateName)) error(`${path}.behavior.states.${stateName}`, 'unknown actor state slot');
+        if (animationName != null && !definition.visual?.animations?.[animationName]) error(`${path}.behavior.states.${stateName}`, 'must reference an existing animation');
+      }
+    }
+    if (definition.behavior?.type === 'projectile') for (const key of ['flightAnimation', 'impactAnimation']) if (definition.behavior[key] && !definition.visual?.animations?.[definition.behavior[key]]) error(`${path}.behavior.${key}`, 'must reference an existing animation');
     if (definition.behavior?.projectileDefinitionId && !document.definitions[definition.behavior.projectileDefinitionId]) error(path, 'projectile definition does not exist');
     gameplay(definition.gameplay, `${path}.gameplay`);
   }
@@ -192,6 +223,15 @@ export function validateDocument(document) {
     if (!finite(placement.rotation) || placement.rotation < -360000 || placement.rotation > 360000) error(`${path}.rotation`, 'must be finite and between -360000 and 360000 degrees');
     if (placement.animation && !definition.visual.animations?.[placement.animation]) error(path, 'selected animation does not exist');
     behavior({ ...definition.behavior, ...placement.settings }, `${path}.settings`);
+    const placementBehavior = { ...definition.behavior, ...placement.settings };
+    if (placementBehavior.type === 'enemy' && object(placementBehavior.states)) {
+      const allowed = new Set(['idle', 'moving', 'playerDetected', 'shooting', 'dead']);
+      for (const [stateName, animationName] of Object.entries(placementBehavior.states)) {
+        if (!allowed.has(stateName)) error(`${path}.settings.states.${stateName}`, 'unknown actor state slot');
+        if (animationName != null && !definition.visual?.animations?.[animationName]) error(`${path}.settings.states.${stateName}`, 'must reference an existing animation');
+      }
+    }
+    if (placementBehavior.type === 'projectile' && definition.kind !== 'projectile') error(`${path}.settings`, 'projectile behavior requires projectile kind');
     gameplay(placement.gameplay, `${path}.gameplay`);
     const supportId = placement.settings?.supportId;
     if (supportId && !document.placements.some(p => p.id === supportId && document.definitions[p.definitionId]?.kind === 'platform')) error(path, 'support platform does not exist');

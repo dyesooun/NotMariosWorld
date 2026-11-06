@@ -97,6 +97,7 @@ The notes below document the retained original art and legacy fixture. They do n
 - In every race level, visible and disguised spikes use a centered collision box at **85% of their visual width and height** (7.5% inset on each edge). Preserve the full-sized artwork and original trap coordinates for death reveals. Bombs, enemies, projectiles, and pits keep their existing collision rules.
 - Respawns are unlimited and occur after **3 seconds**.
 - JSON levels use authored ordered checkpoint triggers and anchors. Legacy ocean/inferno courses retain checkpoints at **25%, 50%, and 75%**. The exit completes/banks the level rather than acting as another checkpoint.
+- JSON spawn and checkpoint banners default to a midpoint foot anchor `[0.5, 0.5]`, placing the player's feet at the banner's center before landing. The live forest's start and both checkpoint anchors use this midpoint; explicit custom anchors remain supported.
 - Each new checkpoint saves **respawn location, current points, coin count, collected coin IDs, farthest distance, and progress**.
 - Before the first checkpoint, death resets the current level's points, coins, and progress and respawns at that level's start. Previously banked levels remain safe.
 - After a checkpoint, death restores the checkpoint's saved state and respawns there. Only gains made after the saved checkpoint are lost.
@@ -115,6 +116,11 @@ The notes below document the retained original art and legacy fixture. They do n
 - Freeze final scores and ranks at round end. Disconnects, refreshes, reconnects, and new spectators must not change podium placements.
 
 ## Critters and projectiles
+
+- Authored actors use exactly four functional animation slots: creatures have **idle, moving, player detected, dead**; shooters have **idle, shooting, player detected, dead**. The fired projectile is a separate animated definition with a flight sequence and optional impact sequence. Preserve the original animation names/frames and map these slots explicitly; imported hurt/lunge/slam/dive artwork does not authorize additional gameplay abilities.
+- Character import includes manifest projectile definitions, resolves stable shooter/projectile references, and retains existing atlas/cut/placement identities. Missing detected/dead artwork stays unassigned rather than being fabricated. Runtime state selection is automatic in the JSON viewer and live game; editor preview selection remains temporary.
+- The player-detected sequence plays once when detection begins, before chasing/shooting, and replays only after detection is lost and acquired again. Preserve existing platform support/chase, lethal contact and stomp behavior. Shooter spawn offsets are normalized deltas from the authored visual pivot, transformed with the actor. Fire at the selected shooting-animation frame once per cycle; keep fired projectiles ephemeral and local, with no placement/document mutation or network payload expansion.
+- Player respawn/restart resets actor states, patrol cycles, shooting cooldowns and fired projectiles while preserving the established checkpoint/coin and coordinator-owned inventory rules. Dead actors stop dealing contact damage, play their mapped death sequence once, and then disappear. Authored source levels are only changed when the user places/exports actors.
 
 - Critters live on both ground and raised platforms and patrol within the bounds of their assigned platform.
 - Chase only when the player is standing on **that same platform**, not merely nearby or at a similar height. Resume patrol when the player leaves it.

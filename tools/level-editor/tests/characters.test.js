@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { createCharacterCatalog } from '../characters.js';
+import { createCharacterCatalog, normalizeStateName } from '../characters.js';
 
 const image = '/assets/sprites/forest/creatures/creatures.png';
 test('imports one character sequence and creates an idle preview state', () => {
@@ -18,7 +18,7 @@ test('imports one character sequence and creates an idle preview state', () => {
 test('imports named states from the forest creature manifest', () => {
   const manifest = JSON.parse(fs.readFileSync('public/assets/sprites/forest/creatures/manifest.json', 'utf8'));
   const result = createCharacterCatalog({ name: 'Forest creatures', imageSrc: image, width: manifest.atlas.width, height: manifest.atlas.height, manifest, levels: ['forest'] });
-  assert.equal(Object.keys(result.definitions).length, manifest.enemies.length);
+  assert.equal(Object.keys(result.definitions).length, manifest.enemies.length + manifest.projectiles.length);
   const boar = Object.values(result.definitions).find(definition => definition.source.characterId === 'brambleback_boar');
   assert.ok(boar.visual.animations.idle);
   assert.ok(boar.visual.animations.run);
@@ -64,7 +64,7 @@ test('rejects invalid animation event indices', () => {
 for (const biome of ['tide', 'hell']) test(`imports bundled ${biome} creature states`, () => {
   const manifest = JSON.parse(fs.readFileSync(`public/assets/sprites/${biome}/creatures/manifest.json`, 'utf8'));
   const result = createCharacterCatalog({ name: `${biome} creatures`, imageSrc: `/assets/sprites/${biome}/creatures/creatures.png`, width: manifest.atlas.width, height: manifest.atlas.height, manifest, levels: [biome] });
-  assert.equal(Object.keys(result.definitions).length, manifest.enemies.length);
+  assert.equal(Object.keys(result.definitions).length, manifest.enemies.length + manifest.projectiles.length);
   assert.ok(Object.values(result.definitions).every(definition => Object.keys(definition.visual.animations).length > 0));
 });
 
@@ -74,4 +74,41 @@ test('namespaces imported atlases and rejects malformed sequences', () => {
   assert.equal(Object.keys(result.assets)[0], 'walker-atlas-2');
   assert.throws(() => createCharacterCatalog({ ...options, cuts: [{ x: 0, y: 0, w: 16, h: 16 }], manifest: { frames: { a: { x: 0, y: 0, w: 16, h: 16 } }, characters: [{ id: 'bad', animations: { idle: { frames: ['missing'], fps: 8, loop: true } } }] } }), /unknown frame/);
   assert.throws(() => createCharacterCatalog({ ...options, cuts: [{ x: 0, y: 0, w: 16, h: 16 }], manifest: { frames: { a: { x: 0, y: 0, w: 16, h: 16 } }, characters: [{ id: 'bad', animations: { idle: { frames: ['a'], fps: 0, loop: true } } }] } }), /fps/);
+});
+
+test('imports all real biome projectiles and links shooter references', () => {
+  for (const biome of ['forest', 'tide', 'hell']) {
+    const manifest = JSON.parse(fs.readFileSync(`public/assets/sprites/${biome}/creatures/manifest.json`, 'utf8'));
+    const result = createCharacterCatalog({ name: `${biome} creatures`, imageSrc: `/assets/sprites/${biome}/creatures/creatures.png`, width: manifest.atlas.width, height: manifest.atlas.height, manifest });
+    const projectiles = Object.values(result.definitions).filter(d => d.kind === 'projectile');
+    assert.equal(projectiles.length, manifest.projectiles.length);
+    for (const enemy of manifest.enemies.filter(e => e.projectile_id)) {
+      const d = Object.values(result.definitions).find(x => x.source.characterId === enemy.id);
+      assert.equal(d.behavior.actorType, 'shooter');
+      assert.ok(result.definitions[d.behavior.projectileDefinitionId]);
+      assert.deepEqual(d.behavior.spawnOffset, enemy.spawn_offset_from_pivot_px.map((n, i) => n / (i ? manifest.frames[Object.values(enemy.animations)[0].frames[0]].h : manifest.frames[Object.values(enemy.animations)[0].frames[0]].w)));
+    }
+  }
+});
+
+test('normalizes aliases, preserves missing functional art, and supports manual mappings', () => {
+  const manifest = { atlas: { width: 32, height: 16 }, frames: { a: { x: 0, y: 0, w: 8, h: 8 }, b: { x: 8, y: 0, w: 8, h: 8 } }, characters: [{ id: 'manual', actorType: 'creature', pivot_px: [4, 8], collider: [.1, .1, .8, .8], animations: { hover: { frames: ['a'], fps: 8, loop: true }, run: { frames: ['b'], fps: 8, loop: true } } }], projectiles: [{ id: 'bolt', animations: { flight: { frames: ['a'], fps: 8, loop: true }, impact: { frames: ['b'], fps: 8, loop: false } } }] };
+  const original = JSON.stringify(manifest);
+  const result = createCharacterCatalog({ name: 'manual', imageSrc: '/assets/sprites/manual.png', width: 32, height: 16, manifest });
+  const actor = Object.values(result.definitions).find(d => d.source.characterId === 'manual');
+  assert.deepEqual(actor.behavior.states, { idle: 'hover', moving: 'run', playerDetected: null, dead: null });
+  const bolt = Object.values(result.definitions).find(d => d.source.characterId === 'bolt');
+  assert.equal(bolt.behavior.flightAnimation, 'flight');
+  assert.equal(bolt.behavior.impactAnimation, 'impact');
+  assert.equal(JSON.stringify(manifest), original);
+  assert.equal(normalizeStateName('player detected'), 'playerDetected');
+});
+
+test('rejects duplicate IDs and dangling or wrong-kind projectile references atomically', () => {
+  const base = { atlas: { width: 16, height: 8 }, frames: { a: { x: 0, y: 0, w: 8, h: 8 } } };
+  assert.throws(() => createCharacterCatalog({ name: 'bad', imageSrc: '/assets/bad.png', width: 16, height: 8, manifest: { ...base, characters: [{ id: 'x', animations: { idle: { frames: ['a'], fps: 8, loop: true } } }, { id: 'x', animations: { idle: { frames: ['a'], fps: 8, loop: true } } }] } }), /unique/);
+  const enemy = { id: 'e', projectile_id: 'missing', animations: { idle: { frames: ['a'], fps: 8, loop: true } } };
+  assert.throws(() => createCharacterCatalog({ name: 'bad', imageSrc: '/assets/bad.png', width: 16, height: 8, manifest: { ...base, enemies: [enemy], projectiles: [] } }), /declared projectile/);
+  const wrong = { id: 'e', projectile_id: 'c', animations: { idle: { frames: ['a'], fps: 8, loop: true } } };
+  assert.throws(() => createCharacterCatalog({ name: 'bad', imageSrc: '/assets/bad.png', width: 16, height: 8, manifest: { ...base, characters: [{ id: 'c', animations: { idle: { frames: ['a'], fps: 8, loop: true } } }], enemies: [wrong], projectiles: [] } }), /declared projectile/);
 });

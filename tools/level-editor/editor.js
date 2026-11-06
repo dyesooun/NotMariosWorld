@@ -180,6 +180,38 @@ function advancedJSON(parent, title, value, onApply) {
   const area = element('textarea', details); area.value = JSON.stringify(value, null, 2); area.setAttribute('aria-label', title); area.spellcheck = false;
   button(details, 'Apply JSON', () => { try { onApply(JSON.parse(area.value)); } catch (error) { toast(error.message, true); } });
 }
+function renderRuntimeBehavior(parent, definition, onChange) {
+  const behavior = definition.behavior || {}, animations = Object.keys(definition.visual?.animations || {});
+  const runtime = section(parent, 'Runtime behavior');
+  const isProjectile = definition.kind === 'projectile' || behavior.type === 'projectile';
+  const role = behavior.actorType || (behavior.type === 'enemy' ? 'creature' : 'none');
+  field(runtime, 'Actor type', isProjectile ? 'projectile' : role, value => onChange(d => {
+    if (value === 'projectile') d.kind = 'projectile', d.behavior = { type:'projectile', flightAnimation: animations[0] || null, impactAnimation:null, speed:120, bodySize:[16,16], lifetimeMs:3000, fireIntervalMs:4800 };
+    else if (value === 'creature' || value === 'shooter') d.kind='enemy', d.behavior={ type:'enemy', actorType:value, states:{idle:animations[0]||null,...(value==='shooter'?{shooting:null}:{moving:null}),playerDetected:null,dead:null}, speed:value==='shooter'?0:42, detectRange:value==='shooter'?500:400, fireIntervalMs:4800, detectedMode:'once' };
+    else if (d.kind==='enemy'||d.kind==='projectile') d.kind='character', d.behavior={ type:'static' };
+  }), { choices:[['none','None'],['creature','Creature'],['shooter','Shooter'],['projectile','Projectile']] });
+  const current = () => doc().definitions[definition.id];
+  const choose = (label, key, available) => field(runtime, label, current().behavior?.states?.[key] || '', value => onChange(d => { d.behavior.states ||= {}; d.behavior.states[key]=value||null; }), { choices:[['','Not assigned'], ...available.map(name=>[name,name])] });
+  if (!isProjectile && (role==='creature'||role==='shooter')) {
+    const slots = role==='shooter' ? [['idle','Idle animation'],['shooting','Shooting animation'],['playerDetected','Player detected animation'],['dead','Dead animation']] : [['idle','Idle animation'],['moving','Moving animation'],['playerDetected','Player detected animation'],['dead','Dead animation']];
+    slots.forEach(([key,label])=>choose(label,key,animations));
+    if (role==='shooter') {
+      const projectiles=Object.values(doc().definitions).filter(d=>d.kind==='projectile');
+      field(runtime,'Projectile asset',behavior.projectileDefinitionId||'',value=>onChange(d=>{if(value)d.behavior.projectileDefinitionId=value;else delete d.behavior.projectileDefinitionId;}),{choices:[['','Not assigned'],...projectiles.map(d=>[d.id,d.name])]});
+      const shooting=animations.includes(behavior.states?.shooting)?behavior.states.shooting:'';
+      if (shooting) field(runtime,'Fire on frame',(current().visual.animations[shooting].spawn_projectile_at_index ?? 0)+1,value=>onChange(d=>{const a=d.visual.animations[shooting];const n=Number(value)-1;if(!Number.isInteger(n)||n<0||n>=a.frames.length)throw new Error(`Fire on frame must be between 1 and ${a.frames.length}.`);a.spawn_projectile_at_index=n;}),{type:'number'});
+      for(const [axis,label] of [[0,'Projectile spawn offset X'],[1,'Projectile spawn offset Y']])field(runtime,label,behavior.spawnOffset?.[axis]??0,value=>onChange(d=>{d.behavior.spawnOffset=[...(d.behavior.spawnOffset||[0,0])];d.behavior.spawnOffset[axis]=value;}),{type:'number'});
+      element('p',runtime,'Spawn offsets are fractions of the actor size, measured from its visual pivot.','muted');
+    }
+    field(runtime,'Movement speed',behavior.speed ?? (role==='shooter'?0:42),value=>onChange(d=>{d.behavior.speed=value;}),{type:'number'});
+    field(runtime,'Detection range',behavior.detectRange ?? (role==='shooter'?500:400),value=>onChange(d=>{d.behavior.detectRange=value;}),{type:'number'});
+    field(runtime,'Fire interval ms',behavior.fireIntervalMs ?? 4800,value=>onChange(d=>{d.behavior.fireIntervalMs=value;}),{type:'number'});
+  } else if (isProjectile) {
+    field(runtime,'Flight animation',behavior.flightAnimation || '',value=>onChange(d=>{d.behavior.flightAnimation=value||null;}),{choices:[['','Not assigned'],...animations.map(name=>[name,name])]});
+    field(runtime,'Impact animation',behavior.impactAnimation || '',value=>onChange(d=>{d.behavior.impactAnimation=value||null;}),{choices:[['','Not assigned'],...animations.map(name=>[name,name])]});
+  }
+  element(runtime,'p',isProjectile?'Engine uses the flight/impact mappings and shared 120 px/s, 16×16, 3-second projectile defaults.':'Engine uses these functional state mappings; sequence preview remains local to the editor.','muted');
+}
 function renderDefinition(parent, definition) {
   element('h3', parent, definition.name);
   const count = doc.placements.filter(p => p.definitionId === definition.id).length;
@@ -195,6 +227,7 @@ function renderDefinition(parent, definition) {
     d.gameplay=value;
     if(p&&previousRole!=='spawnpoint'&&resolveGameplay(d,p).role==='spawnpoint')project.world.spawnPlacementId=p.id;
   })});
+  renderRuntimeBehavior(parent, definition, callback => editDefinition(callback));
   field(parent,'Asset role',definition.kind,value=>editDefinition(d=>{
     d.kind=value;
     if(value==='platform')d.behavior={type:'static'};

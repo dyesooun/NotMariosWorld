@@ -56,7 +56,7 @@ test('hazards and beam timing kill, while reset clears cycles', () => {
   assert.equal(runtime.triggerTimes.size, 0);
 });
 
-test('sample WhimsicalForest JSON is accepted and receives a generic spawn', () => {
+test('forest start and checkpoint banner midpoints land safely above solid ground', () => {
   const samplePath = new URL('../../../public/assets/sprites/forest/tileset/WhimsicalForest.json', import.meta.url);
   if (!fs.existsSync(samplePath)) return;
   const document = JSON.parse(fs.readFileSync(samplePath, 'utf8'));
@@ -64,6 +64,17 @@ test('sample WhimsicalForest JSON is accepted and receives a generic spawn', () 
   const runtime = new LevelRuntime(document);
   assert.ok(Number.isFinite(runtime.player.x) && Number.isFinite(runtime.player.y));
   assert.ok(runtime.getStates().length > 0);
+  const banners = document.placements.filter(p => ['spawnpoint', 'checkpoint'].includes(p.gameplay?.role));
+  for (const banner of banners) {
+    const landingDocument = structuredClone(document);
+    setLevelSpawn(landingDocument, banner.id);
+    const landing = new LevelRuntime(landingDocument);
+    const anchor = { x: banner.x + banner.width / 2 - landing.player.width / 2, y: banner.y + banner.height / 2 - landing.player.height };
+    assert.deepEqual(landing.spawn, anchor);
+    advanceFor(landing, 1);
+    assert.equal(landing.deaths, 0, `${banner.id} must not drop the player through the ground`);
+    assert.equal(landing.player.grounded, true, `${banner.id} must have safe support`);
+  }
 });
 
 test('moving platforms carry a standing player and vanish after trigger countdown', () => {
@@ -283,7 +294,7 @@ test('gameplay coins are idempotent, hidden, and do not mutate source data', () 
 test('tagged spawnpoints honor priority and exits freeze with one event', () => {
   const doc = roleFixture('spawnpoint', 'spawn-a', 100, 100, { priority: 1 });
   doc.definitions.exit = { ...doc.definitions.marker, id: 'exit', gameplay: { role: 'exit', nonblocking: true } };
-  doc.placements.push({ id: 'exit-1', definitionId: 'exit', x: 100, y: 120, width: 32, height: 32, layer: 0, flipX: false, rotation: 0, settings: {} });
+  doc.placements.push({ id: 'exit-1', definitionId: 'exit', x: 100, y: 100, width: 32, height: 32, layer: 0, flipX: false, rotation: 0, settings: {} });
   const runtime = new LevelRuntime(doc, { gravity: 0 }); assert.ok(runtime.spawn.x > 80);
   const events = runtime.advance(.02); assert.equal(runtime.finished, true); assert.equal(events.filter(e => e.type === 'level-exit').length, 1); const x = runtime.player.x; runtime.advance(.2, { right: true }); assert.equal(runtime.player.x, x);
 });
@@ -324,7 +335,7 @@ test('death before any checkpoint clears collection and auto-order uses placemen
 
 test('spawn priority, referenced marker, legacy world spawn and viewer override have deterministic precedence',()=>{
   const {doc,add}=coreFixture();add('low','spawnpoint',100,{priority:1});add('high','spawnpoint',600,{priority:3});
-  assert.deepEqual(new LevelRuntime(doc).spawn,{x:602,y:104});doc.world.spawn={x:8,y:9};assert.deepEqual(new LevelRuntime(doc).spawn,{x:602,y:104});doc.world.spawnPlacementId='low';assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:104});assert.deepEqual(new LevelRuntime(doc,{spawn:{x:5,y:6}}).spawn,{x:5,y:6});
+  assert.deepEqual(new LevelRuntime(doc).spawn,{x:602,y:84});doc.world.spawn={x:8,y:9};assert.deepEqual(new LevelRuntime(doc).spawn,{x:602,y:84});doc.world.spawnPlacementId='low';assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:84});assert.deepEqual(new LevelRuntime(doc,{spawn:{x:5,y:6}}).spawn,{x:5,y:6});
 });
 
 test('power chest contacts are stable enter/leave events and do not grant local inventory',()=>{
@@ -343,7 +354,7 @@ test('chosen spawn switches assets and follows transformed moving anchors after 
   const a=add('old','spawnpoint',100,{priority:999});
   const b=add('new','coin',300,{tags:['chosen'],anchor:[.25,.5]});
   doc.world.spawn={x:8,y:9};
-  setLevelSpawn(doc,a.id);assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:104});
+  setLevelSpawn(doc,a.id);assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:84});
   setLevelSpawn(doc,b.id);assert.deepEqual(new LevelRuntime(doc).spawn,{x:294,y:84});
   Object.assign(b,{x:300,y:160,width:72,height:48,rotation:90,flipX:true});
   b.settings.motion={axis:'x',distance:20,periodMs:1000,phaseMs:250};
@@ -357,9 +368,9 @@ test('chosen spawn switches assets and follows transformed moving anchors after 
 test('stale spawn references fall back to tagged markers then legacy coordinates',()=>{
   const {doc,add}=coreFixture();const a=add('marker','spawnpoint',100);add('ordinary','coin',600);
   doc.world.spawn={x:8,y:9};doc.world.spawnPlacementId='deleted';
-  assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:104});
+  assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:84});
   doc.world.spawnPlacementId='ordinary';
-  assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:104});
+  assert.deepEqual(new LevelRuntime(doc).spawn,{x:102,y:84});
   doc.placements=doc.placements.filter(p=>p.id!==a.id);
   assert.deepEqual(new LevelRuntime(doc).spawn,{x:8,y:9});
 });

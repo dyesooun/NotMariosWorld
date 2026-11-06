@@ -1,4 +1,5 @@
 import { validateTilesetManifest } from './manifest-validation.js';
+import { createCharacterCatalog } from './characters.js';
 
 const clone = value => JSON.parse(JSON.stringify(value));
 const slug = value => String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'tileset';
@@ -121,29 +122,12 @@ export function adaptLegacyForestTileset(manifest) {
 }
 
 export function createCreatureCatalog(manifest) {
-  const assetId = 'forest-creatures-atlas';
-  const asset = { id: assetId, name: 'Forest creatures', src: '/assets/sprites/forest/creatures/creatures.png', width: manifest.atlas.width, height: manifest.atlas.height, frames: clone(manifest.frames), manifest: clone(manifest) };
-  const definitions = {};
-  for (const entity of [...manifest.enemies, ...manifest.projectiles]) {
-    const definitionId = `${assetId}:${entity.id}`, projectile = manifest.projectiles.includes(entity);
-    const frameId = Object.values(entity.animations)[0].frames[0], frame = asset.frames[frameId];
-    const [px, py] = entity.pivot_px, [x, y, w, h] = entity.collision_box_relative_to_pivot_px;
-    const body = [(px + x) / frame.w, (py + y) / frame.h, w / frame.w, h / frame.h];
-    const animations = clone(entity.animations);
-    const animation = ['run','walk','hover','idle','flight'].find(name => animations[name]) || Object.keys(animations)[0];
-    definitions[definitionId] = {
-      id: definitionId, name: entity.display_name, kind: projectile ? 'projectile' : 'enemy',
-      visual: { assetId, frameId, animations, defaultAnimation: animation, pivot: [px / frame.w, py / frame.h] },
-      size: { width: projectile ? 40 : 64, height: (projectile ? 40 : 64) * frame.h / frame.w },
-      physics: { mode: 'trigger', collider: body, hitbox: body, lethal: true, gravity: !!entity.gravity, calibration: 'estimated' },
-      behavior: projectile ? { type: 'projectile', speed: 120, lifetimeMs: 3000 } : {
-        type: 'enemy', role: entity.role, speed: 42, detectRange: 400, fireIntervalMs: 4800,
-        ...(entity.projectile_id ? { projectileDefinitionId: `${assetId}:${entity.projectile_id}`, spawnOffset: entity.spawn_offset_from_pivot_px.map((n, i) => n / (i ? frame.h : frame.w)) } : {}),
-      },
-      source: { manifest: 'forest-creatures', entityId: entity.id, interpretationHints: clone(entity) },
-    };
+  const result = createCharacterCatalog({ name: 'Forest creatures', imageSrc: '/assets/sprites/forest/creatures/creatures.png', width: manifest.atlas.width, height: manifest.atlas.height, manifest, assetIdOverride: 'forest-creatures-atlas' });
+  for (const entity of [...(manifest.enemies || []), ...(manifest.projectiles || [])]) {
+    const id = `forest-creatures-atlas:${entity.id}`;
+    if (result.definitions[id]) result.definitions[id].source = { manifest: 'forest-creatures', entityId: entity.id, interpretationHints: clone(entity) };
   }
-  return { assets: { [assetId]: asset }, definitions, warnings: [] };
+  return result;
 }
 
 export async function loadForestCatalog() {

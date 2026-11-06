@@ -32,11 +32,31 @@ The Placement inspector's **Preview state** and **Restart state preview** only a
 
 Optional custom sequence JSON contains a `frames` map with pixel `x,y,w,h` crops and a `characters` array. Each character has `id`, `name`, `animations` (named states containing `frames`, `fps`, `loop`), and optional `defaultAnimation`, `size: {width,height}`, pixel `pivot`, normalized `collider` and `hitbox`. The editor can also author this information visually.
 
+## Creature, shooter and projectile behavior
+
+Character atlases can include both `enemies`/`characters` and a separate `projectiles` list. Import allocates stable definitions and links a shooter's `projectile_id` to its projectile asset. All animation frames and authored sequence names are retained.
+
+Configure the actor type and animation mappings in **States and sequences**:
+
+| Actor type | Functional animation slots |
+| --- | --- |
+| Creature | Idle, Moving, Player detected, Dead |
+| Shooter | Idle, Shooting, Player detected, Dead |
+| Projectile | Flight and optional Impact |
+
+Map each slot to an existing sequence. Import recognizes common names such as `run`/`walk` for Moving, `fire` for Shooting, and `death` for Dead. Missing artwork remains **Not assigned**; the tool does not generate frames or run unrelated attack/hurt abilities from an atlas. A missing detected animation uses the normal action without an extra cue; a missing death animation removes the defeated actor immediately.
+
+For ground creatures, select a **Support platform** in the Placement inspector, or let playtest infer supported ground from the authored placement. Patrol stays on that platform; chasing requires the player to stand on the same platform. Authored placement motion remains independent. Stationary shooters face and aim toward eligible nearby players. The Player detected sequence plays once before chasing/shooting, and replays only after detection is lost and acquired again.
+
+For a shooter, select its **Projectile asset** and **Fire on frame** in its shooting sequence. The UI uses frame numbers starting at 1; exported `spawn_projectile_at_index` starts at 0. The projectile spawns once when that frame is reached, including when a simulation update advances over it. Spawn offsets are measured relative to the actor's visual pivot and follow its orientation. Projectile flight and optional impact animation play independently of the shooter. The existing default tuning remains 120 pixels/second, a 16×16 collision body, a 4.8-second firing interval and a 3-second lifetime.
+
+The JSON runner and live game choose actor states automatically. Lethal side contact and the existing stomp-to-defeat behavior apply; there is no health system. Dead actors stop dealing contact damage, play their death sequence once and disappear. Player respawn/restart restores actor cycles and clears fired projectiles. Choosing **Preview state** in the editor only changes the editing preview, and does not save a runtime state into a placement.
+
 ## Core-game roles and tags
 
 Use **Gameplay tags** during import review, **Shared Definition → Gameplay defaults** for an asset, or **Placement → Gameplay tags** for one placed object. Gameplay roles are independent of artwork categories: any art can represent a **Coin**, **Checkpoint**, **Spawn point**, **Exit**, **Power chest**, or **Decoy chest**. Existing files without gameplay metadata retain their prior behavior. Custom tags are searchable labels; typing a role name as a custom tag does not activate it. The drawer has a **Gameplay** role filter, and its search includes custom tags.
 
-Each role has an independent normalized **Gameplay trigger**. **Nonblocking marker** is an explicit setting that makes the marker an interaction volume in playtest while preserving the asset's stored physical geometry. Turn it off when the marker should also retain physical blocking. Foot anchors use fractions of placement width and height; `[0.5, 1]` is bottom-center. They follow rotation/flip and specify where the player's feet should respawn.
+Each role has an independent normalized **Gameplay trigger**. **Nonblocking marker** is an explicit setting that makes the marker an interaction volume in playtest while preserving the asset's stored physical geometry. Turn it off when the marker should also retain physical blocking. Foot anchors use fractions of placement width and height; spawn points and checkpoints default to `[0.5, 0.5]`, placing the player's feet at the banner's midpoint before landing. They follow rotation/flip. Explicit custom anchors are preserved; for an older draft with a bottom anchor, set **Foot anchor Y** to `0.5` to use the midpoint.
 
 - **Coin:** **Coin units** controls its collection value (default 1). Each placed coin collects once and hides. Death restores checkpoint-protected coins and collection IDs; gains after the checkpoint reappear. Before the first checkpoint, death restores the initial coin state.
 - **Checkpoint:** explicit **Checkpoint order**, or leave it blank for deterministic order by authored X position. Checkpoints advance monotonically, save collection/progress and their foot anchor, and remain reached after death. A gold marker indicates reached checkpoints in playtest.
@@ -89,7 +109,7 @@ Move with **A/D** or arrow keys; jump with **Space/W/Up** and release before jum
 
 Use **Collision overlays** to inspect the geometry, **Follow player** for play, **Fit level** for the whole scene, or drag/wheel to inspect freely. Clicking the canvas keeps automatic follow active. Movement/jump keys resume follow after inspecting; the camera scrolls when the player approaches a viewport edge, within the world bounds. Restart also restores follow. Optional `world.spawnPlacementId` selects a placed spawn-point asset; its transformed foot anchor supplies the start position. Tagged spawn points take precedence over legacy `world.spawn: {x,y}` coordinates. Without any authored spawn, the runtime finds supported space clear of authored hazards and reports that inference. Spawn controls override it for the viewer session without rewriting the file.
 
-The renderer is level/biome agnostic. The editor modules reexport the shared implementation under `public/game/json-level/`, also used by the live game. Export and replace a JSON listed in `public/game/level-catalog.json` to publish an authored course after restarting the server and refreshing tabs. The forest test path belongs only to the viewer's sample-loading control; `LevelRenderer` and `LevelRuntime` accept any valid document. `LevelRuntime.setEntityState(placementId, stateName)` lets an engine select and restart a character sequence. The viewer does not invent AI transitions or multiplayer powers: authored interactions emit enter/leave contact events for the engine/coordinator. Core-game interactions are enabled only by explicit gameplay roles, and are never inferred from artwork names, custom tags or biome.
+The renderer is level/biome agnostic. The editor modules reexport the shared implementation under `public/game/json-level/`, also used by the live game. Export and replace a JSON listed in `public/game/level-catalog.json` to publish an authored course after restarting the server and refreshing tabs. The forest test path belongs only to the viewer's sample-loading control; `LevelRenderer` and `LevelRuntime` accept any valid document. `LevelRuntime.setEntityState(placementId, stateName)` lets an engine select and restart a character sequence. The viewer automatically runs the four mapped creature/shooter states and separate projectile sequences. Multiplayer powers remain coordinator-owned; authored interactions emit enter/leave contact events. Core-game interactions are enabled only by explicit gameplay roles, and are never inferred from artwork names, custom tags or biome.
 
 Reusable modules are `level-runtime.js` (fixed-step simulation/contact events), `runtime-geometry.js` (transformed shapes and collision), and `level-renderer.js` (canvas drawing/camera). `getStates()` returns evaluated placements for rendering; temporary trigger and character-state data live in runtime state. The live game uses these shared modules for catalog JSON courses and adds its existing score/report/power coordinator bridge. Playing in the viewer remains an independent local session.
 

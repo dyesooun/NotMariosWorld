@@ -24,8 +24,9 @@ export function createEditorServer() {
       const sprites = pathname.startsWith('/assets/sprites/');
       const sharedPrefix = pathname.startsWith('/public/game/json-level/') ? '/public/game/json-level/' : '/game/json-level/';
       const shared = pathname.startsWith(sharedPrefix);
-      const root = sprites ? SPRITE_ROOT : shared ? SHARED_GAME_ROOT : EDITOR_ROOT;
-      const relative = sprites ? pathname.slice('/assets/sprites/'.length) : shared ? pathname.slice(sharedPrefix.length) : pathname === '/' ? 'index.html' : pathname.slice(1);
+      const sharedTuning = ['/game/projectiles.js','/public/game/projectiles.js'].includes(pathname);
+      const root = sprites ? SPRITE_ROOT : shared ? SHARED_GAME_ROOT : sharedTuning ? path.dirname(SHARED_GAME_ROOT) : EDITOR_ROOT;
+      const relative = sprites ? pathname.slice('/assets/sprites/'.length) : shared ? pathname.slice(sharedPrefix.length) : sharedTuning ? 'projectiles.js' : pathname === '/' ? 'index.html' : pathname.slice(1);
       const resolved = path.resolve(root, relative);
       if (!resolved.startsWith(root + path.sep)) { reply(403, 'Invalid path'); return; }
       const actual = await realpath(resolved);

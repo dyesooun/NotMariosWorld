@@ -92,6 +92,7 @@ function stepAuthored(s, input, dt, config) {
         vx: Math.cos(i) * (35 + i * 2), vy: -120 - (i % 5) * 24, life: config.deathDelay }));
       events.push({ type: 'death', ...s.deathCause, respawnIn: config.deathDelay });
     } else if (event.type === 'respawn') { s.deathCause = null; s.reveal = null; s._particles = []; }
+    else if (event.type === 'enemy-kill') { s.enemyKills = (s.enemyKills || 0) + 1; events.push({ type: 'enemyKill', id: event.id }); }
     else if (event.type === 'checkpoint') events.push({ type: 'checkpoint', id: event.id, level: s.level });
     else if (event.type === 'level-exit') completeLevel(s, config, events);
     else if (event.type === 'gameplay-contact') events.push(event);

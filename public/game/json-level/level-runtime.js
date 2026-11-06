@@ -2,6 +2,7 @@ import { validateDocument } from './document.js';
 import { getPreviewState } from './preview.js';
 import { boxPolygon, shapePolygons, collisionMTV, polygonsOverlap } from './runtime-geometry.js';
 import { gameplayAnchor, gameplayTriggerPolygons, resolveGameplay } from './gameplay.js';
+import { ActorSimulation } from './actor-simulation.js';
 
 const STEP = 1 / 120;
 const finite = value => typeof value === 'number' && Number.isFinite(value);
@@ -35,6 +36,8 @@ export class LevelRuntime {
     this._vanishEmitted = new Set();
     this.warnings = [];
     this._entities = new Map();
+    this._actors = new Map();
+    this._projectiles = new Map();
     this._activeInteractions = new Set();
     this._previousStates = new Map();
     this._accumulator = 0;
@@ -47,7 +50,17 @@ export class LevelRuntime {
     this._checkpointOrders = this._buildCheckpointOrders();
     this._spawn = this._chooseSpawn(options.spawn);
     this._putAtSpawn();
+    this._initActors();
   }
+
+  _initActors() {
+    this._actorSimulation ||= new ActorSimulation(this);
+    this._actorSimulation.reset();
+  }
+
+  _actorStep(dt) { this._actorSimulation.step(dt); }
+  killEntity(id) { return this._actorSimulation.kill(id); }
+  getEntityState(id) { return this._actors.get(id)?.state ?? null; }
 
   _chooseSpawn(override) {
     if (validPoint(override)) return { x: override.x, y: override.y };
@@ -104,18 +117,20 @@ export class LevelRuntime {
   }
 
   getStatesAt(timeMs) {
-    return this.document.placements.map(placement => {
+    const result = this.document.placements.map(placement => {
       const definition = this.document.definitions[placement.definitionId];
       const entity = this._entities.get(placement.id);
-      const animation = entity?.stateName || definition.visual.defaultAnimation || null;
+      const actor = this._actors.get(placement.id);
+      const animation = actor?.stateName || entity?.stateName || definition.visual.defaultAnimation || null;
       const evaluatedTime = Math.max(0, timeMs - this._motionEpochMs);
       const state = getPreviewState(this.document, placement, evaluatedTime, {
         animation,
-        animationTimeMs: entity ? Math.max(0, timeMs - entity.animationStartMs) : evaluatedTime,
+        animationTimeMs: actor ? Math.max(0, timeMs - actor.animationStartMs) : entity ? Math.max(0, timeMs - entity.animationStartMs) : evaluatedTime,
         triggeredAtMs: this.triggerTimes.get(placement.id),
         permanentGone: this.permanentGone.has(placement.id),
         vanishRestored: this._vanishRestored.has(placement.id),
       });
+      if (actor) this._actorSimulation.applyActorState(actor, state, timeMs);
       const gameplay = state.gameplay || resolveGameplay(definition, placement);
       state.gameplay = gameplay;
       if (this.collected.has(placement.id)) {
@@ -127,6 +142,8 @@ export class LevelRuntime {
       if (gameplay.role === 'checkpoint' && this.reachedCheckpoints.has(placement.id)) state.checkpointReached = true;
       return { placement, state };
     });
+    for (const shot of this._projectiles.values()) result.push(this._actorSimulation.projectileState(shot, timeMs));
+    return result;
   }
 
   getStates() { return this.getStatesAt(this.timeMs); }
@@ -145,9 +162,10 @@ export class LevelRuntime {
       this._spawn = { x: spawn.x, y: spawn.y };
     }
     this.timeMs = 0; this._motionEpochMs = 0; this.deaths = 0; this.deathCause = null; this.deadRemainingMs = 0; this.events = [];
-    this.triggerTimes.clear(); this.permanentGone.clear(); this._vanishInside.clear(); this._vanishRestored.clear(); this._vanishEmitted.clear(); this._activeInteractions.clear(); this._previousStates.clear(); this._entities.clear(); this._accumulator = 0; this._coyoteMs = 0; this._jumpHeld = false; this._jumpBufferRemainingMs = 0;
+    this.triggerTimes.clear(); this.permanentGone.clear(); this._vanishInside.clear(); this._vanishRestored.clear(); this._vanishEmitted.clear(); this._activeInteractions.clear(); this._previousStates.clear(); this._entities.clear(); this._actors.clear(); this._projectiles.clear(); this._accumulator = 0; this._coyoteMs = 0; this._jumpHeld = false; this._jumpBufferRemainingMs = 0;
     this.coins = 0; this.collected.clear(); this.checkpoint = null; this.reachedCheckpoints.clear(); this.farthestX = 0; this.progress = 0; this.finished = false; this._roleContacts.clear();
     this._putAtSpawn();
+    this._initActors();
     return this.getStates();
   }
 
@@ -165,7 +183,7 @@ export class LevelRuntime {
   }
 
   _respawn() {
-    this.deadRemainingMs = 0; this._motionEpochMs = this.timeMs; this.triggerTimes.clear(); this._vanishInside.clear(); this._vanishRestored.clear(); this._vanishEmitted.clear(); this._activeInteractions.clear(); this._previousStates.clear(); this._entities.clear(); this._jumpHeld = false; this._coyoteMs = 0; this._jumpBufferRemainingMs = 0; this.deathCause = null;
+    this.deadRemainingMs = 0; this._motionEpochMs = this.timeMs; this.triggerTimes.clear(); this._vanishInside.clear(); this._vanishRestored.clear(); this._vanishEmitted.clear(); this._activeInteractions.clear(); this._previousStates.clear(); this._entities.clear(); this._initActors(); this._jumpHeld = false; this._coyoteMs = 0; this._jumpBufferRemainingMs = 0; this.deathCause = null;
     if (this.checkpoint) {
       this.coins = this.checkpoint.coins; this.collected = new Set(this.checkpoint.collected); this.farthestX = this.checkpoint.farthestX; this.progress = this.checkpoint.progress;
       Object.assign(this.player, { x: this.checkpoint.x, y: this.checkpoint.y, vx: 0, vy: 0, grounded: false, standingId: null });
@@ -349,20 +367,34 @@ export class LevelRuntime {
 
   _hazardStep(states) {
     const body = boxPolygon(this.player);
-    for (const entry of states) if (shapePolygons(entry.state, 'hazard').some(poly => collisionMTV(body, poly))) { this._kill(entry); return true; }
+    for (const entry of states) {
+      if (this._actors.has(entry.placement.id) || this._projectiles.has(entry.placement.id)) continue;
+      if (shapePolygons(entry.state, 'hazard').some(poly => collisionMTV(body, poly))) { this._kill(entry); return true; }
+    }
     return false;
   }
+
+  _actorCollisionStep(states, previousPlayer) { return this._actorSimulation.collideActors(states, previousPlayer); }
+  _projectileStep(dt, states) { this._actorSimulation.stepProjectiles(dt, states); }
 
   _step(dt) {
     this.timeMs += dt * 1000;
     if (this.finished) return;
+    this._actorSimulation.removeFinishedImpacts();
     if (this.deadRemainingMs > 0) { this.deadRemainingMs = Math.max(0, this.deadRemainingMs - dt * 1000); if (this.deadRemainingMs === 0) this._respawn(); return; }
+    this._actorStep(dt);
     let states = this.getStates();
     this._interactionAndTrigger(states);
     this._refreshVanishTransitions();
     states = this.getStates();
     if (this._hazardStep(states)) return;
+    const previousPlayer = { ...this.player };
     if (this._solidStep(states.filter(entry => !entry.state.vanished), dt)) return;
+    states = this.getStates();
+    this._projectileStep(dt, states);
+    if (this.deadRemainingMs > 0) return;
+    this._actorCollisionStep(states, previousPlayer);
+    if (this.deadRemainingMs > 0) return;
     this._hazardStep(states);
     if (this.deadRemainingMs > 0) return;
     this.farthestX = Math.max(this.farthestX, Math.max(0, this.player.x - (this.distanceOriginX ?? 0)));

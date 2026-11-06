@@ -9,6 +9,8 @@ export const GAMEPLAY_ROLES = [
 const ROLE_SET = new Set(GAMEPLAY_ROLES.map(([value]) => value));
 const DEFAULT_TRIGGER = [0, 0, 1, 1];
 const DEFAULT_ANCHOR = [0.5, 1];
+const DEFAULT_SPAWN_ANCHOR = [0.5, 0.5];
+const defaultAnchor = role => ['spawnpoint', 'checkpoint'].includes(role) ? DEFAULT_SPAWN_ANCHOR : DEFAULT_ANCHOR;
 const copy = value => Array.isArray(value) ? [...value] : value;
 const validRole = value => ROLE_SET.has(value) ? value : 'none';
 const first = (override, shared, fallback) => override !== undefined ? override : shared !== undefined ? shared : fallback;
@@ -23,7 +25,7 @@ export function resolveGameplay(definition, placement = {}) {
     triggerVolume: copy(first(override.triggerVolume, shared.triggerVolume, DEFAULT_TRIGGER)),
     coinValue: first(override.coinValue, shared.coinValue, 1),
     order: first(override.order, shared.order, undefined),
-    anchor: copy(first(override.anchor, shared.anchor, DEFAULT_ANCHOR)),
+    anchor: copy(first(override.anchor, shared.anchor, defaultAnchor(role))),
     priority: first(override.priority, shared.priority, 0),
     targetLevelId: first(override.targetLevelId, shared.targetLevelId, undefined),
     chestId: first(override.chestId, shared.chestId, undefined),
@@ -38,7 +40,7 @@ export function setGameplayRole(current = {}, role) {
   if (!ROLE_SET.has(role)) throw new Error(`Unknown gameplay role: ${role}`);
   const next = { ...current, role };
   if (next.triggerVolume === undefined) next.triggerVolume = [...DEFAULT_TRIGGER];
-  if (next.anchor === undefined) next.anchor = [...DEFAULT_ANCHOR];
+  if (next.anchor === undefined) next.anchor = [...defaultAnchor(role)];
   if (next.tags === undefined) next.tags = [];
   if (next.coinValue === undefined) next.coinValue = 1;
   if (next.priority === undefined) next.priority = 0;
@@ -61,7 +63,7 @@ export function setLevelSpawn(document, placementId) {
 
 export function gameplayAnchor(state, playerWidth = 28, playerHeight = 36) {
   const gameplay = state?.gameplay || {};
-  const anchor = Array.isArray(gameplay.anchor) ? gameplay.anchor : DEFAULT_ANCHOR;
+  const anchor = Array.isArray(gameplay.anchor) ? gameplay.anchor : defaultAnchor(gameplay.role);
   const point = localToWorld(state, { x: anchor[0] * state.width, y: anchor[1] * state.height });
   return { x: point.x - playerWidth / 2, y: point.y - playerHeight };
 }

@@ -1,5 +1,13 @@
 import { drawThumbnail } from './preview.js';
 
+export function remapRuntimeSequenceReferences(behavior, oldName, nextName = null) {
+  if (!behavior || typeof behavior !== 'object') return behavior;
+  if (behavior.states) for (const key of Object.keys(behavior.states)) if (behavior.states[key] === oldName) behavior.states[key] = nextName;
+  if (behavior.flightAnimation === oldName) behavior.flightAnimation = nextName;
+  if (behavior.impactAnimation === oldName) behavior.impactAnimation = nextName;
+  return behavior;
+}
+
 /**
  * Character sequence editor. A state is editor metadata only: the game engine
  * remains responsible for choosing states at runtime. The selected state and
@@ -120,6 +128,7 @@ export function mountSequenceEditor({ getDocument, getImages, change, onMessage 
         const animations = project.definitions[definitionId].visual.animations;
         animations[next] = animations[old]; delete animations[old];
         if (project.definitions[definitionId].visual.defaultAnimation === old) project.definitions[definitionId].visual.defaultAnimation = next;
+        remapRuntimeSequenceReferences(project.definitions[definitionId].behavior, old, next);
         for (const placement of project.placements || []) if (placement.definitionId === definitionId && placement.animation === old) placement.animation = next;
       })) stateName = old;
       else { elapsed = 0; last = 0; }
@@ -135,7 +144,7 @@ export function mountSequenceEditor({ getDocument, getImages, change, onMessage 
       if (Object.keys(animationMap()).length <= 1) return onMessage?.('A character must keep at least one state.', true);
       const names = Object.keys(animationMap()), next = names.find(name => name !== stateName);
       const old = stateName; stateName = next;
-      if (!mutate(project => { const d = project.definitions[definitionId]; delete d.visual.animations[old]; if (d.visual.defaultAnimation === old) d.visual.defaultAnimation = next; for (const placement of project.placements || []) if (placement.definitionId === definitionId && placement.animation === old) delete placement.animation; })) stateName = old;
+      if (!mutate(project => { const d = project.definitions[definitionId]; delete d.visual.animations[old]; if (d.visual.defaultAnimation === old) d.visual.defaultAnimation = next; remapRuntimeSequenceReferences(d.behavior, old, null); for (const placement of project.placements || []) if (placement.definitionId === definitionId && placement.animation === old) delete placement.animation; })) stateName = old;
       else { elapsed = 0; last = 0; }
     });
     el('h4', stateEditor, 'Ordered frames');
@@ -154,7 +163,7 @@ export function mountSequenceEditor({ getDocument, getImages, change, onMessage 
       el('span', row, frame.name || id);
       button(row, 'Add frame', () => mutate(project => { project.definitions[definitionId].visual.animations[stateName].frames.push(id); }));
     }
-    status.textContent = `Character preview only · ${Object.keys(animationMap()).length} state${Object.keys(animationMap()).length === 1 ? '' : 's'} · ${animationFrames().length} frame${animationFrames().length === 1 ? '' : 's'} in ${stateName}.`;
+    status.textContent = `Engine uses mappings · preview selection stays local · ${Object.keys(animationMap()).length} sequence${Object.keys(animationMap()).length === 1 ? '' : 's'} · ${animationFrames().length} frame${animationFrames().length === 1 ? '' : 's'} in ${stateName}.`;
   }
   function refresh() { if (!dialog.open) return; renderStateList(); renderEditor(); draw(); }
   function tick(now) {
@@ -171,7 +180,7 @@ export function mountSequenceEditor({ getDocument, getImages, change, onMessage 
   return {
     open(id) {
       const d = doc().definitions?.[id];
-      if (!d || !['character', 'enemy'].includes(d.kind)) return onMessage?.('Choose a character asset first.', true);
+      if (!d || !['character', 'enemy', 'projectile'].includes(d.kind)) return onMessage?.('Choose a character, enemy, or projectile asset first.', true);
       definitionId = id; stateName = d.visual.defaultAnimation || Object.keys(d.visual.animations || {})[0];
       if (!stateName) return onMessage?.('This character has no states yet.', true);
       playing = true; elapsed = 0; last = 0; if (!dialog.open) dialog.showModal(); refresh(); if (!raf) raf = requestAnimationFrame(tick);
