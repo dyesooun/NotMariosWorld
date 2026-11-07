@@ -7,6 +7,7 @@ import { drawLevelScene } from './json-level/level-renderer.js';
 import { getJsonRuntime } from './engine.js';
 import { collectionVisuals } from './collection-visuals.js';
 import { drawPlacementVfx } from './json-level/vfx.js';
+import { prepareLobbyScene, drawLobbyScene } from './lobby-scene.js';
 
 const W=960,H=540;
 const rect=(c,color,x,y,w,h)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
@@ -68,12 +69,13 @@ function ensureJsonImages(level) {
 export async function prepareLevelArt() {
   if (typeof Image === 'undefined') return;
   loadAtlas();
-  await Promise.all(LEVELS.filter(level => level?.authored).map(async level => {
+  loadForestAtlas();
+  await Promise.all([prepareLobbyScene(), ...LEVELS.filter(level => level?.authored).map(async level => {
     ensureJsonImages(level);
     await jsonImageCache.get(level.jsonDocument);
     const error = jsonImageErrors.get(level.jsonDocument);
     if (error) throw error;
-  }));
+  })]);
 }
 function renderAuthored(ctx, state, level, time, compact, powerChestClaims) {
   const document = level.jsonDocument, images = ensureJsonImages(level), canvas = ctx.canvas;
@@ -114,7 +116,8 @@ function tree(ctx,x,ground,height,p,near=false){
   if(near){for(let n=0;n<12;n++)rect(ctx,n%2?p.leaf:p.bright,x+Math.sin(n*19)*wide*.4,top+22+mod(n*43,height*.6),12,6);rect(ctx,p.trunk,x+5,ground-90,29,8);}
 }
 function palm(ctx,x,y,scale=1){ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);for(let i=0;i<9;i++)rect(ctx,i%2?'#a68a60':'#bda071',-5+i*.8,-i*14,10,15);const yy=-130;for(let i=0;i<5;i++){const dx=(i-2)*19;rect(ctx,'#4eaa8a',dx,yy+Math.abs(i-2)*6,30,10);rect(ctx,'#3b9279',dx+8,yy+Math.abs(i-2)*6+8,25,8);}rect(ctx,'#886640',0,yy+13,9,9);ctx.restore();}
-function background(ctx,p,theme,camera,time){
+function background(ctx,p,theme,camera,time,showInstructions=false){
+  if(theme==='lobby'){ drawLobbyScene(ctx,{camera,time,showInstructions}); return; }
   for(let i=0;i<3;i++)rect(ctx,p.sky[i],0,i*180,W,180);
   rect(ctx,p.sun,754,63,58,58);rect(ctx,p.sun,745,73,76,38);
   if(theme==='hell'){
@@ -144,7 +147,7 @@ function background(ctx,p,theme,camera,time){
   }
 }
 function platform(ctx,p,theme,pal,time){
-  if(theme==='forest'){
+  if(theme==='forest'||theme==='lobby'){
     ctx.save();if(p.kind==='vanish')ctx.globalAlpha*=.55+Math.sin(time*10)*.3;
     if(!drawForestPlatform(ctx,p,{earth:pal.earth})){rect(ctx,pal.earth,p.x,p.y,p.w,p.kind==='ground'?Math.max(p.h,90):p.h);}
     if(p.kind==='moving'||p.kind==='vanish')for(let i=0;i<3;i++)rect(ctx,p.kind==='moving'?'#a1edce':'#d6bdff',p.x+p.w*(i+1)/4,p.y+9,3,3);
@@ -172,7 +175,6 @@ function forestDecor(ctx,camera,time,level){
     drawSprite(ctx,item.kind,item.x,item.y-item.h,item.w,item.h);
   }
 }
-function sign(ctx,x,y,title,lines){rect(ctx,'#66513d',x+47,y+62,9,40);rect(ctx,'#594631',x-3,y-3,212,72);rect(ctx,'#f0dfad',x,y,206,66);rect(ctx,'#e3cb91',x+4,y+59,198,3);ctx.fillStyle='#465842';ctx.font='bold 12px monospace';ctx.fillText(title,x+14,y+20);ctx.font='10px monospace';lines.forEach((line,i)=>ctx.fillText(line,x+14,y+38+i*13));}
 function checkpointFlag(ctx,checkpoint,active,time,percentage){
   const {x,y}=checkpoint,accent=active?'#ffdb81':'#8ce4ee';
   rect(ctx,active?'#ffdb8110':'#8ce4ee0d',x-2,40,7,y-40);
@@ -217,7 +219,7 @@ export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstr
   if (level.authored && level.jsonDocument) { renderAuthored(ctx, state, level, time, compact, powerChestClaims); return; }
   const collections = collectionVisuals(state, powerChestClaims, time * 1000);
   const theme=level.theme,p=palette[theme]||palette.forest,camera=Math.round(Math.max(0,Math.min(Math.max(0,level.width-W),state.x-330))),worldTime=state._levelTime??time;
-  ctx.save();ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);ctx.imageSmoothingEnabled=false;background(ctx,p,theme,camera,time);ctx.save();ctx.translate(-camera,0);
+  ctx.save();ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);ctx.imageSmoothingEnabled=false;background(ctx,p,theme,camera,time,showInstructions);ctx.save();ctx.translate(-camera,0);
   for(const base of level.platforms){const plat=platformAt(base,worldTime);if(plat.x+plat.w<camera-30||plat.x>camera+W+30||!plat.visible)continue;platform(ctx,plat,theme,p,worldTime);}
   forestDecor(ctx,camera,time,level);
   for(const h of level.hazards){if(h.x+h.w<camera-20||h.x>camera+W+20||h.kind==='pit')continue;const revealed=state.reveal&&state.respawnRemaining>0&&Math.abs(state.reveal.x-h.x)<5;
@@ -242,7 +244,7 @@ export function renderGame(canvasOrContext,state,{time=0,compact=false,showInstr
   }
   for(const checkpoint of level.checkpoints||[])if(checkpoint.x>camera-70&&checkpoint.x<camera+W+70)checkpointFlag(ctx,checkpoint,!!state.checkpoint&&state.checkpoint.x>=checkpoint.x,time,Math.round(checkpoint.x/level.endX*100));
   if(state.level>0&&level.endX<camera+W+100){rect(ctx,'#172f2855',level.endX-12,495,65,5);rect(ctx,'#e9e7b9',level.endX+17,320,5,180);drawSprite(ctx,'flag',level.endX+14,321,70,95);rect(ctx,'#20362b',level.endX-28,460,95,24);ctx.fillStyle='#d1f59b';ctx.font='bold 10px monospace';ctx.fillText('ESCAPE →',level.endX-18,476);}
-  if(showInstructions&&state.level===0){sign(ctx,160,309,'A LITTLE PRACTICE',['A / D or arrows: move','Space / W / Up: jump']);sign(ctx,695,208,'THE IMPORTANT BITS',['Clear world: bank points','Every 25%: checkpoint']);sign(ctx,1110,309,'WAITING FOR YOUR HOST',['Same levels. Separate runs.','Collect coins. Keep moving!']);}
+  // Lobby instructions and scenery are drawn by lobby-scene.js, before gameplay actors.
   if(state.respawnRemaining>0){const age=3-state.respawnRemaining;ctx.globalAlpha=Math.max(.1,1-age/2.3);for(const [i,particle] of (state._particles||[]).entries())rect(ctx,i%4===0?'#f8ebc8':i%3===0?'#4b354b':state.color||'#b7ef51',particle.x,particle.y,4+i%3,4+i%2);ctx.globalAlpha=1;if(state.reveal){const kind=state.reveal.actualKind||state.reveal.kind,sx=state.reveal.x,sy=Math.min(470,state.reveal.y);if(kind==='bomb')drawSprite(ctx,'bomb',sx-8,sy-35,42,42);rect(ctx,'#ffac7d',sx-4,sy-42,3,8);rect(ctx,'#ffac7d',sx-4,sy-31,3,3);}}
   else{const bob=state.grounded&&Math.abs(state.vx)>20?Math.sin(time*20)*1.5:0;drawSprite(ctx,state.avatar||'explorer',state.x-17,state.y-40+bob,34,40,{color:state.color,flip:state.vx<-.1});rect(ctx,state.color||'#b7ef51',state.x-3,state.y-48+bob,6,3);}
   ctx.restore();

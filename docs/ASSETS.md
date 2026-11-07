@@ -1,5 +1,16 @@
 # Original game assets
 
+## Waiting Woods lobby scenery
+
+`public/assets/sprites/lobby/waiting-woods-scenery.png` is an original 1536×1024 transparent PNG generated with the built-in imagegen tool on 2026-11-07. It is a regular three-column, two-row atlas with 512×512 cells: broadleaf oak, slender woodland tree, ruined arch; fractured column, broken wall, fern/flower/rubble cluster. `public/game/lobby-scene.js` trims cell-local transparent margins and caches sprites at logical pixel sizes, drawing without smoothing. The existing `public/assets/sprites/friendly-creatures.png` supplies its animated birds and butterflies; `whimsical_forest_3.png` supplies the distant parallax woodland, and `forest-sprites.png` supplies grass-shelf-aligned practice terrain. No existing source atlas or authored race JSON is replaced. Wind, leaves and root-anchored tree sway are cosmetic code-rendered effects.
+
+<details>
+<summary>Final generation prompt (built-in imagegen)</summary>
+
+Use case: stylized-concept. Asset type: production transparent pixel-art sprite atlas for an original friendly woodland platform game lobby. Create ONE clean atlas with exactly THREE equal-width COLUMNS and TWO equal-height ROWS (6 cells). Each asset is isolated in its cell with ample transparent margin, nothing crossing cell borders. Top row left to right: (1) large broadleaf oak tree with clearly branching brown trunk, exposed roots, dense rounded emerald canopy built of defined leaf clusters and lime highlights; (2) elegant slender woodland tree with twisted branching trunk and a narrower blue-green canopy; (3) ancient ruined stone arch with one partially crumbled top, weathered ivory-grey masonry and moss/ivy. Bottom row left to right: (4) broken classical stone column, fractured top, fluted shaft, square base, moss; (5) low broken stone wall with stepped missing masonry and scattered stones at its foot, ivy; (6) small isolated ground cluster of ferns, wildflowers and mossy rubble. Side-on 2D platform-game view, grounded straight-on, not isometric. High fidelity cheerful 16-bit pixel art matching tiny richly shaded avatar/creature sprites: clean crisp square pixels, dark colored outlines, several deliberate shade steps, textured bark, chiseled stone cracks and defined foliage. Inviting sunlit woodland palette of emerald, jade, moss, warm bark, soft golden highlights. Consistent light from upper left and same art fidelity throughout. No scene background, no floor strip, no labels, no words, no borders or grid lines, no characters, no licensed art, no blur or smooth painted gradients. Real transparent alpha background. Strict regular 3x2 grid essential.
+
+</details>
+
 ## Historical power HUD icons
 
 The sticky boot, reversed arrows, ice skate, and ink cloud were original code-drawn pixel-grid icons authored for this game on 2026-11-06, with no external artwork or licensed game assets. They were subsequently removed from the power HUD at the user's request to eliminate overlap with its text. The current power slot displays text and an activation button without an icon.

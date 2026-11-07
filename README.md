@@ -21,6 +21,8 @@ Run `npm run editor` and open [http://127.0.0.1:10001](http://127.0.0.1:10001). 
 
 The loading screen shows the four avatars jumping together inside a circular pixel-card panel while level data and artwork load. It respects reduced-motion preferences and opens the game as soon as loading finishes.
 
+The Waiting Woods is a safe practice lobby among detailed pixel-art trees and overgrown ruins: mossy arches, broken columns and walls, and woodland plants. Leaves drift in the breeze with gentle tree sway and friendly wildlife; reduced-motion preferences keep the scenery still. Explore the in-world hint boards while the host prepares the race. Move with **A/D** or **left/right arrows**; jump with **Space**, **W** or **up arrow**, releasing the key before jumping again. The host starts the race for everyone. In the race, collected coins survive death, reached checkpoint flags save distance and respawn position, exits bank a world's score, and **F / USE** activates a held chest power. Open the **!** help panel for the full rules and the trophy panel for live standings.
+
 ## JSON levels
 
 Authored props share cosmetic VFX across the companion, viewer and live race: coin sparkles, hazard particles, checkpoint beams and reached-banner colors, moving-platform motes, warning blinks and disappearance effects, and beam/exit glow. Configure hazard categories and beam/portal colors in **Prop VFX**, and localized mist pockets in the companion's **Atmosphere** tab. Newly enabled vanishing platforms default to a three-second warning; existing level timings remain authored. See the [companion guide](tools/level-editor/README.md#prop-vfx-and-atmosphere) for controls and export settings.
