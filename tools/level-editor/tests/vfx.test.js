@@ -16,6 +16,12 @@ function runtimeFixture() {
   doc.world.width = 200; doc.world.height = 200; doc.placements.push(Object.assign(createPlacement(doc, 'coin', 40, 100), { id: 'coin-a' }), Object.assign(createPlacement(doc, 'checkpoint', 40, 100), { id: 'checkpoint-a' }));
   return { doc, image };
 }
+function beamFixture({ startState = 'off', onMs = 500, offMs = 500, startMs = 0, phaseMs = 0 } = {}) {
+  const doc = createDocument({ assets: { atlas: { id: 'atlas', src: '/assets/sprites/test.png', width: 4, height: 2, frames: { sprite: { x: 0, y: 0, w: 4, h: 2 } } } }, definitions: {
+    beam: { id: 'beam', name: 'Beam', kind: 'beam', size: { width: 20, height: 40 }, visual: { assetId: 'atlas', frameId: 'sprite', onFrameId: 'sprite', offFrameId: 'sprite' }, physics: physics(), behavior: { type: 'beam', onMs, offMs, startMs, phaseMs, startState }, gameplay: {} },
+  } });
+  return { doc, placement: createPlacement(doc, 'beam', 40, 100) };
+}
 
 test('VFX defaults on, supports shallow overrides, and bounds include particles', () => {
   assert.equal(resolveVfx(state()).enabled, true);
@@ -47,6 +53,73 @@ test('exit glow is active while beams remain quiet when off', () => {
   assert.ok(exit.calls.some(call => call[0] === 'strokeRect'));
   const beam = context(); drawPlacementVfx(beam, state({ definition: { id: 'beam', kind: 'beam', name: 'Beam' }, gameplay: {}, beamOn: false }), { timeMs: 200 });
   assert.equal(beam.calls.length, 0);
+});
+
+test('beam warning countdown covers ordering, phase, delay, and exact activation boundaries', () => {
+  const off = beamFixture({ startState: 'off' });
+  assert.equal(getPreviewState(off.doc, off.placement, 0).beamWarningRemainingMs, 500);
+  assert.equal(getPreviewState(off.doc, off.placement, 499).beamWarningRemainingMs, 1);
+  assert.equal(getPreviewState(off.doc, off.placement, 500).beamOn, true);
+  assert.equal(getPreviewState(off.doc, off.placement, 500).beamWarningRemainingMs, null);
+  assert.equal(getPreviewState(off.doc, off.placement, 501).beamWarningRemainingMs, null);
+
+  const on = beamFixture({ startState: 'on' });
+  assert.equal(getPreviewState(on.doc, on.placement, 500).beamOn, false);
+  assert.equal(getPreviewState(on.doc, on.placement, 500).beamWarningRemainingMs, 500);
+  assert.equal(getPreviewState(on.doc, on.placement, 999).beamWarningRemainingMs, 1);
+  assert.equal(getPreviewState(on.doc, on.placement, 1000).beamOn, true);
+
+  const delayed = beamFixture({ startState: 'off', startMs: 1000, phaseMs: 250 });
+  assert.equal(getPreviewState(delayed.doc, delayed.placement, 750).beamWarningRemainingMs, 500);
+  assert.equal(getPreviewState(delayed.doc, delayed.placement, 1000).beamWarningRemainingMs, 250);
+  assert.equal(getPreviewState(delayed.doc, delayed.placement, 1250).beamOn, true);
+  const delayedActive = beamFixture({ startState: 'off', startMs: 1000, phaseMs: 750 });
+  assert.equal(getPreviewState(delayedActive.doc, delayedActive.placement, 500).beamWarningRemainingMs, 500);
+  assert.equal(getPreviewState(delayedActive.doc, delayedActive.placement, 999).beamWarningRemainingMs, 1);
+  assert.equal(getPreviewState(delayedActive.doc, delayedActive.placement, 1000).beamOn, true);
+  const negative = beamFixture({ startState: 'on', phaseMs: -250 });
+  assert.equal(getPreviewState(negative.doc, negative.placement, 0).beamWarningRemainingMs, 250);
+  const negativeActive = beamFixture({ startState: 'off', startMs: 1000, phaseMs: -250 });
+  assert.equal(getPreviewState(negativeActive.doc, negativeActive.placement, 500).beamWarningRemainingMs, 500);
+  assert.equal(getPreviewState(negativeActive.doc, negativeActive.placement, 1000).beamOn, true);
+  const shortOff = beamFixture({ startState: 'on', onMs: 1000, offMs: 50 });
+  assert.equal(getPreviewState(shortOff.doc, shortOff.placement, 1000).beamWarningRemainingMs, 50);
+  assert.equal(getPreviewState(shortOff.doc, shortOff.placement, 1050).beamOn, true);
+  const outsideWindow = beamFixture({ startState: 'off', onMs: 500, offMs: 1000 });
+  assert.equal(getPreviewState(outsideWindow.doc, outsideWindow.placement, 499).beamWarningRemainingMs, null);
+  assert.equal(getPreviewState(outsideWindow.doc, outsideWindow.placement, 500).beamWarningRemainingMs, 500);
+});
+
+test('beam warning stays cosmetic and requires the evaluated countdown field', () => {
+  const { doc, placement } = beamFixture();
+  const state = getPreviewState(doc, placement, 499), physicsBefore = JSON.stringify(state.physics);
+  const c = context(); drawPlacementVfx(c, state, { timeMs: 0 });
+  assert.ok(c.calls.length > 0);
+  assert.equal(JSON.stringify(state.physics), physicsBefore);
+  const disabled = context(); drawPlacementVfx(disabled, { ...state, vfx: { enabled: false } }, { timeMs: 0 });
+  assert.equal(disabled.calls.length, 0);
+  const unevaluated = context(); drawPlacementVfx(unevaluated, { ...state, beamWarningRemainingMs: undefined }, { timeMs: 0 });
+  assert.equal(unevaluated.calls.length, 0);
+  const blinkOn = context(); drawPlacementVfx(blinkOn, { ...state, beamWarningRemainingMs: 200 }, { timeMs: 0 });
+  const blinkOff = context(); drawPlacementVfx(blinkOff, { ...state, beamWarningRemainingMs: 150 }, { timeMs: 0 });
+  assert.ok(blinkOn.calls.length > 0);
+  assert.equal(blinkOff.calls.length, 0);
+});
+
+test('beam warnings follow the respawn epoch rather than the continuing run clock', () => {
+  const {doc,placement}=beamFixture();doc.placements.push(placement);
+  const runtime=new LevelRuntime(doc,{spawn:{x:200,y:200},gravity:0,respawnMs:0});
+  for(let i=0;i<6;i++)runtime.advance(.1);
+  runtime._kill({placement:{id:'test'},state:{definition:{name:'Test'}}});
+  const at=runtime.timeMs+250;
+  const warning=runtime.getStatesAt(at).find(e=>e.placement.id===placement.id).state;
+  assert.equal(warning.timeMs,at);assert.ok(at>500);
+  assert.equal(warning.beamOn,false);assert.ok(Math.abs(warning.beamWarningRemainingMs-250)<1e-6);
+  const now=context(),later=context();
+  drawPlacementVfx(now,warning);drawPlacementVfx(later,warning,{timeMs:12345});
+  assert.ok(now.calls.length>0);assert.deepEqual(now.calls,later.calls);
+  const firing=runtime.getStatesAt(runtime.timeMs+501).find(e=>e.placement.id===placement.id).state;
+  assert.equal(firing.beamOn,true);assert.equal(firing.beamWarningRemainingMs,null);
 });
 
 test('timed vanish uses a short poof while respawn mode uses fragments', () => {

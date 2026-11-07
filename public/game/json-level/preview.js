@@ -49,7 +49,7 @@ export function getPreviewState(document, placement, timeMs = 0, runtime = {}) {
   const resolved = resolvePlacement(document, placement);
   const { behavior, visual } = resolved;
   let { x, y } = resolved;
-  let frameId = visual.frameId, beamOn = null, damageActive = false;
+  let frameId = visual.frameId, beamOn = null, damageActive = false, beamWarningRemainingMs = null;
   const time = Number.isFinite(timeMs) ? Math.max(0, timeMs) : 0;
   const motion = motionFor(behavior);
   if (motion) {
@@ -59,10 +59,22 @@ export function getPreviewState(document, placement, timeMs = 0, runtime = {}) {
   if (behavior.type === 'beam') {
     const on = Math.max(1, behavior.onMs), off = Math.max(1, behavior.offMs);
     const startMs = Math.max(0, behavior.startMs || 0);
-    if (time < startMs) beamOn = false;
-    else {
-      const clock = modulo((time - startMs) + (behavior.phaseMs || 0), on + off);
-      beamOn = behavior.startState === 'off' ? clock >= off : clock < on;
+    const period = on + off, startState = behavior.startState === 'off' ? 'off' : 'on';
+    const phase = Number.isFinite(behavior.phaseMs) ? behavior.phaseMs : 0;
+    let clock = null;
+    if (time >= startMs) clock = modulo((time - startMs) + phase, period);
+    beamOn = clock == null ? false : startState === 'off' ? clock >= off : clock < on;
+    if (!beamOn) {
+      // Keep this countdown alongside the evaluated beam state. Consumers must not
+      // derive it from state.timeMs: the evaluated beam epoch can reset on respawn.
+      const activationClock = startState === 'off' ? off : 0;
+      let untilActivation;
+      if (clock == null) {
+        const phaseAtStart = modulo(phase, period);
+        const activeAtStart = startState === 'off' ? phaseAtStart >= off : phaseAtStart < on;
+        untilActivation = startMs - time + (activeAtStart ? 0 : modulo(activationClock - phaseAtStart, period));
+      } else untilActivation = modulo(activationClock - clock, period);
+      if (untilActivation > 0 && untilActivation <= 500) beamWarningRemainingMs = untilActivation;
     }
     frameId = (beamOn ? visual.onFrameId : visual.offFrameId) || visual.frameId;
     damageActive = beamOn;
@@ -93,7 +105,7 @@ export function getPreviewState(document, placement, timeMs = 0, runtime = {}) {
     const offset=motion?Math.sin((at+(motion.phaseMs||0))/Math.max(1,motion.periodMs)*Math.PI*2)*motion.distance:0;
     vanishOrigin={x:resolved.x+(motion&&motion.axis!=='y'?offset:0),y:resolved.y+(motion?.axis==='y'?offset:0)};
   }
-  return { ...resolved, physics, animation:runtime.animation||resolved.animation, x, y, frameId, assetId: visual.assetId, beamOn, damageActive, vanished, vanishOrigin, vanishElapsedMs, vanishRemainingMs, restoreRemainingMs, vanishRestored: vanishRestored || !!runtime?.vanishRestored, collectedAtMs: runtime?.collectedAtMs, checkpointReachedAtMs: runtime?.checkpointReachedAtMs, timeMs: time };
+  return { ...resolved, physics, animation:runtime.animation||resolved.animation, x, y, frameId, assetId: visual.assetId, beamOn, beamWarningRemainingMs, damageActive, vanished, vanishOrigin, vanishElapsedMs, vanishRemainingMs, restoreRemainingMs, vanishRestored: vanishRestored || !!runtime?.vanishRestored, collectedAtMs: runtime?.collectedAtMs, checkpointReachedAtMs: runtime?.checkpointReachedAtMs, timeMs: time };
 }
 
 function shapePath(ctx, shape, width, height) {

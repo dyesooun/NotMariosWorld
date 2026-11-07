@@ -38,6 +38,17 @@ function behind(c,s,time,v){
     for(let i=0;i<3;i++)haze(c,-10+i*4,-4+i*2,s.width+20-i*8,s.height+8-i*4,color,(.025+i*.012)*pulse);
   }
   if(kind==='beam'&&s.beamOn===true){const color=v.color||'#e4b5ff';for(let i=0;i<3;i++)haze(c,-8+i*3,0,s.width+16-i*6,s.height,color,.035+i*.015);}
+  if(kind==='beam'&&s.beamOn===false&&Number.isFinite(s.beamWarningRemainingMs)&&s.beamWarningRemainingMs>0&&s.beamWarningRemainingMs<=500){
+    const blink=Math.floor(s.beamWarningRemainingMs/100)%2===0;
+    if(blink){
+      const color=v.color||'#ffd166', edge=2;
+      haze(c,-edge,-edge,s.width+edge*2,edge,color,.42);
+      haze(c,-edge,s.height,s.width+edge*2,edge,color,.42);
+      haze(c,-edge,0,edge,s.height,color,.34);
+      haze(c,s.width,0,edge,s.height,color,.34);
+      haze(c,s.width*.18,s.height*.35,s.width*.64,s.height*.3,color,.075);
+    }
+  }
 }
 function coin(c,s,time){
   if(s.collected){radial(c,s,Number.isFinite(s.collectedAtMs)?time-s.collectedAtMs:Infinity,650,'#ffe886',10);return;}

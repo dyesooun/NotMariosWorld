@@ -84,7 +84,8 @@ export function renderWorldUI(canvasOrContext,room,options={}) {
   ctx.save();ctx.setTransform(ctx.canvas.width/WIDTH,0,0,ctx.canvas.height/HEIGHT,0,0);ctx.imageSmoothingEnabled=false;
   const beginCard=(r,anchor='center')=>{
     const s=cardScale;
-    card={base:r,x:anchor==='left'?r.x:anchor==='right'?r.x+r.w*(1-s):r.x+r.w*(1-s)/2,y:anchor==='center'?r.y+r.h*(1-s)/2:r.y};
+    const right=anchor==='right'||anchor==='bottom-right';
+    card={base:r,x:anchor==='left'?r.x:right?r.x+r.w*(1-s):r.x+r.w*(1-s)/2,y:anchor==='center'?r.y+r.h*(1-s)/2:anchor==='bottom-right'?r.y+r.h*(1-s):r.y};
     ctx.setTransform(ctx.canvas.width/WIDTH*s,0,0,ctx.canvas.height/HEIGHT*s,(card.x-r.x*s)*ctx.canvas.width/WIDTH,(card.y-r.y*s)*ctx.canvas.height/HEIGHT);
   };
   const scaledRect=r=>({x:card.x+(r.x-card.base.x)*cardScale,y:card.y+(r.y-card.base.y)*cardScale,w:r.w*cardScale,h:r.h*cardScale});
@@ -136,7 +137,7 @@ export function renderWorldUI(canvasOrContext,room,options={}) {
   }
   if(model.countdown!==null) {
     if(model.countdown>0){
-      const r=box(758,14,188,104);beginCard(r,'right');panel(ctx,r,'#342b2bf2','#ffcf87');
+      const r=box(758,HEIGHT-14-104,188,104);beginCard(r,'bottom-right');panel(ctx,r,'#342b2bf2','#ffcf87');
       text(ctx,'FINAL SECONDS',r.x+r.w/2,r.y+20,11,'#ffcf87','center');
       text(ctx,model.countdown,r.x+r.w/2,r.y+67,43,'#fff2cf','center');
       text(ctx,'KEEP GOING! SCORE IS LIVE',r.x+r.w/2,r.y+90,9,'#e8c99a','center');

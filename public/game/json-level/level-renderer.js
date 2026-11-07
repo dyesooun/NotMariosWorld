@@ -5,13 +5,27 @@ import {vfxBounds} from './vfx.js';
 import {drawAtmosphere} from './atmosphere.js';
 
 export {loadImages};
+const BACKGROUND_PARALLAX_FACTOR = .12;
+
+function backgroundParallaxOffset(state, camera) {
+  // Only explicitly authored background art gets parallax. Gameplay roles and
+  // collision-enabled definitions stay in the exact world coordinate space.
+  const physics = state.physics || {};
+  if (state.definition?.kind !== 'background' || state.gameplay?.role !== 'none' || physics.mode !== 'none' || physics.lethal) return 0;
+  return camera.x * (1 - BACKGROUND_PARALLAX_FACTOR);
+}
+
 export function drawLevelScene(c,document,states,images,{camera={x:0,y:0,zoom:1},width=document.world.width,height=document.world.height,collisions=false,timeMs}={}){
   const v=camera;
-    for(const {placement,state}of states.sort((a,b)=>a.state.layer-b.state.layer)){
-      const bounds=vfxBounds(state);if(bounds.x+bounds.width<v.x||bounds.x>v.x+width||bounds.y+bounds.height<v.y||bounds.y>v.y+height)continue;
+    for(const {placement,state}of [...states].sort((a,b)=>a.state.layer-b.state.layer)){
+      const offset = backgroundParallaxOffset(state, v);
+      const bounds=vfxBounds(state);if(bounds.x+offset+bounds.width<v.x||bounds.x+offset>v.x+width||bounds.y+bounds.height<v.y||bounds.y>v.y+height)continue;
+      c.save();
+      if(offset)c.translate(offset,0);
       drawPlacement(c,document,placement,images,{state,collisions,timeMs:timeMs ?? state.timeMs ?? 0});
       if(collisions)for(const polygon of shapePolygons(state,'vanish')){c.beginPath();polygon.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.closePath();c.fillStyle='#70c8ff18';c.strokeStyle='#70c8ff';c.lineWidth=1/v.zoom;c.fill();c.stroke();}
       if(collisions)for(const polygon of gameplayTriggerPolygons(state)){c.beginPath();polygon.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.closePath();c.strokeStyle='#f5d778';c.lineWidth=1/v.zoom;c.stroke();}
+      c.restore();
     }
     drawAtmosphere(c,document,{timeMs:timeMs ?? states[0]?.state.timeMs ?? 0,camera:v,width,height});
 }
