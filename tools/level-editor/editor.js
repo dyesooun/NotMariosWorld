@@ -1,5 +1,6 @@
 import { createTilesetCatalog } from './catalog.js';
 import { createDocument, validateDocument, parseDocument, serializeDocument, createPlacement, clone, History } from './document.js';
+import { serializeGameDocument } from '../../public/game/json-level/game-export.js';
 import { loadImages, drawPlacement, drawThumbnail, getPreviewState } from './preview.js';
 import { placementBounds,containsPlacement,getTransformHandles,hitTestHandles,resizePlacement,rotationForPointer,localToWorld,worldToLocal } from './transforms.js';
 import { buildAutomaticManifest,readAtlasPixels } from './auto-tileset.js';
@@ -476,6 +477,44 @@ function exportProject() {
     anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast('Level JSON exported.');
   } catch (error) { toast(error.message, true); }
 }
+async function exportGameProject() {
+  const button = $('#exportGameBtn');
+  button.disabled = true;
+  // Snapshot before awaiting the index so edits during export cannot mix revisions.
+  const project = clone(doc);
+  try {
+    const response = await fetch('/api/project-images');
+    if (!response.ok) throw new Error('Cannot read project images. Restart the local editor server and try again.');
+    const index = await response.json();
+    const byHash = new Map(), byPath = new Map();
+    for (const image of index) {
+      if (!byHash.has(image.sha256)) byHash.set(image.sha256, image.src);
+      byPath.set(image.src, image.src);
+    }
+    const assetPaths = {}, hashed = new Map();
+    for (const [id, asset] of Object.entries(project.assets)) {
+      if (asset.src.startsWith('data:')) {
+        if (!hashed.has(asset.src)) {
+          const bytes = Uint8Array.from(atob(asset.src.slice(asset.src.indexOf(',') + 1)), character => character.charCodeAt(0));
+          const digest = await crypto.subtle.digest('SHA-256', bytes);
+          const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+          hashed.set(asset.src, byHash.get(hash));
+        }
+        if (hashed.get(asset.src)) assetPaths[id] = hashed.get(asset.src);
+      } else {
+        const path = decodeURIComponent(new URL(asset.src, location.origin).pathname);
+        assetPaths[id] = byPath.get(path) || null;
+      }
+    }
+    const text = serializeGameDocument(project, assetPaths);
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    const anchor = document.createElement('a'); anchor.href = url;
+    anchor.download = `${project.name.replace(/[^a-z0-9_.-]+/gi, '-').slice(0, 100) || 'level'}.game.json`;
+    anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast(`Game JSON exported (${Math.ceil(new Blob([text]).size / 1024)} KB).`);
+  } catch (error) { toast(`Game export rejected: ${error.message}`, true); }
+  finally { button.disabled = false; }
+}
 function downloadJSON(value,filename){
   const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));
   const anchor=document.createElement('a');anchor.href=url;anchor.download=filename;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -587,6 +626,7 @@ function bind() {
   const gameplaySelect=$('#gameplayFilter');gameplaySelect.replaceChildren(new Option('All gameplay roles','all'),...GAMEPLAY_ROLES.map(([value,label])=>new Option(label,value)));gameplaySelect.onchange=event=>{gameplayFilter=event.target.value;renderPalette();};
   $('#newBtn').onclick = () => { doc = createDocument(doc); history = new History(doc); supportPicker=null; selectOnly(null); selectedDef = null; levelFilter = 'all'; playing = true; resetPreview(); editingTrigger=false; view = { x: -32, y: -32, zoom: 1 }; render(); save(); };
   $('#importJson').onchange = e => { if (e.target.files[0]) importProject(e.target.files[0]); }; $('#exportBtn').onclick = exportProject;
+  $('#exportGameBtn').onclick = exportGameProject;
   $('#playtestBtn').onclick=async()=>{try{await pendingSave;await writeStored({playtest:clone(doc)});location.href='viewer.html?source=draft';}catch(error){toast(`Playtest could not open: ${error.message}`,true);}};
   $('#tilesetManifest').onchange = ()=>{$('#importMode').value='manifest';updateImportControls();}; $('#tilesetImage').onchange = updateImportControls; $('#importTilesetBtn').onclick = importTileset;$('#importMode').onchange=updateImportControls;
   $('#characterImage').onchange=updateCharacterControls;$('#characterManifest').onchange=updateCharacterControls;$('#characterMethod').onchange=updateCharacterControls;$('#importCharacterBtn').onclick=importCharacters;

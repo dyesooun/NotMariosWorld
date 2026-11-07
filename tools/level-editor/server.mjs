@@ -2,6 +2,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { buildProjectImageIndex } from './project-images.mjs';
 
 const EDITOR_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const SPRITE_ROOT = path.resolve(EDITOR_ROOT, '../../public/assets/sprites');
@@ -21,6 +22,10 @@ export function createEditorServer() {
       const url = new URL(request.url, `http://${host}`);
       const pathname = decodeURIComponent(url.pathname);
       if (pathname === '/health') { response.writeHead(200, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ app: 'level-editor', version: 1 })); return; }
+      if (pathname === '/api/project-images') {
+        const index = await buildProjectImageIndex(SPRITE_ROOT);
+        response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }); response.end(JSON.stringify(index)); return;
+      }
       const sprites = pathname.startsWith('/assets/sprites/');
       const sharedPrefix = pathname.startsWith('/public/game/json-level/') ? '/public/game/json-level/' : '/game/json-level/';
       const shared = pathname.startsWith(sharedPrefix);

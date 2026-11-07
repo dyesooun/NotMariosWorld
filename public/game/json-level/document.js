@@ -223,7 +223,7 @@ export function validateDocument(document) {
       rect(physics.collider, `${path}.collider`); rect(physics.hitbox, `${path}.hitbox`);
       for (const key of ['solidShapes','hazardShapes','interactionShapes']) shapes(physics[key], `${path}.${key}`);
       if (typeof physics.lethal !== 'boolean' || typeof physics.gravity !== 'boolean') error(path, 'lethal and gravity must be booleans');
-      if (!['estimated','manifest','authored'].includes(physics.calibration)) error(path, 'invalid calibration status');
+      if (physics.calibration != null && !['estimated','manifest','authored'].includes(physics.calibration)) error(path, 'invalid calibration status');
       if (physics.walkSurfaces != null && (!Array.isArray(physics.walkSurfaces) || physics.walkSurfaces.some(s => !['horizontal','slope'].includes(s.kind) || !['x1','y1','x2','y2'].every(k => finite(s[k]))))) error(path, 'invalid walking surfaces');
     }
     behavior(definition.behavior, `${path}.behavior`);

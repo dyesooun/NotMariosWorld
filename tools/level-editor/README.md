@@ -24,7 +24,7 @@ Open **Asset metadata** and select the existing **Atlas**. Choose a **Replacemen
 
 Both options retain the atlas/frame/definition identities, animation references, authored collision and hitboxes, gameplay settings, and every placement's world position, size, rotation, flips and behavior. Source-image measurements are marked unresolved after replacement; your authored logical collision outlines are retained. All placements sharing that atlas show the new art. Review **Atlas cuts**, **Body collision**, and **Damage hitbox** afterward as needed. Moving a cut changes which pixels are drawn; it does not move the placed object.
 
-The replacement is one **Undo** step, and **Redo** restores it. Imported images are embedded in the tool's IndexedDB data and JSON exports, so the replacement PNG's filename may differ from the old one. Export the level JSON to keep a backup or update a live catalog level. Importing the new image through **Add a tileset** creates another atlas instead of replacing the existing one.
+The replacement is one **Undo** step, and **Redo** restores it. Imported images are embedded in the tool's IndexedDB data and JSON exports, so the replacement PNG's filename may differ from the old one. Use **Export editor JSON** to keep an editable backup; use **Export game JSON** to update a live catalog level. Importing the new image through **Add a tileset** creates another atlas instead of replacing the existing one.
 
 ## Characters and state sequences
 
@@ -146,6 +146,22 @@ Use **Collision overlays** to inspect the geometry, **Follow player** for play, 
 The renderer is level/biome agnostic. The editor modules reexport the shared implementation under `public/game/json-level/`, also used by the live game. Export and replace a JSON listed in `public/game/level-catalog.json` to publish an authored course after restarting the server and refreshing tabs. The forest test path belongs only to the viewer's sample-loading control; `LevelRenderer` and `LevelRuntime` accept any valid document. `LevelRuntime.setEntityState(placementId, stateName)` lets an engine select and restart a character sequence. The viewer automatically runs the four mapped creature/shooter states and separate projectile sequences. Multiplayer powers remain coordinator-owned; authored interactions emit enter/leave contact events. Core-game interactions are enabled only by explicit gameplay roles, and are never inferred from artwork names, custom tags or biome.
 
 Reusable modules are `level-runtime.js` (fixed-step simulation/contact events), `runtime-geometry.js` (transformed shapes and collision), and `level-renderer.js` (canvas drawing/camera). `getStates()` returns evaluated placements for rendering; temporary trigger and character-state data live in runtime state. The live game uses these shared modules for catalog JSON courses and adds its existing score/report/power coordinator bridge. Playing in the viewer remains an independent local session.
+
+## Game export and editable sources
+
+**Export editor JSON** preserves the full project, embedded images, notes and asset library for continued editing. Autosave and reusable metadata exports keep this information too. Editable level sources belong in `tools/level-editor/levels/`.
+
+**Export game JSON** downloads a compact `.game.json` for the actual game. It retains placed objects, their runtime definitions, projectile dependencies, animation frames, collision, gameplay roles and VFX. It omits unused library assets/frames, notes, import manifests, measurement/calibration information, level filters and other editor data. Names used for death messages and tags used for VFX remain runtime data.
+
+Images reference existing files under `public/assets/sprites/`; no image bytes are embedded or copied into the export. Embedded images are matched by SHA-256 content against project files, so duplicate filenames cannot select the wrong artwork. If a used image has no match, export fails with the atlas name. Copy the exact artwork into that project directory and retry; renaming or replacing a different PNG is insufficient. Export does not write to your project files or publish the level.
+
+The same export is available from the project root:
+
+```sh
+npm run export:game -- tools/level-editor/levels/WhimsicalForest.json public/assets/sprites/forest/tileset/WhimsicalForest.json
+```
+
+The output uses the existing v2 runtime format and works in the JSON runner and the game's catalog loader. Keep the catalog's `src` pointed at the generated output (rename the downloaded file or update `public/game/level-catalog.json`). Restart the game server and refresh player tabs after publishing it. The CLI can regenerate the configured forest output without changing its editor source. Ocean/inferno compatibility settings remain controlled by the catalog.
 
 ## Output contract
 
