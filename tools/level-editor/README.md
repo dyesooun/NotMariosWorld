@@ -11,9 +11,21 @@ The editor's **Ranges** toolbar toggle is enabled by default. Select one or more
 1. Expand **Add a tileset**, choose **Atlas image**, and select Automatic alpha regions or Grid. Set optional pack name, initial level tags, default role, and automatic collision generation.
 2. Click **Import tileset**. Detected assets open in a review dialog; the asset drawer remains unchanged until **Done importing**. Closing the review cancels the import.
 3. Use **Prev frame**, **Next frame**, the frame list, or the source-frame dropdown to visit assets. Optionally assign names, roles, level tags, and default width/height. These remain editable later.
-4. In **Atlas cuts**, drag crop handles or enter exact source-pixel bounds. **Add cut (drag)** repairs missed cuts; unused cuts can be removed. Alpha separation is approximate; opaque images generally need Grid or manual cuts.
+4. In **Atlas cuts**, drag crop handles or enter exact source-pixel bounds. Double-click an edge of the selected cut to add an outline point; drag outline points to exclude neighboring artwork. **Add cut (drag)** repairs missed cuts; unused cuts can be removed. Alpha separation is approximate; opaque images generally need Grid or manual cuts.
 5. Switch to Body collision, Damage hitbox, or Interaction trigger. Drag the center/edge handles or draw a box. **Auto geometry** estimates bounds from visible pixels; **Clear box** removes the selected geometry. Rect editing replaces imported polygon geometry for that channel.
 6. Choose **Done importing** to add the reviewed assets to the drawer. Use role/search filters and **Level** to find them.
+
+## Cut outlines
+
+Use **Edit outline** in **Atlas cuts** to edit the retained artwork inside a cut. Double-click an outline edge to insert a point there, then drag points inward to hide unwanted overlapping pixels. A cut can have a concave outline; the original atlas image stays unchanged.
+
+Select a point and use **Remove point** or **Delete / Backspace** to remove it. At least three valid points must remain. **Reset outline** restores the full rectangular cut. Crossing edges and collapsed outlines are rejected. Middle mouse or Space-drag still pans, and the wheel zooms.
+
+The dialog's **Undo / Redo** buttons work during import review and normal editing. With the canvas focused, use **Ctrl/Cmd+Z**, **Ctrl/Cmd+Shift+Z**, or **Ctrl+Y**. Each insertion, removal, reset or completed point drag is one undo step; typing in fields keeps normal text-editing shortcuts.
+
+Outline edits are shared by all uses of that source frame and persist through editor/library and game exports. The editor, sequence previews, JSON viewer and live game use the same clipped artwork. The outline is visual only: authored body collision, damage regions, triggers, pivots and placement transforms stay independent. Edit those separately when needed.
+
+Outline points are stored relative to the rectangular crop. Moving or resizing that crop moves/scales its outline with it; both atlas-image replacement options preserve the relative outline. No existing level or atlas file on disk changes until you explicitly export and replace it.
 
 ## Replacing an atlas image
 

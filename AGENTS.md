@@ -42,6 +42,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 ## Lobby, identity, and controls
 
+- Initial loading uses a viewport-centered animation of the explorer, cat, robot and wizard jumping together inside one circular dark-green panel with the game cards' lime frame, flat offset shadow and crisp monospace text. Reuse the existing sprite artwork, respect reduced-motion preferences, show the loader while level data/art loads, and enter the app immediately when ready. Preserve the visible startup-error panel if loading fails.
 - **Level 0** is a safe, playable lobby with movement, jumping, platforms, and instructions inside the world.
 - Joining enters the playable lobby immediately; no Spawn action is required. Inside the game viewport, players edit their name, choose among circular avatar portraits, and click color swatches below the portraits. Avatar/color clicks update the controlled character immediately without resetting its position. During an active round, joins and refreshed runs enter the first selected race world immediately. The legacy `spawn` message remains accepted as a harmless compatibility action.
 - Current avatars: explorer, cat, robot, and wizard. Current color choices: lime, pink, blue, purple, gold, and coral. Names are limited to 24 characters.
@@ -275,6 +276,8 @@ The notes below document the retained original art and legacy fixture. They do n
 - Rooms are held in memory on **one server instance**. Restarts/deployments clear rooms and running games. Persistent recovery and multi-instance room coordination are outside the current scope.
 - `/health` exposes the running/disk rule fingerprints. Preserve the stale-server and stale-loaded-page guards; require the appropriate server restart/browser refresh instead of allowing incompatible clients to join.
 - Shared/server rule changes require a server restart unless a watcher has already restarted it. Browser code changes require refreshing player tabs. Do not restart the running event server for documentation-only edits.
+
+- Atlas cuts support nondestructive visual polygon outlines: double-click a selected cut edge to insert a point, drag vertices, remove selected points, or reset to the rectangle. Outlines are shared per source frame and preserved by undo, editor/library exports and compact game exports. Normalized points move/scale with crop changes and atlas replacements. Editor/viewer/live rendering, sequence previews and sprite fragments respect the mask; collision, damage, triggers, pivots and placement transforms remain separately authored. Existing atlases and production JSON are only changed by explicit user export/replacement.
 
 ## Source map
 

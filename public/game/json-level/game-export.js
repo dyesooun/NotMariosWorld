@@ -15,7 +15,7 @@ const PLACEMENT = ['id','definitionId','x','y','width','height','layer','flipX',
 const GAMEPLAY = ['role','tags','triggerVolume','coinValue','order','anchor','priority','targetLevelId','chestId','decoyKind','nonblocking'];
 const VFX = ['enabled','hazardType','color'];
 const ANIMATION = ['frames','fps','loop','damage_active_indices','spawn_projectile_at_index'];
-const FRAME = ['x','y','w','h'];
+const FRAME = ['x','y','w','h','clipPolygon'];
 
 function runtimeAnimation(animation) { return copyKeys(animation, ANIMATION); }
 function runtimeShapes(shapes) {

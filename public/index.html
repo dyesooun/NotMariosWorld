@@ -11,7 +11,17 @@
 </head>
 <body>
   <div id="runtime-warning" class="runtime-warning" role="alert" hidden></div>
-  <div id="app"></div>
+  <div id="app">
+    <main id="loading-screen" class="loading-screen" role="status" aria-live="polite" aria-label="Loading game">
+      <div class="loading-avatars" aria-hidden="true">
+        <span class="loading-avatar"><canvas width="54" height="64"></canvas></span>
+        <span class="loading-avatar"><canvas width="54" height="64"></canvas></span>
+        <span class="loading-avatar"><canvas width="54" height="64"></canvas></span>
+        <span class="loading-avatar"><canvas width="54" height="64"></canvas></span>
+      </div>
+      <p class="loading-caption">Loading worlds<span class="loading-dots" aria-hidden="true">...</span></p>
+    </main>
+  </div>
   <div id="world-announcer" class="sr-only" role="status" aria-live="polite"></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
   <dialog id="modal" aria-labelledby="modal-title"></dialog>

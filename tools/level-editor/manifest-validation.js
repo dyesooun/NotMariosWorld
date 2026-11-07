@@ -1,3 +1,4 @@
+import { frameClipPolygonError } from '../../public/game/json-level/frame-outline.js';
 const BAD_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 const annotation = new Set(['$schema', '$id', 'title', 'description', 'default', 'examples', 'deprecated', 'readOnly', 'writeOnly']);
 const supported = new Set(['$ref','$defs','type','enum','const','properties','additionalProperties','required','if','then','else','allOf','oneOf','items','uniqueItems','minItems','maxItems','minProperties','maxProperties','minLength','maxLength','minimum','maximum','propertyNames',...annotation]);
@@ -67,6 +68,7 @@ function semantic(m, errors) {
   for (const [id,f] of Object.entries(frames)) {
     const p=`$.frames.${id}`, sr=f.sourceRectPx;
     if (sr && (sr.x<0||sr.y<0||sr.x+sr.w>atlas.width||sr.y+sr.h>atlas.height)) errors.push(`${p}.sourceRectPx: outside atlas`);
+    if (f.clipPolygon !== undefined) { const message=frameClipPolygonError(f.clipPolygon);if(message)errors.push(`${p}.clipPolygon: ${message}`); }
     const inside=(r,n)=>{ if(r && (!rect(r)||r.x<0||r.y<0||r.x+r.w>sr.w||r.y+r.h>sr.h)) errors.push(`${p}.${n}: outside crop`); };
     for (const n of ['contentBoundsPx','pivotPx']) { if(n==='contentBoundsPx') inside(f[n],n); else if(f[n] && (f[n].x<0||f[n].y<0||f[n].x>sr.w||f[n].y>sr.h)) errors.push(`${p}.${n}: outside crop`); }
     for (const n of ['solidShapesPx','hazardShapesPx','interactionShapesPx']) for (const s of (f[n]||[])) { if(s.kind==='rect') inside(s.rectPx,n); else if(s.kind==='polygon') { const pts=s.pointsPx||[]; for(const q of pts) if(q.x<0||q.y<0||q.x>sr.w||q.y>sr.h) errors.push(`${p}.${n}: point outside crop`); let area=0; for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];area+=a.x*b.y-b.x*a.y;} if(Math.abs(area)<1) errors.push(`${p}.${n}: degenerate polygon`); if(new Set(pts.map(q=>`${q.x},${q.y}`)).size!==pts.length) errors.push(`${p}.${n}: repeated vertex`); for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++)if(i!==j&&Math.abs(i-j)!==1&&!(i===0&&j===pts.length-1)){const a=pts[i],b=pts[(i+1)%pts.length],c=pts[j],d=pts[(j+1)%pts.length],cross=(u,v,w)=>(v.x-u.x)*(w.y-u.y)-(v.y-u.y)*(w.x-u.x);if(cross(a,b,c)*cross(a,b,d)<0&&cross(c,d,a)*cross(c,d,b)<0)errors.push(`${p}.${n}: self-intersecting polygon`);}} }

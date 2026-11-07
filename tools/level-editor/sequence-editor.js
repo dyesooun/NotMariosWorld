@@ -1,4 +1,5 @@
 import { drawThumbnail } from './preview.js';
+import { maskedFrameSource } from '../../public/game/json-level/frame-outline.js';
 
 export function remapRuntimeSequenceReferences(behavior, oldName, nextName = null) {
   if (!behavior || typeof behavior !== 'object') return behavior;
@@ -200,7 +201,7 @@ export function mountSequenceEditor({ getDocument, getImages, change, onMessage 
     for (const [id, frame] of frames()) {
       const row = el('div', sourceList, null, 'sequence-frame-row');
       const thumb = el('canvas', row); thumb.width = 52; thumb.height = 40; thumb.setAttribute('aria-label', `Preview source frame ${frame.name || id}`);
-      const img = getImages().get(definition().visual.assetId); if (img) { const c = thumb.getContext('2d'); c.imageSmoothingEnabled = false; const scale = Math.min(48 / frame.w, 36 / frame.h); c.drawImage(img, frame.x, frame.y, frame.w, frame.h, (52 - frame.w * scale) / 2, (40 - frame.h * scale) / 2, frame.w * scale, frame.h * scale); }
+      const img = getImages().get(definition().visual.assetId); if (img) { const c = thumb.getContext('2d'); c.imageSmoothingEnabled = false; const scale = Math.min(48 / frame.w, 36 / frame.h), source = frame.clipPolygon ? maskedFrameSource(img, frame, frame.clipPolygon) : img; c.drawImage(source, frame.clipPolygon ? 0 : frame.x, frame.clipPolygon ? 0 : frame.y, frame.w, frame.h, (52 - frame.w * scale) / 2, (40 - frame.h * scale) / 2, frame.w * scale, frame.h * scale); }
       el('span', row, frame.name || id);
       button(row, 'Add frame', () => mutate(project => { project.definitions[definitionId].visual.animations[stateName].frames.push(id); }));
     }

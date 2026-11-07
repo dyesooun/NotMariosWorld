@@ -1,6 +1,7 @@
 export const DOCUMENT_FORMAT = 'not-marios-world-level';
 export const DOCUMENT_VERSION = 2;
 import { GAMEPLAY_ROLES, resolveGameplay } from './gameplay.js';
+import { frameClipPolygonError } from './frame-outline.js';
 export const clone = value => JSON.parse(JSON.stringify(value));
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const finite = value => typeof value === 'number' && Number.isFinite(value);
@@ -97,6 +98,7 @@ export function validateDocument(document) {
     if (!object(asset.frames)) { error(path, 'frames must be an object'); continue; }
     for (const [frameId, frame] of Object.entries(asset.frames)) {
       if (!object(frame) || !['x','y','w','h'].every(key => Number.isInteger(frame[key])) || frame.x < 0 || frame.y < 0 || frame.w <= 0 || frame.h <= 0 || frame.x + frame.w > asset.width || frame.y + frame.h > asset.height) error(`${path}.frames.${frameId}`, 'crop must fit the atlas');
+      if (frame.clipPolygon != null) { const clipError = frameClipPolygonError(frame.clipPolygon); if (clipError) error(`${path}.frames.${frameId}.clipPolygon`, clipError); }
     }
   }
 

@@ -1,6 +1,7 @@
 import { clone, validateDocument } from './document.js';
 import { validateTilesetManifest } from './manifest-validation.js';
 import { cleanupSupportIds } from './support-picker.js';
+import { frameClipPolygonError } from '../../public/game/json-level/frame-outline.js';
 
 const BAD = new Set(['__proto__', 'prototype', 'constructor']);
 const finite = n => typeof n === 'number' && Number.isFinite(n);
@@ -39,14 +40,14 @@ function syncFrame(frame, rect) { Object.assign(frame, rect, { sourceRectPx: { .
 function syncManifestFrame(asset, frameId, frame) {
   if (asset.manifest?.format !== 'platformer-tileset-manifest') {
     const mf = asset.manifest?.frames?.[frameId];
-    if (mf) { if (own(mf, 'x')) mf.x = frame.sourceRectPx.x; if (own(mf, 'y')) mf.y = frame.sourceRectPx.y; if (own(mf, 'w')) mf.w = frame.sourceRectPx.w; if (own(mf, 'h')) mf.h = frame.sourceRectPx.h; if (mf.sourceRectPx) mf.sourceRectPx = clone(frame.sourceRectPx); }
+    if (mf) { const sr = sourceRect(frame); if (own(mf, 'x')) mf.x = sr.x; if (own(mf, 'y')) mf.y = sr.y; if (own(mf, 'w')) mf.w = sr.w; if (own(mf, 'h')) mf.h = sr.h; if (mf.sourceRectPx) mf.sourceRectPx = clone(sr); if (frame.clipPolygon) mf.clipPolygon = clone(frame.clipPolygon); else delete mf.clipPolygon; }
     return;
   }
   asset.manifest.frames ||= {};
   asset.manifest.frames[frameId] = genericFrame(frame);
 }
 function genericFrame(frame) {
-  const keys = ['name','category','tags','sourceRectPx','measurementStatus','notes','contentBoundsPx','pivotPx','anchorRole','walkSurfacesPx','solidShapesPx','hazardShapesPx','interactionShapesPx','components','terrain','background','beam'];
+  const keys = ['name','category','tags','sourceRectPx','clipPolygon','measurementStatus','notes','contentBoundsPx','pivotPx','anchorRole','walkSurfacesPx','solidShapesPx','hazardShapesPx','interactionShapesPx','components','terrain','background','beam'];
   const out = {}; for (const k of keys) if (frame[k] !== undefined) out[k] = clone(frame[k]);
   out.sourceRectPx=sourceRect(frame);
   return out;
@@ -71,6 +72,15 @@ export function updateSourceFrame(doc, assetId, frameId, nextCrop) {
   const { asset, frame } = assetFrame(doc, assetId, frameId), c = crop(nextCrop);
   if (c.x + c.w > asset.width || c.y + c.h > asset.height) throw new Error('Crop must fit within the atlas.');
   syncFrame(frame, c); invalidate(frame); syncManifestFrame(asset, frameId, frame); return doc;
+}
+
+// Visual-only clipping; intentionally does not invalidate or regenerate logical geometry.
+export function setSourceFrameOutline(doc, assetId, frameId, points) {
+  const { asset, frame } = assetFrame(doc, assetId, frameId);
+  if (points == null) delete frame.clipPolygon;
+  else { const error = frameClipPolygonError(points); if (error) throw new Error(error); frame.clipPolygon = points.map(p => [p[0], p[1]]); }
+  syncManifestFrame(asset, frameId, frame);
+  return doc;
 }
 
 function scalePixelMetadata(value, sx, sy, key = '') {

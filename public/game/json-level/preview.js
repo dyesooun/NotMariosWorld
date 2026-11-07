@@ -1,6 +1,7 @@
 import { resolvePlacement } from './document.js';
 import { placementMatrix,placementCorners } from './transforms.js';
 import { drawPlacementVfx, vanishArtAlpha } from './vfx.js';
+import { clipPath } from './frame-outline.js';
 
 const tintedBanners = new WeakMap();
 function checkpointTint(image, frame, reached) {
@@ -134,7 +135,12 @@ export function drawPlacement(ctx, document, placement, images, { timeMs, collis
   if (!hideBeamArt) {
     const tint = state.gameplay?.role==='checkpoint' ? checkpointTint(image, frame, !!state.checkpointReached) : null;
     ctx.globalAlpha *= blink;
-    if (image && frame) tint ? ctx.drawImage(tint, 0, 0, frame.w, frame.h, artX, artY, artWidth, artHeight) : ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, artX, artY, artWidth, artHeight);
+    if (image && frame) {
+      ctx.save();
+      if (frame.clipPolygon) { ctx.translate(artX, artY); clipPath(ctx, { w: artWidth, h: artHeight }, frame.clipPolygon); ctx.clip(); ctx.translate(-artX, -artY); }
+      tint ? ctx.drawImage(tint, 0, 0, frame.w, frame.h, artX, artY, artWidth, artHeight) : ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, artX, artY, artWidth, artHeight);
+      ctx.restore();
+    }
     else { ctx.fillStyle = '#75484b'; ctx.fillRect(0, 0, width, height); }
     ctx.globalAlpha = 1;
   }

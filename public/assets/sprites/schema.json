@@ -513,6 +513,12 @@
         "sourceRectPx": {
           "$ref": "#/$defs/sourceRectangle"
         },
+        "clipPolygon": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 128,
+          "items": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 }, "minItems": 2, "maxItems": 2 }
+        },
         "measurementStatus": {
           "$ref": "#/$defs/measurementStatus"
         },

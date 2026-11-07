@@ -31,7 +31,7 @@ const triggerTimes = new Map(), LIBRARY_REVISION = 2;
 const previewStates = new Map();
 let editingTrigger = false;
 let warnings = [], spaceHeld = false;
-let assetEditor,sequenceEditor,importDraft=null,draftImages=null,levelFilter='all',saveSequence=0;
+let assetEditor,sequenceEditor,importDraft=null,importHistory=null,draftImages=null,levelFilter='all',saveSequence=0;
 let gameplayFilter='all';
 let pendingSave=Promise.resolve();
 let supportPicker = null;
@@ -520,7 +520,13 @@ function downloadJSON(value,filename){
   const anchor=document.createElement('a');anchor.href=url;anchor.download=filename;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function saveAssetMetadata(){try{downloadJSON(exportAssetLibrary(doc),'asset-metadata.json');toast('Reusable asset metadata exported without level placements.');}catch(error){toast(error.message,true);}}
-function changeMetadata(callback){if(!importDraft)return change(callback);const before=clone(importDraft);try{callback(importDraft);const errors=validateDocument(importDraft);if(errors.length)throw new Error(errors[0]);assetEditor?.refresh();return true;}catch(error){importDraft=before;toast(error.message,true);return false;}}
+function changeMetadata(callback){if(!importDraft)return change(callback);const before=clone(importDraft);try{callback(importDraft);const errors=validateDocument(importDraft);if(errors.length)throw new Error(errors[0]);importHistory.commit(importDraft);assetEditor?.refresh();return true;}catch(error){importDraft=before;toast(error.message,true);return false;}}
+async function restoreMetadataHistory(direction){
+  if(!importDraft)return restoreHistory(direction);
+  const candidate=importHistory?.[direction]();if(!candidate)return;
+  try{const loaded=await loadImages(candidate.assets);importDraft=candidate;draftImages=loaded;assetEditor?.refresh();}
+  catch(error){importHistory[direction==='undo'?'redo':'undo']();toast(error.message,true);}
+}
 async function replaceAtlas(assetId, replacement) {
   const target = importDraft || doc;
   if (!target?.assets?.[assetId]) { toast('The selected atlas is no longer available.', true); return false; }
@@ -535,8 +541,8 @@ async function replaceAtlas(assetId, replacement) {
   toast(`Atlas image replaced: ${replacement.name} (${replacement.width} × ${replacement.height}).`);
   return true;
 }
-function acceptImport(){if(!importDraft)return;const draft=importDraft,loaded=draftImages;importDraft=null;draftImages=null;if(change(project=>{project.assets=draft.assets;project.definitions=draft.definitions;})){images=loaded;render();toast('Reviewed assets added to the drawer.');}}
-function cancelImport(){importDraft=null;draftImages=null;toast('Import cancelled; the asset drawer is unchanged.');}
+function acceptImport(){if(!importDraft)return;const draft=importDraft,loaded=draftImages;importDraft=null;importHistory=null;draftImages=null;if(change(project=>{project.assets=draft.assets;project.definitions=draft.definitions;})){images=loaded;render();toast('Reviewed assets added to the drawer.');}}
+function cancelImport(){importDraft=null;importHistory=null;draftImages=null;toast('Import cancelled; the asset drawer is unchanged.');}
 async function loadAssetMetadata(file){
   try{
     if(file.size>100*1024*1024)throw new Error('Metadata exceeds 100 MB.');
@@ -577,7 +583,7 @@ async function importTileset() {
     const pack = await createTilesetCatalog(manifest, imageSrc, { existingIds: Object.keys(doc.assets) });
     const loaded = await loadImages(pack.assets);
     const levels=$('#importLevels').value.split(',').map(s=>s.trim()).filter(Boolean);for(const definition of Object.values(pack.definitions))definition.levels=[...levels];
-    importDraft=clone(doc);Object.assign(importDraft.assets,pack.assets);Object.assign(importDraft.definitions,pack.definitions);draftImages=new Map([...images,...loaded]);
+    importDraft=clone(doc);Object.assign(importDraft.assets,pack.assets);Object.assign(importDraft.definitions,pack.definitions);importHistory=new History(importDraft);draftImages=new Map([...images,...loaded]);
     const first=Object.keys(pack.definitions)[0];if(first){assetEditor.open(first,{importing:true});toast(extraWarnings[0]||'Review assets, then choose Done to add them to the drawer.');}
   } catch (error) { toast(`Tileset rejected: ${error.message}`, true); }
   finally { $('#tilesetManifest').value = ''; $('#tilesetImage').value = ''; updateImportControls(); }
@@ -611,7 +617,7 @@ async function importCharacters(){
     }
     const pack=createCharacterCatalog({name:$('#characterName').value.trim()||imageFile.name.replace(/\.[^.]+$/,''),imageSrc,width,height,cuts,manifest,existingIds:Object.keys(doc.assets),levels:$('#characterLevels').value.split(',').map(s=>s.trim()).filter(Boolean)});
     const loaded=await loadImages(pack.assets);
-    importDraft=clone(doc);Object.assign(importDraft.assets,pack.assets);Object.assign(importDraft.definitions,pack.definitions);draftImages=new Map([...images,...loaded]);
+    importDraft=clone(doc);Object.assign(importDraft.assets,pack.assets);Object.assign(importDraft.definitions,pack.definitions);importHistory=new History(importDraft);draftImages=new Map([...images,...loaded]);
     const first=Object.keys(pack.definitions)[0];assetEditor.open(first,{importing:true});
     toast('Review character cuts and geometry. Use States and sequences to arrange animations, then Done importing.');
   }catch(error){toast(`Character import rejected: ${error.message}`,true);}
@@ -759,7 +765,7 @@ async function start() {
     }catch(error){toast(`Saved metadata could not be restored: ${error.message}`,true);}
     images = await loadImages(doc.assets,{allowMissing:true});if(images.size<Object.keys(doc.assets).length)warnings.unshift('Some saved images are unavailable; their metadata and placements are retained.');history=new History(doc);
     sequenceEditor=mountSequenceEditor({getDocument:()=>importDraft||doc,getImages:()=>draftImages||images,change:changeMetadata,onMessage:toast});
-    assetEditor=mountAssetEditor({getDocument:()=>importDraft||doc,getImages:()=>draftImages||images,change:changeMetadata,onMessage:toast,onSelectDefinition:id=>{if(!importDraft){selectedDef=id;render();}},onAcceptImport:acceptImport,onCancelImport:cancelImport,onExportLibrary:saveAssetMetadata,onEditSequences:id=>sequenceEditor.open(id),onReplaceAtlas:replaceAtlas});
+    assetEditor=mountAssetEditor({getDocument:()=>importDraft||doc,getImages:()=>draftImages||images,change:changeMetadata,onMessage:toast,onSelectDefinition:id=>{if(!importDraft){selectedDef=id;render();}},onAcceptImport:acceptImport,onCancelImport:cancelImport,onExportLibrary:saveAssetMetadata,onEditSequences:id=>sequenceEditor.open(id),onReplaceAtlas:replaceAtlas,onUndo:()=>restoreMetadataHistory('undo'),onRedo:()=>restoreMetadataHistory('redo'),getHistoryState:()=>({canUndo:(importHistory||history).canUndo,canRedo:(importHistory||history).canRedo})});
     bind();updateImportControls();updateCharacterControls();render();save();
     requestAnimationFrame(function frame(now) { if (playing && !pointer?.before && !document.hidden && lastFrame) timeMs += Math.min(250, now - lastFrame); lastFrame = now; draw(); requestAnimationFrame(frame); });
   } catch (error) { const node = element('pre', null, `Editor could not start: ${error.message}`, 'error'); document.body.replaceChildren(node); }

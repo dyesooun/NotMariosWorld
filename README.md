@@ -17,7 +17,9 @@ For local editing, use `npm run dev` so Node restarts when shared game rules cha
 
 ## Local level companion
 
-Run `npm run editor` and open [http://127.0.0.1:10001](http://127.0.0.1:10001). The separate local browser editor starts with a blank forest level, supports asset placement and timer/animation previews, and exports versioned level JSON with separate asset, reusable-definition, and placement layers. Import an atlas image and review its cuts, geometry and optional metadata before adding assets to the drawer; no schema is required. The bundled forest's missing geometry is marked as editable estimates. See [the companion guide](tools/level-editor/README.md) for controls, the export contract, and limitations. Drafts stay in tool storage until you export and replace a configured JSON. The editor, viewer and live JSON levels share rendering and collision code.
+Run `npm run editor` and open [http://127.0.0.1:10001](http://127.0.0.1:10001). The separate local browser editor starts with a blank forest level, supports asset placement and timer/animation previews, and exports versioned level JSON with separate asset, reusable-definition, and placement layers. Import an atlas image and review its cuts, geometry and optional metadata before adding assets to the drawer; no schema is required. The bundled forest's missing geometry is marked as editable estimates. Atlas cuts support polygon outlines: double-click an edge to add a point, then drag points to hide unwanted neighboring pixels without editing the atlas image or collision shapes. See [the companion guide](tools/level-editor/README.md) for controls, the export contract, and limitations. Drafts stay in tool storage until you export and replace a configured JSON. The editor, viewer and live JSON levels share rendering and collision code.
+
+The loading screen shows the four avatars jumping together inside a circular pixel-card panel while level data and artwork load. It respects reduced-motion preferences and opens the game as soon as loading finishes.
 
 ## JSON levels
 

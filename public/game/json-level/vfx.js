@@ -1,4 +1,5 @@
 import {placementBounds, localToWorld, worldToLocal} from './transforms.js';
+import { maskedFrameSource } from './frame-outline.js';
 
 const TAU=Math.PI*2;
 const VFX_PRESENCE=1.6;
@@ -63,12 +64,12 @@ function vanish(c,s,{images,frame}){
   if(age<0||age>=850)return;
   c.save();
   if(s.vanishOrigin){const p=worldToLocal(s,{x:s.vanishOrigin.x+s.width/2,y:s.vanishOrigin.y+s.height/2});c.translate(p.x-s.width/2,p.y-s.height/2);}
-  const timed=s.behavior.vanish.restoreMode==='timed',image=images?.get(s.assetId);
+  const timed=s.behavior.vanish.restoreMode==='timed',rawImage=images?.get(s.assetId),image=frame?.clipPolygon ? maskedFrameSource(rawImage, frame, frame.clipPolygon) : rawImage;
   if(!timed&&image&&frame){
     const seconds=age/1000,opacity=1-age/850,offset=s.visual?.offset||[0,0],scale=s.visual?.scale||[1,1];
     for(let i=0;i<12;i++){const col=i%6,row=Math.floor(i/6),sx=Math.floor(col*frame.w/6),sy=Math.floor(row*frame.h/2),sw=Math.floor((col+1)*frame.w/6)-sx,sh=Math.floor((row+1)*frame.h/2)-sy;if(!sw||!sh)continue;
       const vx=(col-2.5)*20+(seed(s,i)-.5)*24,vy=-35-seed(s,i+20)*45;
-      c.globalAlpha=clamp(opacity*VFX_PRESENCE,0,1);c.drawImage(image,frame.x+sx,frame.y+sy,sw,sh,offset[0]*s.width+sx/frame.w*s.width*scale[0]+vx*seconds*1.25,offset[1]*s.height+sy/frame.h*s.height*scale[1]+vy*seconds*1.25+150*seconds*seconds,sw/frame.w*s.width*scale[0],sh/frame.h*s.height*scale[1]);
+      c.globalAlpha=clamp(opacity*VFX_PRESENCE,0,1);c.drawImage(image, (frame.clipPolygon ? sx : frame.x + sx), (frame.clipPolygon ? sy : frame.y + sy), sw, sh, offset[0]*s.width+sx/frame.w*s.width*scale[0]+vx*seconds*1.25,offset[1]*s.height+sy/frame.h*s.height*scale[1]+vy*seconds*1.25+150*seconds*seconds,sw/frame.w*s.width*scale[0],sh/frame.h*s.height*scale[1]);
     }
     c.globalAlpha=1;
   }

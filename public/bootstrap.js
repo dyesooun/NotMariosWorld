@@ -1,5 +1,7 @@
+import { initLoadingScreen } from './loading-screen.js';
+
 const app = document.querySelector('#app');
-app.textContent = 'Loading levels…';
+initLoadingScreen();
 
 import('./app.js').catch(error => {
   app.replaceChildren();

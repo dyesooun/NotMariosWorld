@@ -50,6 +50,8 @@ The atlas contains 16 sprites. Left to right, top to bottom:
 3. Coin, spikes, spring mushroom, chest
 4. Bird, fish, skull, flag
 
+The startup loading animation reuses the four first-row avatars from this atlas. Jump motion and the shared circular pixel-card background are rendered in code; no additional artwork is generated or imported.
+
 The generated PNG is 1261×1247. `renderer.js` trims transparent margins within each authored cell at load time. Row boundaries are 0%, 29.2%, 54.5%, 76.5%, and 100%; columns use quarters. Avatar outfit colors are recolored at runtime while retaining the original shading and alpha. Animation comes from movement, flipping, bobbing, particles, and scene animation.
 
 ## Final generation prompt
