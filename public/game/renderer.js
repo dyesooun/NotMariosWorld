@@ -8,6 +8,7 @@ import { getJsonRuntime } from './engine.js';
 import { collectionVisuals } from './collection-visuals.js';
 import { drawPlacementVfx } from './json-level/vfx.js';
 import { prepareLobbyScene, drawLobbyScene } from './lobby-scene.js';
+import { preparePodiumScene } from './podium-scene.js';
 
 const W=960,H=540;
 const rect=(c,color,x,y,w,h)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
@@ -70,7 +71,7 @@ export async function prepareLevelArt() {
   if (typeof Image === 'undefined') return;
   loadAtlas();
   loadForestAtlas();
-  await Promise.all([prepareLobbyScene(), ...LEVELS.filter(level => level?.authored).map(async level => {
+  await Promise.all([prepareLobbyScene(), preparePodiumScene(), ...LEVELS.filter(level => level?.authored).map(async level => {
     ensureJsonImages(level);
     await jsonImageCache.get(level.jsonDocument);
     const error = jsonImageErrors.get(level.jsonDocument);

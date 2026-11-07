@@ -65,6 +65,8 @@ function panel(ctx,r,fill='#152a29f5',edge='#b7ef51') {
   rect(ctx,edge,r.x,r.y,r.w,r.h);rect(ctx,fill,r.x+2,r.y+2,r.w-4,r.h-4);
   for(const [x,y] of [[r.x,r.y],[r.x+r.w-5,r.y],[r.x,r.y+r.h-5],[r.x+r.w-5,r.y+r.h-5]])rect(ctx,edge,x,y,5,5);
 }
+// Shared square frame for broadcasts and ceremony result labels.
+export { panel as drawWorldPanel };
 function canvasText(ctx,value,x,y,size=12,color='#ecf4d6',align='left') {
   ctx.font=`${size>=15?'bold ':''}${size}px monospace`;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(String(value),Math.round(x),Math.round(y));ctx.textAlign='left';
 }

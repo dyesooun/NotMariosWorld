@@ -1,5 +1,16 @@
 # Original game assets
 
+## Castle courtyard podium
+
+`public/assets/sprites/podium/courtyard-ruins.png` is an original opaque 1619×971 PNG generated with the built-in imagegen tool on 2026-11-07. It supplies the full castle courtyard scene for both score finalization and the ranked ceremony, drawn with nearest-neighbor sampling. Broken arches, fractured columns, ivy-covered walls, distant towers and flagstones frame the existing avatar art. Weathered podium masonry and cosmetic wind/celebration effects are rendered in code; no licensed game art or race-level JSON is used or replaced.
+
+<details>
+<summary>Final generation prompt (built-in imagegen)</summary>
+
+Use case: stylized-concept. Asset type: production pixel-art background for the ranked podium ceremony of an original cheerful woodland adventure game. Create one LANDSCAPE 5:3 scene of a castle's COURTYARD RUINS, straight-on side-view 2D platform-game staging, not isometric. Match rich, crisp 16-bit pixel sprites with dark colored outlines, carefully defined square pixel texture, moss-green, warm ivory-grey stone, teal distance and golden afternoon lighting. Composition is essential: an open ruined courtyard with a flat flagstone terrace across the bottom 45 percent of the image, spacious and uncluttered in the center and lower center to hold a large group of game avatars and podium stands rendered separately. Frame the sides and back with richly detailed broken castle walls, ivy-covered crenellations, a damaged tall arch at the left side, fractured classical columns at the far right, low crumbling masonry, little ferns and wildflowers along the outer edges. Distant castle towers and emerald treetops seen beyond the collapsed rear wall, warm sky through the broken arches. Keep the upper-center 30 percent quiet and softly shaded teal for live ceremony headings added in code. A coherent gentle outdoor atmosphere, warm sunlight on chipped stone, clearly defined masonry and foliage at the same high fidelity as friendly adventure character sprites. Rear walls behind the center may sit at mid-height but no large feature interrupts the open staging area. Restrained ornamental moss and ivy. No people, no creatures, no podium blocks, no furniture, no text, no numbers, no UI, no logos, no licensed imagery. The scene itself is the full image, no frame or atlas grid. Opaque background. Nearest-neighbor crisp pixels, no blur, no smooth paint or photorealism.
+
+</details>
+
 ## Waiting Woods lobby scenery
 
 `public/assets/sprites/lobby/waiting-woods-scenery.png` is an original 1536×1024 transparent PNG generated with the built-in imagegen tool on 2026-11-07. It is a regular three-column, two-row atlas with 512×512 cells: broadleaf oak, slender woodland tree, ruined arch; fractured column, broken wall, fern/flower/rubble cluster. `public/game/lobby-scene.js` trims cell-local transparent margins and caches sprites at logical pixel sizes, drawing without smoothing. The existing `public/assets/sprites/friendly-creatures.png` supplies its animated birds and butterflies; `whimsical_forest_3.png` supplies the distant parallax woodland, and `forest-sprites.png` supplies grass-shelf-aligned practice terrain. No existing source atlas or authored race JSON is replaced. Wind, leaves and root-anchored tree sway are cosmetic code-rendered effects.
