@@ -9,10 +9,15 @@ function placeAtExit(state, levelId) {
   const level = LEVELS[levelId];
   const runtime = getJsonRuntime(state);
   if (runtime) {
-    // Authored levels resolve gameplay roles through their JSON runtime; the
-    // legacy x/endX shortcut is not a valid collision probe for them.
-    runtime.player.x = level.endX + 1 - runtime.player.width / 2;
-    runtime.player.y = 325;
+    // Authored levels resolve gameplay roles through their JSON runtime; use
+    // the authored exit placement rather than a legacy endX/y shortcut.
+    const exit = level.jsonDocument.placements.find(placement => {
+      const definition = level.jsonDocument.definitions[placement.definitionId];
+      return (placement.gameplay || definition?.gameplay)?.role === 'exit';
+    });
+    assert.ok(exit, `authored level ${levelId} must define an exit`);
+    runtime.player.x = exit.x + (exit.width - runtime.player.width) / 2;
+    runtime.player.y = exit.y + (exit.height - runtime.player.height) / 2;
     runtime.player.vx = 0;
     runtime.player.vy = 0;
     runtime.player.grounded = true;
@@ -80,7 +85,7 @@ test('all six orders start, transition, bank once, and finish on the final order
     assert.equal(score(state), state.banked);
     const banked=state.banked;assert.deepEqual(step(state,{},.016),[]);assert.equal(state.banked,banked);
   }
-  assert.deepEqual(LEVELS.slice(1).map(level=>level.id),[1,'ocean','hell']);
+  assert.deepEqual(LEVELS.slice(1).map(level=>level.id),[1,2,'hell']);
 });
 
 test('level transitions retain latched order and completed identities while resetting checkpoint state', () => {

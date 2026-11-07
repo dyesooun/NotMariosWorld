@@ -6,7 +6,8 @@ import { collectPower,powerEffects } from '../public/game/powers.js';
 import { LEVELS } from '../public/game/levels.js';
 
 // Queue regressions use legacy chest inventory; authored forest has no chests.
-LEVELS[1] = LEVELS[2];
+import { legacyOceanFixture } from './legacy-level-fixtures.js';
+LEVELS[1] = legacyOceanFixture();
 
 const waitFor=async check=>{for(let i=0;i<200;i++){if(check())return;await new Promise(r=>setTimeout(r,5));}throw new Error('Condition timed out');};
 async function socket(url){const ws=new WebSocket(url);ws.messages=[];ws.on('message',raw=>ws.messages.push(JSON.parse(raw)));await new Promise((resolve,reject)=>{ws.once('open',resolve);ws.once('error',reject);});return ws;}

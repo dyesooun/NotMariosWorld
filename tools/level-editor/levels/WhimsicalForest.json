@@ -12000,10 +12000,11 @@
           "dead": "dead",
           "attack": "attack"
         },
-        "speed": 60,
+        "speed": 100,
         "detectRange": 400,
         "fireIntervalMs": 4800,
-        "detectedMode": "once"
+        "detectedMode": "once",
+        "attackCooldownMs": 500
       }
     },
     "creatures-atlas-2:character": {
@@ -14067,7 +14068,7 @@
     {
       "id": "object-862d66b0-1859-45e8-bd35-7e5c74ca123c",
       "definitionId": "whimsical-forest-2-atlas:cut-0001",
-      "x": 1000,
+      "x": 999,
       "y": 0,
       "width": 1000,
       "height": 600,
@@ -18624,18 +18625,6 @@
       "settings": {}
     },
     {
-      "id": "f34b5713-effc-47a3-8b53-e3be421f03b8",
-      "definitionId": "whimsical-forest-props-1-atlas:cut-9",
-      "x": 5710,
-      "y": 185,
-      "width": 66.84314173714847,
-      "height": 22.849321900363748,
-      "layer": 0,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
-    },
-    {
       "id": "32379aea-883d-420d-945e-41e294b68652",
       "definitionId": "whimsical-forest-props-1-atlas:cut-9",
       "x": 5865,
@@ -19015,7 +19004,11 @@
       "rotation": 0,
       "settings": {
         "fireIntervalMs": 1000,
-        "supportIds": []
+        "supportIds": [
+          "object-501d8830-49ab-4518-98ed-a23160e01db2",
+          "06c22490-00b6-4ef3-8eb3-a213cb9e8355",
+          "9a7d5070-848d-42b1-83d7-eb852c632076"
+        ]
       }
     },
     {
@@ -19028,7 +19021,11 @@
       "layer": 0,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "supportIds": [
+          "object-f9201283-793e-470c-b3f3-0cad7d7d88f6"
+        ]
+      }
     },
     {
       "id": "3fddb431-5e18-46e6-88e3-b50cad518f9b",
@@ -19337,10 +19334,19 @@
       "y": 502.50386301742816,
       "width": 84.1564834531564,
       "height": 47.82947031590527,
-      "layer": 0,
+      "layer": 2,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "supportIds": [
+          "6b236740-998a-41c0-a869-94679c5d02fc",
+          "c4c16d63-9f1b-4765-b92b-ee77bddefaa3",
+          "c4dec069-145d-4b58-8870-835106590e68",
+          "4a7a4fe8-de09-404c-9986-276379555673",
+          "object-92942fa2-eb9f-42cc-b472-7e4937507429"
+        ],
+        "attackRange": 25
+      }
     },
     {
       "id": "object-274d8ac9-f525-4c1b-8770-33396335dc6d",
@@ -19352,7 +19358,13 @@
       "layer": 0,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "supportIds": [
+          "adce6410-0606-4601-9c8a-a0789531e398",
+          "object-11de9d28-4893-4ae4-8692-0334dc4382ed",
+          "bbf16aed-46e7-4ead-b61a-d9fe86f2be72"
+        ]
+      }
     },
     {
       "id": "object-d55bce51-4998-4ee5-96f2-e0ff336b602c",
@@ -19364,19 +19376,32 @@
       "layer": 0,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "supportIds": [
+          "object-fb20124e-d5b2-44c5-924d-1a8965088aad",
+          "object-87149364-cd1a-4276-b063-55d5037cd902",
+          "object-031f765a-541f-4d66-8d5a-4697ee59e1cf"
+        ]
+      }
     },
     {
       "id": "object-eb7cac55-4fa8-4aa7-9a22-a238dfa51c28",
       "definitionId": "creatures-atlas:character",
-      "x": 5360,
+      "x": 5275,
       "y": 495,
       "width": 85,
       "height": 48,
       "layer": 0,
       "flipX": false,
       "rotation": 0,
-      "settings": {}
+      "settings": {
+        "supportIds": [
+          "object-1213b322-4968-4170-92d2-7db91bce05f9",
+          "object-fdbeefa6-6c7f-4cf5-b64e-20b873bb7f8f",
+          "object-c68b5baf-c2b8-4c17-818b-59a7f9e51d94",
+          "object-1e209f43-c548-4c87-aacb-6a7e8879ec4e"
+        ]
+      }
     },
     {
       "id": "object-bbf30948-5582-4897-a966-3d292b8f1529",
@@ -19407,18 +19432,6 @@
         "detectRange": 250,
         "fireIntervalMs": 1000
       }
-    },
-    {
-      "id": "object-05729cc5-c7a5-4c3e-bb29-5b5bfe36da64",
-      "definitionId": "creatures-atlas-2:character",
-      "x": 265,
-      "y": 490,
-      "width": 64,
-      "height": 85.33333333333333,
-      "layer": 0,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
     }
   ]
 }

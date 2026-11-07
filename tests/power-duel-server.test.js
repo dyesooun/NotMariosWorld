@@ -10,7 +10,8 @@ import { LEVELS } from '../public/game/levels.js';
 
 // Legacy power-duel fixtures require chest-backed inventory; use ocean in the
 // former forest slot because authored forest has no power chests.
-LEVELS[1] = LEVELS[2];
+import { legacyOceanFixture } from './legacy-level-fixtures.js';
+LEVELS[1] = legacyOceanFixture();
 
 const waitFor=async check=>{for(let i=0;i<300;i++){if(check())return;await new Promise(r=>setTimeout(r,5));}throw new Error('Condition timed out');};
 const ACTIONS=new Set(['usePower','powerAnswer','powerChestChoice']);

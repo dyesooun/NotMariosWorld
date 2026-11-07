@@ -3,13 +3,16 @@ import test from 'node:test';
 import { AVATARS, LEVELS, createState, startRun as engineStartRun, step, score, snapshot } from '../public/game/engine.js';
 import { platformAt } from '../public/game/levels.js';
 import { PROJECTILE_RULES } from '../public/game/projectiles.js';
+import { legacyOceanFixture } from './legacy-level-fixtures.js';
 
 // Forest is now the authored JSON course and intentionally has no legacy
 // hazards/critters/power fixtures. These physics regressions use ocean first.
 const startRun = (state, config = {}) => engineStartRun(state, { worldOrder: [2, 3, 1], ...config });
 // Preserve the old hand-authored forest fixture for this legacy physics file;
 // authored forest gameplay is covered by forest.test.js and renderer tests.
-LEVELS[1] = LEVELS[2];
+const legacyOcean = legacyOceanFixture();
+LEVELS[1] = legacyOcean;
+LEVELS[2] = legacyOcean;
 
 test('holding jump cannot repeatedly bounce, and a fresh press can jump again', () => {
   const state = createState();
@@ -203,7 +206,9 @@ test('shooter projectiles spawn on cooldown, collide, expire, and reset on respa
 test('sustained firing takes 4.8 seconds between shots instead of 2.4 seconds',()=>{
   const state=startRun(createState()),shooter=state.enemies[0];
   for(const enemy of state.enemies)enemy.shooter=false;
-  shooter.shooter=true;shooter.cooldown=0;state.x=shooter.x-400;
+  // Fix the initial delay so this ten-second sample contains two shots,
+  // independently of when a particular legacy course acquires the player.
+  shooter.shooter=true;shooter.cooldown=1;state.x=shooter.x-400;
   const fired=[];
   for(let i=0;i<600;i++){
     state.projectiles=[];step(state,{},1/60);

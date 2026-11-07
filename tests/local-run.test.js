@@ -6,7 +6,10 @@ import { validateRunSummary, summaryScore } from '../public/game/run-protocol.js
 
 // Legacy local-run/chest regressions use the ocean course in the old forest
 // slot; authored forest JSON intentionally has no power chests.
-LEVELS[1] = LEVELS[2];
+import { legacyOceanFixture } from './legacy-level-fixtures.js';
+const legacyOcean = legacyOceanFixture();
+LEVELS[1] = legacyOcean;
+LEVELS[2] = legacyOcean;
 
 const make = (extra = {}) => {
   const reports = [];

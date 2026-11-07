@@ -60,6 +60,8 @@ Environment tiles and scenery are original canvas artwork in `public/game/render
 
 ## Authored JSON level assets
 
+The user-supplied `public/assets/sprites/tide/tileset/TroubleTides.json` is registered as race level 2 with the `ocean` audio theme. It references the existing `troubled_tide_1.png`, `Troubled Tides Treasure Chest Atlas.png`, and shared forest `whimsical_forest_props_2.png` atlases through project asset paths. Integration preserves the supplied artwork, cuts, placements and gameplay roles; no new images are generated or substituted. The full editable source remains under `tools/level-editor/levels/TroubleTides.json`.
+
 Prop VFX and localized forest mist are original procedural canvas effects under `public/game/json-level/vfx.js` and `atmosphere.js`. They add no third-party images. Disappearance fragments reuse the authored sprite cut, and checkpoint banner recoloring preserves the source artwork. Fog textures are generated and cached locally at low resolution, drawn with nearest-neighbor scaling; portal colors are configured without per-frame atlas sampling.
 
 The supplied `public/assets/sprites/forest/tileset/WhimsicalForest.json` embeds its atlas images and records the approved cuts, transformations and placements. The live renderer consumes those assets unchanged with nearest-neighbor canvas drawing. Its asset library contains eight atlases, including unused definitions; only authored placements are drawn. No new art is generated or substituted by this integration. Each additional catalog JSON can reference its own atlas images relative to the JSON file or embed them as data URLs. The old supplemental forest sprites remain available for historical fixtures and original shared assets.

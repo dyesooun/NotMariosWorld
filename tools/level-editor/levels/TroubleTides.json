@@ -1,11 +1,11 @@
 {
   "format": "not-marios-world-level",
   "version": 2,
-  "id": "level-4fa778bd-c433-447d-a0ed-bcab4904f4f3",
-  "name": "TroubleTides",
-  "biome": "custom",
+  "id": "level-6a5eb430-dd68-453b-a9cb-db01681a5626",
+  "name": "TroubledTides",
+  "biome": "tide",
   "world": {
-    "width": 14200,
+    "width": 6000,
     "height": 600,
     "backgroundColor": "#183c38"
   },
@@ -3579,15 +3579,48 @@
       "frames": {
         "frame-0001": {
           "x": 0,
-          "y": 0,
+          "y": 90,
           "w": 192,
-          "h": 204,
+          "h": 114,
           "name": "Frame 1",
           "sourceRectPx": {
             "x": 0,
-            "y": 0,
+            "y": 90,
             "w": 192,
-            "h": 204
+            "h": 114
+          },
+          "contentBoundsPx": {
+            "x": 22,
+            "y": 3,
+            "w": 161,
+            "h": 111
+          },
+          "pivotPx": {
+            "x": 103,
+            "y": 114
+          },
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
+        },
+        "frame-0002": {
+          "x": 192,
+          "y": 92,
+          "w": 192,
+          "h": 112,
+          "name": "Frame 2",
+          "sourceRectPx": {
+            "x": 192,
+            "y": 92,
+            "w": 192,
+            "h": 112
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -3598,20 +3631,22 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ]
         },
-        "frame-0002": {
-          "x": 192,
-          "y": 0,
+        "frame-0003": {
+          "x": 384,
+          "y": 87,
           "w": 192,
-          "h": 204,
-          "name": "Frame 2",
+          "h": 117,
+          "name": "Frame 3",
           "sourceRectPx": {
-            "x": 192,
-            "y": 0,
+            "x": 384,
+            "y": 87,
             "w": 192,
-            "h": 204
+            "h": 117
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -3626,41 +3661,17 @@
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ]
         },
-        "frame-0003": {
-          "x": 384,
-          "y": 0,
-          "w": 192,
-          "h": 204,
-          "name": "Frame 3",
-          "sourceRectPx": {
-            "x": 384,
-            "y": 0,
-            "w": 192,
-            "h": 204
-          },
-          "contentBoundsPx": null,
-          "pivotPx": null,
-          "walkSurfacesPx": null,
-          "solidShapesPx": null,
-          "hazardShapesPx": null,
-          "interactionShapesPx": null,
-          "components": null,
-          "measurementStatus": "unresolved",
-          "notes": [
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
-          ]
-        },
         "frame-0004": {
           "x": 576,
-          "y": 0,
+          "y": 108,
           "w": 192,
-          "h": 204,
+          "h": 96,
           "name": "Frame 4",
           "sourceRectPx": {
             "x": 576,
-            "y": 0,
+            "y": 108,
             "w": 192,
-            "h": 204
+            "h": 96
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -3671,20 +3682,21 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ]
         },
         "frame-0005": {
           "x": 768,
-          "y": 0,
+          "y": 90,
           "w": 192,
-          "h": 204,
+          "h": 114,
           "name": "Frame 5",
           "sourceRectPx": {
             "x": 768,
-            "y": 0,
+            "y": 90,
             "w": 192,
-            "h": 204
+            "h": 114
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -3695,20 +3707,21 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ]
         },
         "frame-0006": {
           "x": 960,
-          "y": 0,
+          "y": 87,
           "w": 192,
-          "h": 204,
+          "h": 117,
           "name": "Frame 6",
           "sourceRectPx": {
             "x": 960,
-            "y": 0,
+            "y": 87,
             "w": 192,
-            "h": 204
+            "h": 117
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -3719,20 +3732,21 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ]
         },
         "frame-0007": {
           "x": 1152,
-          "y": 0,
+          "y": 79,
           "w": 192,
-          "h": 204,
+          "h": 125,
           "name": "Frame 7",
           "sourceRectPx": {
             "x": 1152,
-            "y": 0,
+            "y": 79,
             "w": 192,
-            "h": 204
+            "h": 125
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -3743,20 +3757,21 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ]
         },
         "frame-0008": {
           "x": 1344,
-          "y": 0,
+          "y": 129,
           "w": 192,
-          "h": 204,
+          "h": 75,
           "name": "Frame 8",
           "sourceRectPx": {
             "x": 1344,
-            "y": 0,
+            "y": 129,
             "w": 192,
-            "h": 204
+            "h": 75
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -3767,6 +3782,7 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ]
         },
@@ -4207,7 +4223,18 @@
             "y": 0,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0002": {
           "x": 192,
@@ -4220,7 +4247,18 @@
             "y": 0,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0003": {
           "x": 384,
@@ -4233,7 +4271,18 @@
             "y": 0,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0004": {
           "x": 576,
@@ -4246,7 +4295,18 @@
             "y": 0,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0005": {
           "x": 768,
@@ -4259,7 +4319,18 @@
             "y": 0,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0006": {
           "x": 960,
@@ -4272,7 +4343,18 @@
             "y": 0,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0007": {
           "x": 1152,
@@ -4285,7 +4367,18 @@
             "y": 0,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0008": {
           "x": 1344,
@@ -4298,7 +4391,18 @@
             "y": 0,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0009": {
           "x": 0,
@@ -4312,8 +4416,16 @@
             "w": 192,
             "h": 200
           },
-          "contentBoundsPx": null,
-          "pivotPx": null,
+          "contentBoundsPx": {
+            "x": 15,
+            "y": 32,
+            "w": 151,
+            "h": 165
+          },
+          "pivotPx": {
+            "x": 91,
+            "y": 197
+          },
           "walkSurfacesPx": null,
           "solidShapesPx": null,
           "hazardShapesPx": null,
@@ -4322,7 +4434,8 @@
           "measurementStatus": "unresolved",
           "notes": [
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Atlas image replaced; source-pixel measurements need review."
           ]
         },
         "frame-0010": {
@@ -4337,8 +4450,16 @@
             "w": 192,
             "h": 200
           },
-          "contentBoundsPx": null,
-          "pivotPx": null,
+          "contentBoundsPx": {
+            "x": 20,
+            "y": 37,
+            "w": 151,
+            "h": 160
+          },
+          "pivotPx": {
+            "x": 96,
+            "y": 197
+          },
           "walkSurfacesPx": null,
           "solidShapesPx": null,
           "hazardShapesPx": null,
@@ -4346,7 +4467,8 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Atlas image replaced; source-pixel measurements need review."
           ]
         },
         "frame-0011": {
@@ -4361,8 +4483,16 @@
             "w": 192,
             "h": 200
           },
-          "contentBoundsPx": null,
-          "pivotPx": null,
+          "contentBoundsPx": {
+            "x": 25,
+            "y": 41,
+            "w": 144,
+            "h": 156
+          },
+          "pivotPx": {
+            "x": 97,
+            "y": 197
+          },
           "walkSurfacesPx": null,
           "solidShapesPx": null,
           "hazardShapesPx": null,
@@ -4370,7 +4500,8 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Atlas image replaced; source-pixel measurements need review."
           ]
         },
         "frame-0012": {
@@ -4385,8 +4516,16 @@
             "w": 192,
             "h": 200
           },
-          "contentBoundsPx": null,
-          "pivotPx": null,
+          "contentBoundsPx": {
+            "x": 26,
+            "y": 50,
+            "w": 149,
+            "h": 147
+          },
+          "pivotPx": {
+            "x": 101,
+            "y": 197
+          },
           "walkSurfacesPx": null,
           "solidShapesPx": null,
           "hazardShapesPx": null,
@@ -4394,7 +4533,8 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Atlas image replaced; source-pixel measurements need review."
           ]
         },
         "frame-0013": {
@@ -4409,8 +4549,16 @@
             "w": 192,
             "h": 200
           },
-          "contentBoundsPx": null,
-          "pivotPx": null,
+          "contentBoundsPx": {
+            "x": 30,
+            "y": 20,
+            "w": 140,
+            "h": 177
+          },
+          "pivotPx": {
+            "x": 100,
+            "y": 197
+          },
           "walkSurfacesPx": null,
           "solidShapesPx": null,
           "hazardShapesPx": null,
@@ -4418,7 +4566,8 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Atlas image replaced; source-pixel measurements need review."
           ]
         },
         "frame-0014": {
@@ -4433,8 +4582,16 @@
             "w": 192,
             "h": 200
           },
-          "contentBoundsPx": null,
-          "pivotPx": null,
+          "contentBoundsPx": {
+            "x": 9,
+            "y": 85,
+            "w": 182,
+            "h": 115
+          },
+          "pivotPx": {
+            "x": 100,
+            "y": 200
+          },
           "walkSurfacesPx": null,
           "solidShapesPx": null,
           "hazardShapesPx": null,
@@ -4442,7 +4599,8 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Atlas image replaced; source-pixel measurements need review."
           ]
         },
         "frame-0015": {
@@ -4457,8 +4615,16 @@
             "w": 192,
             "h": 200
           },
-          "contentBoundsPx": null,
-          "pivotPx": null,
+          "contentBoundsPx": {
+            "x": 1,
+            "y": 38,
+            "w": 170,
+            "h": 159
+          },
+          "pivotPx": {
+            "x": 86,
+            "y": 197
+          },
           "walkSurfacesPx": null,
           "solidShapesPx": null,
           "hazardShapesPx": null,
@@ -4466,7 +4632,8 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Atlas image replaced; source-pixel measurements need review."
           ]
         },
         "frame-0016": {
@@ -4490,7 +4657,8 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Atlas image replaced; source-pixel measurements need review."
           ]
         },
         "frame-0017": {
@@ -4504,7 +4672,18 @@
             "y": 512,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0018": {
           "x": 192,
@@ -4517,7 +4696,18 @@
             "y": 512,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0019": {
           "x": 384,
@@ -4530,7 +4720,18 @@
             "y": 512,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0020": {
           "x": 576,
@@ -4543,7 +4744,18 @@
             "y": 512,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0021": {
           "x": 768,
@@ -4556,7 +4768,18 @@
             "y": 512,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0022": {
           "x": 960,
@@ -4569,7 +4792,18 @@
             "y": 512,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0023": {
           "x": 1152,
@@ -4582,7 +4816,18 @@
             "y": 512,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0024": {
           "x": 1344,
@@ -4595,7 +4840,18 @@
             "y": 512,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0025": {
           "x": 0,
@@ -4608,7 +4864,18 @@
             "y": 768,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0026": {
           "x": 192,
@@ -4621,7 +4888,18 @@
             "y": 768,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0027": {
           "x": 384,
@@ -4634,7 +4912,18 @@
             "y": 768,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0028": {
           "x": 576,
@@ -4647,7 +4936,18 @@
             "y": 768,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0029": {
           "x": 768,
@@ -4660,7 +4960,18 @@
             "y": 768,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0030": {
           "x": 960,
@@ -4673,7 +4984,18 @@
             "y": 768,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0031": {
           "x": 1152,
@@ -4686,7 +5008,18 @@
             "y": 768,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0032": {
           "x": 1344,
@@ -4699,7 +5032,18 @@
             "y": 768,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0033": {
           "x": 0,
@@ -4712,7 +5056,18 @@
             "y": 1024,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0034": {
           "x": 192,
@@ -4725,7 +5080,18 @@
             "y": 1024,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0035": {
           "x": 384,
@@ -4738,7 +5104,18 @@
             "y": 1024,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0036": {
           "x": 576,
@@ -4751,7 +5128,18 @@
             "y": 1024,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0037": {
           "x": 768,
@@ -4764,7 +5152,18 @@
             "y": 1024,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0038": {
           "x": 960,
@@ -4777,7 +5176,18 @@
             "y": 1024,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0039": {
           "x": 1152,
@@ -4790,7 +5200,18 @@
             "y": 1024,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         },
         "frame-0040": {
           "x": 1344,
@@ -4803,7 +5224,18 @@
             "y": 1024,
             "w": 192,
             "h": 256
-          }
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Atlas image replaced; source-pixel measurements need review."
+          ]
         }
       },
       "characterImport": true
@@ -4826,6 +5258,16 @@
             "y": 0,
             "w": 192,
             "h": 256
+          },
+          "contentBoundsPx": {
+            "x": 22,
+            "y": 93,
+            "w": 161,
+            "h": 112
+          },
+          "pivotPx": {
+            "x": 103,
+            "y": 205
           }
         },
         "frame-0002": {
@@ -5025,87 +5467,15 @@
         },
         "frame-0017": {
           "x": 0,
-          "y": 512,
+          "y": 565,
           "w": 192,
-          "h": 166,
+          "h": 113,
           "name": "Frame 17",
           "sourceRectPx": {
             "x": 0,
-            "y": 512,
+            "y": 565,
             "w": 192,
-            "h": 166
-          },
-          "contentBoundsPx": null,
-          "pivotPx": null,
-          "walkSurfacesPx": null,
-          "solidShapesPx": null,
-          "hazardShapesPx": null,
-          "interactionShapesPx": null,
-          "components": null,
-          "measurementStatus": "unresolved",
-          "notes": [
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
-          ]
-        },
-        "frame-0018": {
-          "x": 192,
-          "y": 512,
-          "w": 192,
-          "h": 166,
-          "name": "Frame 18",
-          "sourceRectPx": {
-            "x": 192,
-            "y": 512,
-            "w": 192,
-            "h": 166
-          },
-          "contentBoundsPx": null,
-          "pivotPx": null,
-          "walkSurfacesPx": null,
-          "solidShapesPx": null,
-          "hazardShapesPx": null,
-          "interactionShapesPx": null,
-          "components": null,
-          "measurementStatus": "unresolved",
-          "notes": [
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
-          ]
-        },
-        "frame-0019": {
-          "x": 384,
-          "y": 512,
-          "w": 192,
-          "h": 166,
-          "name": "Frame 19",
-          "sourceRectPx": {
-            "x": 384,
-            "y": 512,
-            "w": 192,
-            "h": 166
-          },
-          "contentBoundsPx": null,
-          "pivotPx": null,
-          "walkSurfacesPx": null,
-          "solidShapesPx": null,
-          "hazardShapesPx": null,
-          "interactionShapesPx": null,
-          "components": null,
-          "measurementStatus": "unresolved",
-          "notes": [
-            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
-          ]
-        },
-        "frame-0020": {
-          "x": 576,
-          "y": 512,
-          "w": 192,
-          "h": 180,
-          "name": "Frame 20",
-          "sourceRectPx": {
-            "x": 576,
-            "y": 512,
-            "w": 192,
-            "h": 180
+            "h": 113
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -5120,17 +5490,17 @@
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ]
         },
-        "frame-0021": {
-          "x": 766,
-          "y": 512,
+        "frame-0018": {
+          "x": 192,
+          "y": 562,
           "w": 192,
-          "h": 183,
-          "name": "Frame 21",
+          "h": 116,
+          "name": "Frame 18",
           "sourceRectPx": {
-            "x": 766,
-            "y": 512,
+            "x": 192,
+            "y": 562,
             "w": 192,
-            "h": 183
+            "h": 116
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -5141,6 +5511,86 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
+        },
+        "frame-0019": {
+          "x": 384,
+          "y": 560,
+          "w": 192,
+          "h": 118,
+          "name": "Frame 19",
+          "sourceRectPx": {
+            "x": 384,
+            "y": 560,
+            "w": 192,
+            "h": 118
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
+        },
+        "frame-0020": {
+          "x": 576,
+          "y": 560,
+          "w": 192,
+          "h": 132,
+          "name": "Frame 20",
+          "sourceRectPx": {
+            "x": 576,
+            "y": 560,
+            "w": 192,
+            "h": 132
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
+        },
+        "frame-0021": {
+          "x": 766,
+          "y": 550,
+          "w": 192,
+          "h": 148,
+          "name": "Frame 21",
+          "sourceRectPx": {
+            "x": 766,
+            "y": 550,
+            "w": 192,
+            "h": 148
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
@@ -5148,15 +5598,15 @@
         },
         "frame-0022": {
           "x": 960,
-          "y": 512,
+          "y": 545,
           "w": 192,
-          "h": 198,
+          "h": 165,
           "name": "Frame 22",
           "sourceRectPx": {
             "x": 960,
-            "y": 512,
+            "y": 545,
             "w": 192,
-            "h": 198
+            "h": 165
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -5167,20 +5617,21 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ]
         },
         "frame-0023": {
           "x": 1152,
-          "y": 512,
+          "y": 557,
           "w": 192,
-          "h": 173,
+          "h": 128,
           "name": "Frame 23",
           "sourceRectPx": {
             "x": 1152,
-            "y": 512,
+            "y": 557,
             "w": 192,
-            "h": 173
+            "h": 128
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -5191,20 +5642,21 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ]
         },
         "frame-0024": {
           "x": 1344,
-          "y": 512,
+          "y": 565,
           "w": 192,
-          "h": 187,
+          "h": 134,
           "name": "Frame 24",
           "sourceRectPx": {
             "x": 1344,
-            "y": 512,
+            "y": 565,
             "w": 192,
-            "h": 187
+            "h": 134
           },
           "contentBoundsPx": null,
           "pivotPx": null,
@@ -5215,6 +5667,7 @@
           "components": null,
           "measurementStatus": "unresolved",
           "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
             "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ]
         },
@@ -5752,105 +6205,195 @@
           "x": 0,
           "y": 768,
           "w": 192,
-          "h": 256,
+          "h": 167,
           "name": "Frame 25",
           "sourceRectPx": {
             "x": 0,
             "y": 768,
             "w": 192,
-            "h": 256
-          }
+            "h": 167
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
         },
         "frame-0026": {
           "x": 192,
           "y": 768,
           "w": 192,
-          "h": 256,
+          "h": 167,
           "name": "Frame 26",
           "sourceRectPx": {
             "x": 192,
             "y": 768,
             "w": 192,
-            "h": 256
-          }
+            "h": 167
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
         },
         "frame-0027": {
           "x": 384,
-          "y": 768,
+          "y": 767,
           "w": 192,
-          "h": 256,
+          "h": 167,
           "name": "Frame 27",
           "sourceRectPx": {
             "x": 384,
-            "y": 768,
+            "y": 767,
             "w": 192,
-            "h": 256
-          }
+            "h": 167
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
         },
         "frame-0028": {
           "x": 576,
           "y": 768,
           "w": 192,
-          "h": 256,
+          "h": 167,
           "name": "Frame 28",
           "sourceRectPx": {
             "x": 576,
             "y": 768,
             "w": 192,
-            "h": 256
-          }
+            "h": 167
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
         },
         "frame-0029": {
           "x": 768,
           "y": 768,
           "w": 192,
-          "h": 256,
+          "h": 167,
           "name": "Frame 29",
           "sourceRectPx": {
             "x": 768,
             "y": 768,
             "w": 192,
-            "h": 256
-          }
+            "h": 167
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
         },
         "frame-0030": {
           "x": 960,
           "y": 768,
           "w": 192,
-          "h": 256,
+          "h": 167,
           "name": "Frame 30",
           "sourceRectPx": {
             "x": 960,
             "y": 768,
             "w": 192,
-            "h": 256
-          }
+            "h": 167
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
         },
         "frame-0031": {
           "x": 1152,
           "y": 768,
           "w": 192,
-          "h": 256,
+          "h": 167,
           "name": "Frame 31",
           "sourceRectPx": {
             "x": 1152,
             "y": 768,
             "w": 192,
-            "h": 256
-          }
+            "h": 167
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
         },
         "frame-0032": {
           "x": 1344,
           "y": 768,
           "w": 192,
-          "h": 256,
+          "h": 167,
           "name": "Frame 32",
           "sourceRectPx": {
             "x": 1344,
             "y": 768,
             "w": 192,
-            "h": 256
-          }
+            "h": 167
+          },
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "walkSurfacesPx": null,
+          "solidShapesPx": null,
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null,
+          "measurementStatus": "unresolved",
+          "notes": [
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
+          ]
         },
         "frame-0033": {
           "x": 0,
@@ -6933,34 +7476,25 @@
           "sourceRectPx": {
             "x": 510,
             "y": 371,
-            "w": 506,
+            "w": 170,
             "h": 107
           },
           "x": 510,
           "y": 371,
-          "w": 506,
+          "w": 170,
           "h": 107,
-          "measurementStatus": "estimated",
+          "measurementStatus": "unresolved",
           "notes": [
             "New source cut; review pixel measurements.",
             "Geometry authored in editor; source-pixel interpretation is estimated.",
-            "Geometry authored in editor; source-pixel interpretation is estimated."
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
           ],
           "contentBoundsPx": null,
           "pivotPx": null,
           "anchorRole": "unresolved",
           "walkSurfacesPx": null,
-          "solidShapesPx": [
-            {
-              "kind": "rect",
-              "rectPx": {
-                "x": 0,
-                "y": 38,
-                "w": 506,
-                "h": 67
-              }
-            }
-          ],
+          "solidShapesPx": null,
           "hazardShapesPx": null,
           "interactionShapesPx": null,
           "components": null
@@ -7850,6 +8384,87 @@
           "hazardShapesPx": null,
           "interactionShapesPx": null,
           "components": null
+        },
+        "cut-26": {
+          "name": "New asset",
+          "category": "prop",
+          "sourceRectPx": {
+            "x": 682,
+            "y": 371,
+            "w": 164,
+            "h": 109
+          },
+          "x": 682,
+          "y": 371,
+          "w": 164,
+          "h": 109,
+          "measurementStatus": "estimated",
+          "notes": [
+            "New source cut; review pixel measurements.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated."
+          ],
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "anchorRole": "unresolved",
+          "walkSurfacesPx": null,
+          "solidShapesPx": [
+            {
+              "kind": "rect",
+              "rectPx": {
+                "x": 0,
+                "y": 37,
+                "w": 164,
+                "h": 67
+              }
+            }
+          ],
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null
+        },
+        "cut-27": {
+          "name": "New asset",
+          "category": "prop",
+          "sourceRectPx": {
+            "x": 848,
+            "y": 370,
+            "w": 170,
+            "h": 103
+          },
+          "x": 848,
+          "y": 370,
+          "w": 170,
+          "h": 103,
+          "measurementStatus": "estimated",
+          "notes": [
+            "New source cut; review pixel measurements.",
+            "Geometry authored in editor; source-pixel interpretation is estimated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+            "Geometry authored in editor; source-pixel interpretation is estimated."
+          ],
+          "contentBoundsPx": null,
+          "pivotPx": null,
+          "anchorRole": "unresolved",
+          "walkSurfacesPx": null,
+          "solidShapesPx": [
+            {
+              "kind": "rect",
+              "rectPx": {
+                "x": 0,
+                "y": 38,
+                "w": 170,
+                "h": 54
+              }
+            }
+          ],
+          "hazardShapesPx": null,
+          "interactionShapesPx": null,
+          "components": null
         }
       },
       "manifest": {
@@ -8255,30 +8870,21 @@
             "sourceRectPx": {
               "x": 510,
               "y": 371,
-              "w": 506,
+              "w": 170,
               "h": 107
             },
-            "measurementStatus": "estimated",
+            "measurementStatus": "unresolved",
             "notes": [
               "New source cut; review pixel measurements.",
               "Geometry authored in editor; source-pixel interpretation is estimated.",
-              "Geometry authored in editor; source-pixel interpretation is estimated."
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated."
             ],
             "contentBoundsPx": null,
             "pivotPx": null,
             "anchorRole": "unresolved",
             "walkSurfacesPx": null,
-            "solidShapesPx": [
-              {
-                "kind": "rect",
-                "rectPx": {
-                  "x": 0,
-                  "y": 38,
-                  "w": 506,
-                  "h": 67
-                }
-              }
-            ],
+            "solidShapesPx": null,
             "hazardShapesPx": null,
             "interactionShapesPx": null,
             "components": null
@@ -9061,6 +9667,79 @@
             "anchorRole": "unresolved",
             "walkSurfacesPx": null,
             "solidShapesPx": [],
+            "hazardShapesPx": null,
+            "interactionShapesPx": null,
+            "components": null
+          },
+          "cut-26": {
+            "name": "New asset",
+            "category": "prop",
+            "sourceRectPx": {
+              "x": 682,
+              "y": 371,
+              "w": 164,
+              "h": 109
+            },
+            "measurementStatus": "estimated",
+            "notes": [
+              "New source cut; review pixel measurements.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated."
+            ],
+            "contentBoundsPx": null,
+            "pivotPx": null,
+            "anchorRole": "unresolved",
+            "walkSurfacesPx": null,
+            "solidShapesPx": [
+              {
+                "kind": "rect",
+                "rectPx": {
+                  "x": 0,
+                  "y": 37,
+                  "w": 164,
+                  "h": 67
+                }
+              }
+            ],
+            "hazardShapesPx": null,
+            "interactionShapesPx": null,
+            "components": null
+          },
+          "cut-27": {
+            "name": "New asset",
+            "category": "prop",
+            "sourceRectPx": {
+              "x": 848,
+              "y": 370,
+              "w": 170,
+              "h": 103
+            },
+            "measurementStatus": "estimated",
+            "notes": [
+              "New source cut; review pixel measurements.",
+              "Geometry authored in editor; source-pixel interpretation is estimated.",
+              "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+              "Source crop changed; pixel measurements are unresolved. Logical definition physics are preserved until explicitly regenerated.",
+              "Geometry authored in editor; source-pixel interpretation is estimated."
+            ],
+            "contentBoundsPx": null,
+            "pivotPx": null,
+            "anchorRole": "unresolved",
+            "walkSurfacesPx": null,
+            "solidShapesPx": [
+              {
+                "kind": "rect",
+                "rectPx": {
+                  "x": 0,
+                  "y": 38,
+                  "w": 170,
+                  "h": 54
+                }
+              }
+            ],
             "hazardShapesPx": null,
             "interactionShapesPx": null,
             "components": null
@@ -11186,7 +11865,12 @@
               "frame-0006"
             ],
             "fps": 8,
-            "loop": true
+            "loop": true,
+            "damage_active_indices": [
+              0,
+              1,
+              2
+            ]
           },
           "dead": {
             "frames": [
@@ -11203,8 +11887,8 @@
         ]
       },
       "size": {
-        "width": 64,
-        "height": 85.33333333333333
+        "width": 85,
+        "height": 48
       },
       "physics": {
         "mode": "trigger",
@@ -11214,12 +11898,27 @@
           0.8,
           0.9
         ],
-        "hitbox": null,
-        "lethal": false,
-        "gravity": false,
+        "hitbox": [
+          0.11458333333333333,
+          0.02631578947368421,
+          0.8385416666666666,
+          0.9736842105263158
+        ],
+        "lethal": true,
+        "gravity": true,
         "calibration": "estimated",
         "solidShapes": null,
-        "hazardShapes": null,
+        "hazardShapes": [
+          {
+            "kind": "rect",
+            "rect": [
+              0.11458333333333333,
+              0.02631578947368421,
+              0.8385416666666666,
+              0.9736842105263158
+            ]
+          }
+        ],
         "interactionShapes": null,
         "walkSurfaces": null
       },
@@ -11234,12 +11933,14 @@
           "idle": "idle",
           "moving": "move",
           "playerDetected": "attack",
-          "dead": "dead"
+          "dead": "dead",
+          "attack": "attack"
         },
-        "speed": 42,
+        "speed": 100,
         "detectRange": 400,
         "fireIntervalMs": 4800,
-        "detectedMode": "once"
+        "detectedMode": "once",
+        "attackCooldownMs": 500
       }
     },
     "creatures-atlas-2:character": {
@@ -11276,7 +11977,10 @@
               "frame-0014"
             ],
             "fps": 8,
-            "loop": true
+            "loop": true,
+            "damage_active_indices": [
+              2
+            ]
           },
           "dead": {
             "frames": [
@@ -11304,12 +12008,27 @@
           0.8,
           0.9
         ],
-        "hitbox": null,
-        "lethal": false,
-        "gravity": false,
-        "calibration": "estimated",
+        "hitbox": [
+          0.10416666666666667,
+          0.185,
+          0.7864583333333334,
+          0.8
+        ],
+        "lethal": true,
+        "gravity": true,
+        "calibration": "authored",
         "solidShapes": null,
-        "hazardShapes": null,
+        "hazardShapes": [
+          {
+            "kind": "rect",
+            "rect": [
+              0.10416666666666667,
+              0.185,
+              0.7864583333333334,
+              0.8
+            ]
+          }
+        ],
         "interactionShapes": null,
         "walkSurfaces": null
       },
@@ -11324,7 +12043,8 @@
           "idle": "idle",
           "moving": "move",
           "playerDetected": "attack",
-          "dead": "dead"
+          "dead": "dead",
+          "attack": "attack"
         },
         "speed": 42,
         "detectRange": 400,
@@ -11366,7 +12086,11 @@
               "frame-0022"
             ],
             "fps": 8,
-            "loop": true
+            "loop": true,
+            "damage_active_indices": [
+              0,
+              1
+            ]
           },
           "dead": {
             "frames": [
@@ -11383,8 +12107,8 @@
         ]
       },
       "size": {
-        "width": 64,
-        "height": 85.33333333333333
+        "width": 77,
+        "height": 66
       },
       "physics": {
         "mode": "trigger",
@@ -11394,12 +12118,27 @@
           0.8,
           0.9
         ],
-        "hitbox": null,
-        "lethal": false,
+        "hitbox": [
+          0.11458333333333333,
+          0.36328125,
+          0.8385416666666666,
+          0.4375
+        ],
+        "lethal": true,
         "gravity": false,
-        "calibration": "estimated",
+        "calibration": "authored",
         "solidShapes": null,
-        "hazardShapes": null,
+        "hazardShapes": [
+          {
+            "kind": "rect",
+            "rect": [
+              0.11458333333333333,
+              0.36328125,
+              0.8385416666666666,
+              0.4375
+            ]
+          }
+        ],
         "interactionShapes": null,
         "walkSurfaces": null
       },
@@ -11414,7 +12153,8 @@
           "idle": "idle",
           "moving": "move",
           "playerDetected": "attack",
-          "dead": "dead"
+          "dead": "dead",
+          "attack": "attack"
         },
         "speed": 42,
         "detectRange": 400,
@@ -11604,8 +12344,8 @@
         ]
       },
       "size": {
-        "width": 64,
-        "height": 46.35805243445693
+        "width": 170,
+        "height": 70
       },
       "physics": {
         "mode": "solid",
@@ -11658,8 +12398,8 @@
         ]
       },
       "size": {
-        "width": 64,
-        "height": 74.12949640287769
+        "width": 170,
+        "height": 70
       },
       "physics": {
         "mode": "solid",
@@ -11720,8 +12460,8 @@
         ]
       },
       "size": {
-        "width": 64,
-        "height": 84.6027397260274
+        "width": 190,
+        "height": 60
       },
       "physics": {
         "mode": "solid",
@@ -11774,8 +12514,8 @@
         ]
       },
       "size": {
-        "width": 64,
-        "height": 76.9620253164557
+        "width": 40,
+        "height": 35
       },
       "physics": {
         "mode": "solid",
@@ -11867,8 +12607,8 @@
         ]
       },
       "size": {
-        "width": 64,
-        "height": 37.30061349693251
+        "width": 45,
+        "height": 45
       },
       "physics": {
         "mode": "solid",
@@ -11906,8 +12646,8 @@
         ]
       },
       "size": {
-        "width": 64,
-        "height": 77.2987012987013
+        "width": 40,
+        "height": 35
       },
       "physics": {
         "mode": "solid",
@@ -12034,8 +12774,8 @@
         "frameId": "cut-1"
       },
       "size": {
-        "width": 64,
-        "height": 16.814663951120163
+        "width": 175,
+        "height": 40
       },
       "physics": {
         "mode": "solid",
@@ -12081,8 +12821,8 @@
         "frameId": "cut-2"
       },
       "size": {
-        "width": 64,
-        "height": 17.142857142857142
+        "width": 180,
+        "height": 35
       },
       "physics": {
         "mode": "solid",
@@ -12128,8 +12868,8 @@
         "frameId": "cut-3"
       },
       "size": {
-        "width": 64,
-        "height": 13.533596837944664
+        "width": 60,
+        "height": 40
       },
       "physics": {
         "mode": "solid",
@@ -12633,8 +13373,8 @@
         "frameId": "cut-13"
       },
       "size": {
-        "width": 64,
-        "height": 16.75
+        "width": 140,
+        "height": 35
       },
       "physics": {
         "mode": "solid",
@@ -12695,8 +13435,8 @@
         "frameId": "cut-14"
       },
       "size": {
-        "width": 64,
-        "height": 15.201596806387226
+        "width": 180,
+        "height": 43
       },
       "physics": {
         "mode": "solid",
@@ -12742,8 +13482,8 @@
         "frameId": "cut-15"
       },
       "size": {
-        "width": 64,
-        "height": 47.88148148148148
+        "width": 50,
+        "height": 32
       },
       "physics": {
         "mode": "solid",
@@ -12916,6 +13656,24 @@
       "source": {
         "manifest": "tileset",
         "frameId": "cut-19"
+      },
+      "gameplay": {
+        "role": "exit",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
       }
     },
     "troubled-tides-treasure-chest-atlas-atlas:cut-20": {
@@ -13134,32 +13892,101 @@
         "manifest": "tileset",
         "frameId": "cut-25"
       }
+    },
+    "troubled-tides-treasure-chest-atlas-atlas:cut-26": {
+      "id": "troubled-tides-treasure-chest-atlas-atlas:cut-26",
+      "name": "New asset",
+      "kind": "prop",
+      "visual": {
+        "assetId": "troubled-tides-treasure-chest-atlas-atlas",
+        "frameId": "cut-26"
+      },
+      "size": {
+        "width": 60,
+        "height": 40
+      },
+      "physics": {
+        "mode": "solid",
+        "collider": [
+          0,
+          0.3394495412844037,
+          1,
+          0.6055045871559633
+        ],
+        "hitbox": null,
+        "lethal": false,
+        "gravity": false,
+        "calibration": "authored",
+        "solidShapes": [
+          {
+            "kind": "rect",
+            "rect": [
+              0,
+              0.3394495412844037,
+              1,
+              0.6055045871559633
+            ]
+          }
+        ],
+        "hazardShapes": null,
+        "interactionShapes": null,
+        "walkSurfaces": null
+      },
+      "behavior": {
+        "type": "static"
+      },
+      "source": {
+        "manifest": "tileset",
+        "frameId": "cut-26"
+      }
+    },
+    "troubled-tides-treasure-chest-atlas-atlas:cut-27": {
+      "id": "troubled-tides-treasure-chest-atlas-atlas:cut-27",
+      "name": "New asset",
+      "kind": "prop",
+      "visual": {
+        "assetId": "troubled-tides-treasure-chest-atlas-atlas",
+        "frameId": "cut-27"
+      },
+      "size": {
+        "width": 60,
+        "height": 40
+      },
+      "physics": {
+        "mode": "solid",
+        "collider": [
+          0,
+          0.36893203883495146,
+          1,
+          0.5242718446601942
+        ],
+        "hitbox": null,
+        "lethal": false,
+        "gravity": false,
+        "calibration": "authored",
+        "solidShapes": [
+          {
+            "kind": "rect",
+            "rect": [
+              0,
+              0.36893203883495146,
+              1,
+              0.5242718446601942
+            ]
+          }
+        ],
+        "hazardShapes": null,
+        "interactionShapes": null,
+        "walkSurfaces": null
+      },
+      "behavior": {
+        "type": "static"
+      },
+      "source": {
+        "manifest": "tileset",
+        "frameId": "cut-27"
+      }
     }
   },
-  "placements": [
-    {
-      "id": "object-9b3f5e55-b4db-4fea-8b0e-08412173909d",
-      "definitionId": "troubled-tide-1-atlas:cut-0001",
-      "x": 0,
-      "y": 0,
-      "width": 3000,
-      "height": 600,
-      "layer": -20,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
-    },
-    {
-      "id": "object-0b969a57-f37e-411b-84b6-2635f48b0291",
-      "definitionId": "troubled-tide-1-atlas:cut-0001",
-      "x": 2999,
-      "y": 0,
-      "width": 3000,
-      "height": 600,
-      "layer": -20,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
-    }
-  ]
+  "placements": []
 }
