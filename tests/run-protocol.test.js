@@ -40,6 +40,7 @@ test('invalid reports fail shape checks without reconstructing physics', () => {
   for (const patch of [
     { current: Infinity }, { banked: NaN }, { coins: '2' }, { coins: .5 },
     { deaths: -1 }, { progress: 1.1 }, { respawnRemaining: 4 },
+    { earnedCoins: -1 }, { earnedCoins: 1.5 }, { earnedCoins: '30' }, { earnedCoins: Infinity },
     { checkpoint: { id: 'unknown' } }, { finished: true },
     { completedWorlds: [, 2] }, { finishedAt: 100 },
   ]) assert.equal(validateRunSummary({ ...initial, ...patch }, [1, 2, 3]), null);

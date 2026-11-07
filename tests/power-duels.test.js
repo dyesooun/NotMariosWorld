@@ -35,3 +35,23 @@ test('wrong attack becomes self-effect outcome and timeout advances', () => {
   assert.equal(advancePowerDuel(room2, { now: 10000 }), true);
   assert.equal(room2.powerDuel.outcome, 'attackerFailed');
 });
+
+test('coin duel pins one target run and never creates defenses for other players', () => {
+  const room = makeRoom();
+  const other = makePlayer('other');
+  room.players.set(other.id, other);
+  room.caster.runId = 'caster-run'; room.defender.runId = 'defender-run'; other.runId = 'other-run';
+  const entry = { id:'coin-1', source:'coin', caster:room.caster, runId:'caster-run', targetId:room.defender.id, targetRunId:'defender-run', power:{type:'fog',name:'Ink Cloud',durationMs:5000} };
+  const started = beginPowerDuel(room, entry, { now:0 });
+  assert.equal(started.ok, true);
+  const attack = privateDuelQuiz(room, room.caster);
+  assert.equal(answerPowerDuel(room, room.caster, { transactionId:room.powerDuel.id, challengeId:attack.id, answer:room.powerDuel.attackQuestion.answers[0], now:1 }).correct, true);
+  assert.deepEqual([...room.powerDuel.defenses.keys()], [room.defender.id]);
+  assert.equal(privateDuelQuiz(room, other), null);
+});
+
+test('coin duel rejects a refreshed target run before starting', () => {
+  const room = makeRoom(); room.caster.runId='caster-run'; room.defender.runId='new-run';
+  const result = beginPowerDuel(room, { id:'coin-1', source:'coin', caster:room.caster, runId:'caster-run', targetId:room.defender.id, targetRunId:'old-run', power:{type:'slow',name:'Sticky Boots',durationMs:5000} }, { now:0 });
+  assert.equal(result.ok, false); assert.equal(result.code, 'NO_TARGET');
+});

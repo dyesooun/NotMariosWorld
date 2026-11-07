@@ -172,3 +172,30 @@ dialog{border:1px solid #56624c;border-radius:12px;background:#1c2325;color:#f1f
 @keyframes loading-jump{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
 @keyframes loading-dots{0%{width:6px}33%{width:12px}66%,100%{width:22px}}
 @media (prefers-reduced-motion:reduce){.loading-avatar,.loading-dots{animation:none}.loading-avatar{transform:none}}
+/* Keep DOM card typography independent of the canvas wrapper's zero line height. */
+.coin-attack-controls{position:absolute;z-index:8;width:308px;transform:scale(var(--coin-attack-scale,1));transform-origin:top left;pointer-events:none;font:14px/1.4 monospace}
+.coin-attack-board,.coin-attack-dialog{position:relative;pointer-events:auto;background:#172c25f5;border:2px solid #b7ef51;box-shadow:5px 5px 0 #08161288;color:#ecf4d6}
+.coin-attack-board{display:flex;align-items:center;justify-content:space-between;gap:10px;height:50px;padding:6px 10px}
+.coin-attack-title,.coin-attack-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:16px;line-height:1.4;color:#b7ef51}
+.coin-attack-balance{min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:14px;color:#ecf4d6;white-space:nowrap}
+.coin-attack-status{min-width:0;overflow:hidden;text-overflow:ellipsis;margin:0;font-size:14px;line-height:1.4;color:#ffcf87;white-space:nowrap}
+.coin-attack-controls button{font:inherit;line-height:1.4;letter-spacing:0}
+.coin-attack-open{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;gap:8px;min-height:32px;padding:2px 5px;border:1px solid #b7ef5188;background:#b7ef5118;color:#ecf4d6;text-align:left}
+.coin-attack-open:disabled{opacity:.45;cursor:not-allowed}
+.coin-attack-controls kbd{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:24px;min-height:24px;margin:0;padding:0 5px;font:14px/1.2 monospace;vertical-align:middle}
+.coin-attack-dialog{width:360px;padding:12px}
+.coin-attack-dialog p{margin:8px 0;font-size:14px;line-height:1.4;color:#bed0af}
+.coin-attack-close{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:28px;height:28px;padding:0;border:0;background:transparent;color:#ecf4d6;font-size:22px!important}
+.coin-attack-options,.coin-attack-targets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.coin-attack-options button,.coin-attack-targets button{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:4px;min-width:0;min-height:80px;padding:8px;border:1px solid #79955d;background:#1c3828;color:#ecf4d6;text-align:left;overflow-wrap:anywhere}
+.coin-attack-options button:hover,.coin-attack-targets button:hover{border-color:#b7ef51;background:#2a4a31}
+.coin-attack-power-heading{display:flex;align-items:flex-start;gap:5px}
+.coin-attack-power-heading kbd{min-width:20px;min-height:20px;padding:0 3px;font-size:13px}
+.coin-attack-options strong,.coin-attack-targets strong{display:block;min-width:0;font-size:16px;line-height:1.4}
+.coin-attack-options small,.coin-attack-targets small{display:block;margin:0;font-size:14px;line-height:1.5;color:#bed0af}
+.coin-attack-targets{max-height:290px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#5f8171 #172c25}
+.coin-attack-targets button{min-height:60px}
+.coin-attack-footer{display:flex;align-items:center;justify-content:flex-start;margin-top:8px}
+.coin-attack-back{display:inline-flex;align-items:center;justify-content:space-between;gap:12px;min-height:28px;padding:2px 0;border:0;background:transparent;color:#bed0af;text-align:left}
+.coin-attack-empty{grid-column:1/-1;padding:10px 0;color:#bed0af;font-size:14px;line-height:1.5}
+.coin-attack-controls button:focus-visible{outline:2px solid #ecf4d6;outline-offset:2px}

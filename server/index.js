@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 import { AVATARS, COLORS } from '../public/game/engine.js';
 import { LEVELS } from '../public/game/levels.js';
 import { LEVEL_CATALOG } from '../public/game/level-catalog.js';
-import { POWER_DEFINITIONS, chestPower, collectPower, powerEffects, powerStrength, reservePower, releasePowerReservation, resetPowerInventory } from '../public/game/powers.js';
+import { POWER_DEFINITIONS, chestPower, collectPower, powerEffects, powerStrength, reservePower, releasePowerReservation, resetPowerInventory, resetCoinAttack, coinAttackView } from '../public/game/powers.js';
 import { DEFAULT_QUESTIONS } from '../public/game/default-questions.js';
 import { beginPowerDuel, answerPowerDuel, advancePowerDuel, prunePowerDuel, duelView, privateDuelQuiz } from './power-duels.js';
 import { normalizeWorldOrder } from '../public/game/world-order.js';
@@ -28,9 +28,10 @@ function settings(input = {}) {
   for (const [key, fallback, low, high] of [
     ['durationMinutes',10,1,60], ['coinPoints',10,0,1000], ['distancePoints',1,0,1000],
     ['powerDurationSeconds',5,1,60], ['attackWindowSeconds',10,1,60], ['defendWindowSeconds',10,1,60],
+    ['attackCoinCost',30,1,1000], ['attackCooldownSeconds',60,1,3600],
     ['slowSpeedPercent',55,10,90], ['reverseSpeedPercent',100,50,200], ['slipperySpeedPercent',170,110,250],
-    ['slipperyGripPercent',12,2,50], ['inkDarknessPercent',75,0,95],
-  ]) result[key] = input[key] == null ? fallback : clamp(input[key], low, high);
+    ['slipperyGripPercent',12,2,50], ['inkDarknessPercent',95,0,95],
+  ]) result[key] = input[key] == null ? fallback : (key==='attackCoinCost'||key==='attackCooldownSeconds' ? Math.trunc(clamp(input[key], low, high)) : clamp(input[key], low, high));
   result.questions = Array.isArray(input.questions)
     ? input.questions.slice(0,5).map(q => ({ prompt:clean(q?.prompt,240), choices:Array.isArray(q?.choices) ? q.choices.slice(0,2).map(c => clean(c,100)) : [] })).filter(q => q.prompt && q.choices.length === 2 && q.choices.every(Boolean))
     : DEFAULT_QUESTIONS.map(q => ({ prompt:q.prompt, choices:[...q.choices] }));
@@ -76,6 +77,7 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
       powerOffer:privileged ? player.powerOffer || null : undefined,
       powerQuiz:privileged ? privateDuelQuiz(room,player) : null,
       effects:privileged ? powerEffects(player,now()) : undefined,
+      coinAttack:privileged ? coinAttackView(player,now()) : undefined,
     };
   };
   const snapshot = (room, viewer) => ({
@@ -97,30 +99,57 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     const held=existing && slot?.itemId===existing.itemId && slot.power;
     const queued=room.powerQueue.find(q=>q.caster===player&&q.itemId===existing?.itemId);
     const quiz=privateDuelQuiz(room,player);
-    player.power=held ? {...existing,claimed:true,used:!!slot.used,queued:!!queued,queuePosition:queued?room.powerQueue.indexOf(queued)+1:null,testing:!!quiz&&!quiz.answered,power:{...slot.power}} : null;
+    player.power=held ? {...existing,claimed:true,used:!!slot.used,queued:!!queued,queuePosition:queued?room.powerQueue.indexOf(queued)+1:null,testing:!!quiz&&!quiz.answered&&room.powerDuel?.entry?.source!=='coin',power:{...slot.power}} : null;
   };
   const syncPowers = room => { for (const p of room.players.values()) syncPower(room,p); };
+  const syncCoinAttacks = room => {
+    for (const p of room.players.values()) {
+      const state=p.coinAttack||resetCoinAttack(p);
+      const queued=room.powerQueue.find(q=>q.source==='coin'&&q.caster===p);
+      state.queued=!!queued; state.queuePosition=queued?room.powerQueue.indexOf(queued)+1:null;
+    }
+  };
   const nextAnnouncement = room => {
     const item=room.announcementQueue.shift();
-    if (!item) { room.announcement=null; syncPowers(room); return; }
+    if (!item) { room.announcement=null; syncPowers(room); syncCoinAttacks(room); return; }
     const startedAt=now();
     if (item.kind==='power') {
       room.powerQueue=room.powerQueue.filter(q=>q.id!==item.id);
       const result=beginPowerDuel(room,item,{now:startedAt});
-      if (!result.ok) { releasePowerReservation(item); send(item.caster?.ws||room.hostWs,{type:item.source==='host'?'hostAttackCancelled':'powerCancelled',name:item.power.name,reason:result.code}); return nextAnnouncement(room); }
-      room.announcement={id:result.duel.id,kind:'power-quiz',phase:result.duel.phase,text:item.source==='host'?`Host challenges everyone with ${item.power.name}!`:`${item.caster.name} is challenged!`,startedAt,endsAt:result.duel.endsAt,durationMs:item.source==='host'?result.duel.defendMs:result.duel.attackMs};
+      if (!result.ok) {
+        if (item.source==='coin' && item.caster?.coinAttack) item.caster.coinAttack.reserved=Math.max(0,item.caster.coinAttack.reserved-(item.cost||0));
+        else releasePowerReservation(item);
+        send(item.caster?.ws||room.hostWs,{type:item.source==='host'?'hostAttackCancelled':item.source==='coin'?'coinAttackCancelled':'powerCancelled',name:item.power.name,reason:result.code});
+        syncCoinAttacks(room); return nextAnnouncement(room);
+      }
+      if (item.source==='coin' && item.caster?.coinAttack) {
+        const wallet=item.caster.coinAttack;
+        wallet.reserved=Math.max(0,wallet.reserved-(item.cost||0));
+        wallet.spent+=(item.cost||0);
+      }
+      room.announcement={id:result.duel.id,kind:'power-quiz',phase:result.duel.phase,text:item.source==='host'?`Host challenges everyone with ${item.power.name}!`:item.source==='coin'?`${item.caster.name} attacks ${result.duel.targets[0].name} with ${item.power.name}!`:`${item.caster.name} is challenged!`,startedAt,endsAt:result.duel.endsAt,durationMs:item.source==='host'?result.duel.defendMs:result.duel.attackMs};
     } else room.announcement={...item,kind:'level',startedAt,endsAt:startedAt+2000,durationMs:2000};
-    syncPowers(room);
+    syncPowers(room); syncCoinAttacks(room);
     for(const player of room.players.values())tryCollect(room,player);
-    syncPowers(room);
+    syncPowers(room); syncCoinAttacks(room);
   };
   const announce = (room, level, player) => { room.announcementQueue.push({id:randomUUID(),kind:'level',level,text:`${player.name} escaped ${biomeNames[level]}!`}); if (!room.announcement) nextAnnouncement(room); };
   const removeQueued = (room, player) => {
-    for (const queue of [room.powerQueue,room.announcementQueue]) for (let i=queue.length-1;i>=0;i--) if (queue[i].kind==='power'&&queue[i].caster===player) { releasePowerReservation(queue[i]); queue.splice(i,1); }
-    syncPowers(room);
+    const released=new Set();
+    for (const queue of [room.powerQueue,room.announcementQueue]) for (let i=queue.length-1;i>=0;i--) if (queue[i].kind==='power'&&queue[i].caster===player) {
+      const item=queue[i]; if(!released.has(item.id)&&item.source==='coin'&&player.coinAttack) player.coinAttack.reserved=Math.max(0,player.coinAttack.reserved-(item.cost||0)); released.add(item.id);
+      releasePowerReservation(item); queue.splice(i,1);
+    }
+    syncPowers(room); syncCoinAttacks(room);
   };
   const enterEffect = (room, startedAt=now()) => {
     const duel=room.powerDuel; if (!duel) return;
+    // A purchased attack waits through queueing and both quizzes before its
+    // personal cooldown begins. Backfires resolve here without a defense.
+    if (duel.entry.source==='coin' && duel.entry.cooldownStartedAt==null && duel.caster?.runId===duel.casterRunId) {
+      duel.entry.cooldownStartedAt=startedAt;
+      duel.caster.coinAttack.cooldownEndsAt=startedAt+room.settings.attackCooldownSeconds*1000;
+    }
     const targets=duel.outcome==='attackerFailed' ? (duel.caster?.connected&&duel.caster.runId===duel.casterRunId?[duel.caster]:[]) : [...duel.defenses.values()].filter(d=>d.result!=='correct'&&d.result!=='skipped'&&d.player.connected&&d.player.runId===d.runId&&!d.player.state.finished).map(d=>d.player);
     duel.affectedIds=targets.map(p=>p.id); duel.phase='effect'; duel.endsAt=startedAt+duel.entry.power.durationMs;
     for (const target of targets) (target.effects||={})[duel.entry.power.type]={type:duel.entry.power.type,strength:{...duel.entry.power.strength},by:duel.entry.source==='host'?null:duel.caster.id,startedAt,endsAt:duel.endsAt,id:duel.id};
@@ -132,11 +161,16 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     syncPowers(room); broadcast(room);
   };
   const clearPowers = room => {
-    for (const item of room.powerQueue) releasePowerReservation(item);
-    for (const item of room.announcementQueue) if (item.kind==='power') releasePowerReservation(item);
+    const released=new Set();
+    for (const item of [...room.powerQueue,...room.announcementQueue]) if(item.kind==='power'&&!released.has(item.id)) {
+      released.add(item.id);
+      if(item.source==='coin'&&item.caster?.coinAttack) item.caster.coinAttack.reserved=Math.max(0,item.caster.coinAttack.reserved-(item.cost||0));
+      else releasePowerReservation(item);
+    }
     room.activePower=null; room.powerDuel=null; room.powerQueue=[]; room.announcementQueue=[]; room.announcement=null;
     for (const player of room.players.values()) { player.powerOffer=null; player.chestContact=null; player.effects={}; }
     syncPowers(room);
+    syncCoinAttacks(room);
   };
   const finish = room => {
     if (room.status!=='settling') return;
@@ -165,7 +199,7 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
   const resetPlayer = (player, level=0) => {
     player.runId=randomUUID(); player.summary=emptyRunSummary(level); player.state={level,finished:false,deadUntil:0};
     player.spawned=false; player.score=0; player.finishTime=null; player.lastSeq=0; player.lastReportAt=0; player.lastReportTime=null;
-    player.chestContact=null; player.powerOffer=null; player.finalAccepted=false; player.effects={}; resetPowerInventory(player);
+    player.chestContact=null; player.powerOffer=null; player.finalAccepted=false; player.effects={}; resetPowerInventory(player); resetCoinAttack(player);
   };
   const start = room => {
     if (room.status!=='lobby') return;
@@ -240,6 +274,27 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     if (!room.announcement) nextAnnouncement(room);
     broadcast(room);
   };
+  const queueCoinAttack = (room, player, ws, msg) => {
+    if (room.status!=='running') return error(ws,'The round has ended','ROUND_ENDED');
+    if (msg.roundId!==room.roundId||msg.runId!==player.runId) return error(ws,'This action belongs to another run','RUN_INVALID');
+    const type=msg.powerType, definition=POWER_DEFINITIONS.find(power=>power.type===type);
+    const target=room.players.get(msg.targetId);
+    const wallet=player.coinAttack||resetCoinAttack(player), nowMs=now();
+    if (!definition) return error(ws,'Unknown power','POWER_INVALID');
+    if (privateDuelQuiz(room,player)?.answered===false) return error(ws,'Answer your current power question first','QUIZ_ACTIVE');
+    if (!player.connected||!player.spawned||player.state.deadUntil||player.state.finished) return error(ws,'Player cannot attack right now','ATTACK_UNAVAILABLE');
+    if (!target||target===player||!target.connected||!target.spawned||target.state.finished||target.runId===player.runId) return error(ws,'Target is unavailable','TARGET_INVALID');
+    if (room.powerQueue.some(q=>q.source==='coin'&&q.caster===player)||room.announcementQueue.some(q=>q.source==='coin'&&q.caster===player)||(room.powerDuel?.entry?.source==='coin'&&room.powerDuel?.caster===player)) return error(ws,'Coin attack already queued','ATTACK_PENDING');
+    if (wallet.cooldownEndsAt>nowMs) return error(ws,'Coin attack is on cooldown','ATTACK_COOLDOWN',{cooldownEndsAt:wallet.cooldownEndsAt});
+    const cost=room.settings.attackCoinCost;
+    if (wallet.earned-wallet.spent-wallet.reserved<cost) return error(ws,'Not enough coins for this attack','ATTACK_FUNDS');
+    wallet.reserved+=cost;
+    const item={id:randomUUID(),source:'coin',kind:'power',caster:player,casterId:player.id,casterName:player.name,runId:player.runId,targetId:target.id,targetRunId:target.runId,cost,level:player.state.level,power:{...definition,target:'player',durationMs:room.settings.powerDurationSeconds*1000,strength:powerStrength(room.settings,definition.type)}};
+    room.powerQueue.push(item); room.announcementQueue.push(item);
+    send(ws,{type:'coinAttackQueued',id:item.id,powerType:type,name:definition.name,cost,position:room.powerQueue.length,cooldownEndsAt:wallet.cooldownEndsAt});
+    if (!room.announcement) nextAnnouncement(room);
+    syncCoinAttacks(room); broadcast(room);
+  };
   const acceptReport = (room, player, msg, ws) => {
     const time=now();
     if (room.status==='running'&&time>=room.endsAt) settle(room,room.endsAt);
@@ -253,14 +308,18 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     if (player.lastReportTime!=null&&msg.at<player.lastReportTime&&room.status==='running') return error(ws,'Stale run report','RUN_REPORT_INVALID');
     if (msg.chestId!=null&&!LEVELS[summary.level]?.powerChests?.some(c=>c.id===msg.chestId)) return error(ws,'Unknown chest','RUN_REPORT_INVALID');
     const inventoryBefore=JSON.stringify([player.power,player.powerOffer,player.powerSlots]);
+    const coinEarnedBefore=player.coinAttack?.earned||0;
     player.lastSeq=msg.seq; player.lastReportAt=time; player.lastReportTime=msg.at; player.summary=summary;
+    // Coin attacks use cumulative earned coins, independent of the current
+    // world's displayed coin count. Never allow a stale report to mint funds.
+    if (Number.isSafeInteger(summary.earnedCoins) && summary.earnedCoins >= (player.coinAttack?.earned||0)) player.coinAttack.earned=summary.earnedCoins;
     player.state={level:summary.level,finished:summary.finished,deadUntil:summary.respawnRemaining>0?1:0};
     player.score=summaryScore(summary,room.settings);
     player.finishTime=summary.finished?(summary.finishedAt-room.startedAt)/1000:null;
     if (room.status==='running') {
       const newCompleted=summary.completedWorlds.slice(before.completedWorlds.length);
       if (newCompleted.length) {
-        if (!room.powerQueue.some(q=>q.caster===player)) player.power=null;
+        if (!room.powerQueue.some(q=>q.source!=='coin'&&q.caster===player)) player.power=null;
         player.powerOffer=null;
         for (const level of newCompleted) announce(room,level,player);
       }
@@ -274,7 +333,7 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     }
     send(ws,{type:'reportAck',runId:player.runId,seq:player.lastSeq,serverTime:time});
     reportProgress(room,player);
-    if (JSON.stringify([player.power,player.powerOffer,player.powerSlots])!==inventoryBefore) sendPlayerState(room,player);
+    if (JSON.stringify([player.power,player.powerOffer,player.powerSlots])!==inventoryBefore || (player.coinAttack?.earned||0)!==coinEarnedBefore) sendPlayerState(room,player);
     if (room.status==='settling'&&!room.pendingFinal.size) finish(room);
   };
   async function handle(ws, msg, session) {
@@ -316,12 +375,13 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
       else if (msg.type==='launchQuestion'&&room.status==='lobby') { const index=clamp(msg.index,0,4), q=room.settings.questions[index]; if (q) { room.question={...q,index,votes:new Map(),endsAt:now()+15000,closed:false}; broadcast(room); } }
       else if (msg.type==='skipQuestion'&&room.status==='lobby') { room.question=null; broadcast(room); }
       else if (msg.type==='hostAttack') return queueHostAttack(room,ws,msg);
-      else if (['usePower','powerAnswer','powerChestChoice','runReport'].includes(msg.type)) return error(ws,'Player action required','AUTH');
+      else if (['usePower','powerAnswer','powerChestChoice','coinAttack','runReport'].includes(msg.type)) return error(ws,'Player action required','AUTH');
       return;
     }
     if (!player||player.ws!==ws||!player.connected) return error(ws,'Invalid player session','AUTH');
     if (['start','end','reset','settings','launchQuestion','skipQuestion','hostAttack'].includes(msg.type)) return error(ws,'Host only','AUTH');
     if (msg.type==='runReport') return acceptReport(room,player,msg,ws);
+    if (msg.type==='coinAttack') return queueCoinAttack(room,player,ws,msg);
     if (msg.type==='profile') {
       if (room.status!=='lobby') return error(ws,'Player identity is locked after the race starts','PROFILE_LOCKED');
       Object.assign(player,profile(msg)); return broadcast(room);
@@ -336,7 +396,7 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
       const result=answerPowerDuel(room,player,{transactionId:msg.transactionId,challengeId:msg.challengeId,answer:msg.answer,now:now()});
       if (!result.ok) return error(ws,'Power quiz answer rejected',result.code,{transactionId:msg.transactionId,challengeId:msg.challengeId});
       send(ws,{type:'powerAnswerResult',transactionId:msg.transactionId,challengeId:msg.challengeId,correct:result.correct,role:result.role,powerName:room.powerDuel.entry.power.name});
-      if (result.role==='attack'&&result.correct) room.announcement={...room.announcement,phase:'defense',text:'Everyone else must defend!',startedAt:now(),endsAt:room.powerDuel.endsAt,durationMs:room.powerDuel.defendMs};
+      if (result.role==='attack'&&result.correct) room.announcement={...room.announcement,phase:'defense',text:room.powerDuel.entry.source==='coin'?`${room.powerDuel.defenses.values().next().value?.player?.name||'Target'} must defend!`:'Everyone else must defend!',startedAt:now(),endsAt:room.powerDuel.endsAt,durationMs:room.powerDuel.defendMs};
       for(const p of room.players.values())tryCollect(room,p);
       syncPowers(room);
       if (result.advance&&room.powerDuel?.phase==='effect') enterEffect(room); else broadcast(room);

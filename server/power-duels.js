@@ -3,6 +3,11 @@ import { choosePowerQuestion, isCorrectPowerAnswer } from './power-questions.js'
 import { powerStrength } from '../public/game/powers.js';
 
 const eligible = (room, caster) => [...room.players.values()].filter(p => p !== caster && p.connected && p.spawned && !p.state.finished);
+const eligibleTarget = (room, entry, caster) => {
+  if (entry.source !== 'coin') return eligible(room, caster);
+  const target = room.players.get(entry.targetId);
+  return target && target.runId === entry.targetRunId && target !== caster && target.connected && target.spawned && !target.state.finished ? [target] : [];
+};
 const currentParticipant = (room, player, runId) => room.players.get(player.id) === player && player.connected && player.spawned && player.runId === runId && !player.state.finished;
 const validDefenses = (room, duel) => [...duel.defenses.values()].filter(d => currentParticipant(room, d.player, d.runId));
 function resolveDefenses(room, duel, now) {
@@ -16,15 +21,16 @@ export function beginPowerDuel(room, entry, { now = Date.now(), random = Math.ra
   const caster = entry.caster, hostAttack = entry.source === 'host';
   const slot = caster?.powerSlots?.[entry.level];
   if (room.status !== 'running' || room.powerDuel || room.activePower) return { ok:false, code:'POWER_UNAVAILABLE' };
-  if (!hostAttack && (!caster?.connected || (entry.runId && entry.runId !== caster.runId) || !slot?.claimed || slot.used || slot.reserved !== entry.id || (entry.itemId && slot.itemId !== entry.itemId))) return { ok:false, code:'POWER_UNAVAILABLE' };
+  if (entry.source === 'coin' && (!caster?.connected || entry.runId !== caster.runId || caster.state?.finished)) return { ok:false, code:'POWER_UNAVAILABLE' };
+  if (!hostAttack && entry.source !== 'coin' && (!caster?.connected || (entry.runId && entry.runId !== caster.runId) || !slot?.claimed || slot.used || slot.reserved !== entry.id || (entry.itemId && slot.itemId !== entry.itemId))) return { ok:false, code:'POWER_UNAVAILABLE' };
   if (hostAttack && !entry.power?.type) return { ok:false, code:'POWER_UNAVAILABLE' };
-  const targets = eligible(room, hostAttack ? null : caster);
+  const targets = eligibleTarget(room, entry, hostAttack ? null : caster);
   if (!targets.length) return { ok:false, code:'NO_TARGET' };
-  if (!hostAttack) { slot.used = true; slot.reserved = null; }
+  if (!hostAttack && entry.source !== 'coin') { slot.used = true; slot.reserved = null; }
   const attackMs = Math.max(1000, Number(room.settings?.attackWindowSeconds ?? 10) * 1000);
   const defendMs = Math.max(1000, Number(room.settings?.defendWindowSeconds ?? 10) * 1000);
   const durationMs = Math.max(1000, Number(room.settings?.powerDurationSeconds ?? (entry.power.durationMs / 1000)) * 1000);
-  entry.power = { ...entry.power, target: 'all', durationMs, strength: powerStrength(room.settings, entry.power.type) };
+  entry.power = { ...entry.power, target: entry.source === 'coin' ? 'player' : 'all', durationMs, strength: powerStrength(room.settings, entry.power.type) };
   const duel = { id:randomUUID(),entry,caster,casterRunId:caster?.runId,random,attackMs,defendMs,phase:hostAttack?'defense':'attack',startedAt:now,endsAt:now+(hostAttack?defendMs:attackMs),attackQuestion:hostAttack?null:choosePowerQuestion({random}),attackAnswered:hostAttack?{correct:true,result:'host'}:null,defenses:new Map(),targets, outcome:null,affectedIds:[] };
   if (hostAttack) {
     const usedQuestions = [];
@@ -45,7 +51,7 @@ export function answerPowerDuel(room, player, { transactionId, challengeId, answ
       duel.outcome='attackerFailed';duel.phase='effect';duel.endsAt=now+duel.entry.power.durationMs;
       return { ok:true,correct,role:'attack',advance:true };
     }
-    const available=eligible(room,duel.caster),random=duel.random;
+    const available=eligibleTarget(room,duel.entry,duel.caster),random=duel.random;
     duel.targets=available;
     duel.phase='defense';duel.endsAt=now+duel.defendMs;
     const usedQuestions=[duel.attackQuestion.id];

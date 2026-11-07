@@ -19,7 +19,7 @@ const hazardBox = h => {
 };
 
 export function createState({ avatar = 'explorer', color = '#b7ef51', name = '', level = 0, worldOrder = DEFAULT_WORLD_ORDER, completedWorlds = [] } = {}) {
-  return { avatar, color, name, level, worldOrder: normalizeWorldOrder(worldOrder), completedWorlds: [...new Set(completedWorlds.filter(v => Number.isInteger(v) && normalizeWorldOrder(worldOrder).includes(v)))], x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, stageTransition: null, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], enemyKills: 0, _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
+  return { avatar, color, name, level, worldOrder: normalizeWorldOrder(worldOrder), completedWorlds: [...new Set(completedWorlds.filter(v => Number.isInteger(v) && normalizeWorldOrder(worldOrder).includes(v)))], x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, earnedCoins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, stageTransition: null, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], enemyKills: 0, _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
 }
 function authoredLevel(s) { return LEVELS[s.level]?.authored ? LEVELS[s.level] : null; }
 function initializeAuthored(s, config = {}) {
@@ -41,6 +41,8 @@ function initializeAuthored(s, config = {}) {
 }
 function syncJsonRuntime(s, runtime, config = {}) {
   const weight = config.coinPoints ?? DEFAULT.coinPoints;
+  // Currency tracks physical coins across worlds, independently of score weights.
+  s.earnedCoins = (s.earnedCoins || 0) + Math.max(0, runtime.coins - s.coins);
   if(s.respawnRemaining>0&&runtime.deadRemainingMs<=0){s.deathCause=null;s.reveal=null;s._particles=[];}
   Object.assign(s, {
     x: runtime.player.x + runtime.player.width / 2, y: runtime.player.y + runtime.player.height,
@@ -110,8 +112,8 @@ export function startRun(s, config = {}) {
   return s;
 }
 function levelStart(s, config = {}) {
-  const { banked, deaths, elapsed, enemyKills, level, started, name, avatar, color, profile, worldOrder, completedWorlds } = s;
-  Object.assign(s, createState({ name, avatar, color, level, worldOrder, completedWorlds }), { banked, deaths, elapsed, enemyKills, started });
+  const { banked, earnedCoins, deaths, elapsed, enemyKills, level, started, name, avatar, color, profile, worldOrder, completedWorlds } = s;
+  Object.assign(s, createState({ name, avatar, color, level, worldOrder, completedWorlds }), { banked, earnedCoins, deaths, elapsed, enemyKills, started });
   if (profile !== undefined) s.profile = clone(profile);
   initializeEnemies(s, LEVELS[s.level] || LEVELS[0]);
   initializeAuthored(s, config);
@@ -226,7 +228,7 @@ export function step(s, input = {}, dt = 1 / 60, config = {}) {
   if (!dead && s.y > 590) { const e = die(s, { x: s.x, y: 500, kind: 'pit', actualKind: 'pit', label: level.theme === 'ocean' ? 'Took the scenic route into the sea.' : level.theme === 'hell' ? 'The lava was warmer than expected.' : 'Found a shortcut. It went straight down.' }, s.elapsed, cfg); if (e) events.push(e); dead = true; }
   if (!dead) { for (const e of s.enemies) { if (e.dead || e.y >= 700 || !hit(b, e)) continue; if (s.vy > 0 && oldY <= e.y + e.h * .5) { e.dead = true; e.deathTimer = .5; s.vy = -cfg.jumpSpeed * .65; s.y = e.y; s.enemyKills = (s.enemyKills || 0) + 1; events.push({ type: 'enemyKill', id: e.id, kind: e.kind, x: e.x + e.w / 2, y: e.y }); } break; } }
   if (!dead) for (const p of s.projectiles) if (hit(b, { x: p.x - (p.w || PROJECTILE_RULES.width) / 2, y: p.y - (p.h || PROJECTILE_RULES.height) / 2, w: p.w || PROJECTILE_RULES.width, h: p.h || PROJECTILE_RULES.height })) { const d = die(s, { x: p.x, y: p.y, kind: 'projectile', label: 'A projectile found its mark.' }, s.elapsed, cfg); if (d) events.push(d); dead = true; break; }
-  if (!dead) for (const c of level.coins) if (!s.collected.includes(c.id) && Math.hypot(s.x - c.x, s.y - c.y) < 34) { s.collected.push(c.id); s.coins += 1; s.current += cfg.coinPoints; }
+  if (!dead) for (const c of level.coins) if (!s.collected.includes(c.id) && Math.hypot(s.x - c.x, s.y - c.y) < 34) { s.collected.push(c.id); s.coins += 1; s.earnedCoins += 1; s.current += cfg.coinPoints; }
   if (!dead && !s.finished && Array.isArray(level.checkpoints)) for (const cp of level.checkpoints) {
     if (s.checkpoint?.id === cp.id || (s.checkpoint && cp.x <= s.checkpoint.x)) continue;
     if (s.x >= cp.x && s.x <= cp.x + 32 && s.y <= cp.y + 2 && s.y > 0) {

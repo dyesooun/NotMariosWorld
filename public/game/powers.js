@@ -6,13 +6,14 @@ export const POWER_DEFINITIONS = Object.freeze([
   Object.freeze({ type: 'slippery', name: 'Ice Skates', durationMs: 5000 }),
   Object.freeze({ type: 'fog', name: 'Ink Cloud', durationMs: 5000 })
 ]);
-export const POWER_STRENGTH_DEFAULTS = Object.freeze({ slowSpeedPercent: 55, reverseSpeedPercent: 100, slipperySpeedPercent: 170, slipperyGripPercent: 12, inkDarknessPercent: 75 });
+export const POWER_STRENGTH_DEFAULTS = Object.freeze({ slowSpeedPercent: 55, reverseSpeedPercent: 100, slipperySpeedPercent: 170, slipperyGripPercent: 12, inkDarknessPercent: 95 });
+export const COIN_ATTACK_DEFAULTS = Object.freeze({ attackCoinCost: 30, attackCooldownSeconds: 60 });
 export function powerStrength(settings = {}, type) {
   const value = (name, fallback, min, max) => Math.max(min, Math.min(max, Number.isFinite(Number(settings[name])) ? Number(settings[name]) : fallback));
   if (type === 'slow') return { speedPercent: value('slowSpeedPercent', 55, 10, 90) };
   if (type === 'reverse') return { speedPercent: value('reverseSpeedPercent', 100, 50, 200) };
   if (type === 'slippery') return { speedPercent: value('slipperySpeedPercent', 170, 110, 250), gripPercent: value('slipperyGripPercent', 12, 2, 50) };
-  if (type === 'fog') return { darknessPercent: value('inkDarknessPercent', 75, 0, 95) };
+  if (type === 'fog') return { darknessPercent: value('inkDarknessPercent', 95, 0, 95) };
   return {};
 }
 
@@ -109,7 +110,7 @@ export function activatePower(room, caster, { now = Date.now(), random = Math.ra
 
 export function releasePowerReservation(entry) {
   // Host challenges are room-owned and have no chest item to release.
-  if (!entry?.caster) return;
+  if (!entry?.caster || entry.source === 'coin') return;
   const slot = entry?.caster?.powerSlots?.[entry.level];
   if (slot && slot.reserved === entry.id && slot.itemId === entry.itemId) slot.reserved = null;
   if (entry?.caster?.power?.itemId === entry.itemId && entry.caster.power.used === false) {
@@ -121,4 +122,18 @@ export function resetPowerInventory(player) {
   player.powerSlots = {};
   player.power = null;
   player.powerOffer = null;
+}
+
+// Coin attacks are a separate, run-scoped wallet.  Keeping this state outside
+// the chest inventory ensures F/USE never consumes or reserves a chest power.
+export function resetCoinAttack(player) {
+  player.coinAttack = { earned: 0, spent: 0, reserved: 0, cooldownEndsAt: 0, queued: false, queuePosition: null };
+  return player.coinAttack;
+}
+export function coinAttackView(player, now = Date.now()) {
+  const state = player?.coinAttack || resetCoinAttack(player);
+  const earned = Math.max(0, Number(state.earned) || 0);
+  const spent = Math.max(0, Number(state.spent) || 0);
+  const reserved = Math.max(0, Number(state.reserved) || 0);
+  return { earned, spent, reserved, available: Math.max(0, earned - spent - reserved), cooldownEndsAt: Math.max(0, Number(state.cooldownEndsAt) || 0), queued: !!state.queued, queuePosition: state.queuePosition ?? null };
 }

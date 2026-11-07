@@ -61,6 +61,7 @@ test('JSON coins and points survive death while checkpoint rollback restores tra
   const state = useFixture(t), config = { coinPoints: 17, distancePoints: 3 };
   contact(state, 85, 200, config);
   assert.equal(state.coins, 2); assert.equal(state.current, 34);
+  assert.equal(state.earnedCoins, 2);
   contact(state, 135, 200, config);
   assert.equal(state.checkpoint.id, 'flag-a');
   assert.equal(state.checkpoint.current, 34);
@@ -80,6 +81,28 @@ test('JSON coins and points survive death while checkpoint rollback restores tra
   assert.equal(state.current, 68);
   contact(state, 185, 200, config);
   assert.equal(state.current, 68, 'collected coins do not respawn after rollback');
+  assert.equal(state.earnedCoins, 4, 'death and revisiting coins never duplicate currency');
+});
+
+test('attack currency spans authored worlds independently of scoring and resets with a new run', t => {
+  const state = useFixture(t), previous = LEVELS[2];
+  LEVELS[2] = documentToLevel(fixture(), 2, { theme: 'ocean', name: 'Next fixture' });
+  t.after(() => { LEVELS[2] = previous; });
+  const config = { coinPoints: 0, distancePoints: 0, deferStageTransition: true };
+  contact(state, 85, 200, config);
+  assert.equal(state.earnedCoins, 2);
+  assert.equal(score(state, config), 0);
+  contact(state, 910, 200, config);
+  const local = new LocalRunRuntime({ state, settings: config });
+  assert.equal(local.advanceStage(), true);
+  assert.equal(state.coins, 0);
+  assert.equal(state.earnedCoins, 2);
+  contact(state, 85, 200, config);
+  assert.equal(state.earnedCoins, 4);
+  assert.equal(summarizeRun(state).earnedCoins, 4);
+  assert.equal(score(state, config), 0);
+  startRun(state, config);
+  assert.equal(state.earnedCoins, 0);
 });
 
 test('JSON exit contact banks once, reports a valid cue hold, and advances through the existing lifecycle', t => {
