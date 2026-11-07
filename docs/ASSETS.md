@@ -21,7 +21,7 @@ The row-major sprite order is:
 
 The generation brief requested an isolated 4×4 production sprite atlas, true transparency, crisp chunky 16-bit pixels, dark outlines, emerald/teal moss, golden wood, coral/violet flowers, and no text or franchise characters. It specified leafy vines, four flower varieties, two mushroom clusters, a moss-roofed wooden chest with a cyan crystal latch, turquoise/lilac moth, walking coral mushroom, acorn-armored green beetle, original carved woodland faces, and a flat-topped grass/soil platform with hanging roots.
 
-The previous synthesized **Mosslight Mountain** forest arrangement has been replaced by the user-supplied forest WAV pack described below. Existing synthesized biome sound effects remain in `public/game/audio.js`.
+The previous synthesized **Mosslight Mountain** forest arrangement has been replaced by the user-supplied forest WAV pack described below. Runtime-synthesized biome sound effects have also been replaced by the supplied universal WAV effects.
 
 ## Supplied audio packs
 
@@ -35,7 +35,9 @@ The user supplied the WAV files under `public/assets/audio/`. Their bundled READ
 | Inferno | `hell/music/hell_danger_full_loop_30s.wav` | `hell/music/hell_victory_stinger.wav` |
 | Podium / course-finished waiting | `lobby/podium_main_loop_30s.wav` | — |
 
-Paths in this table are relative to `public/assets/audio/`. Each entire loop repeats without layering a separate danger track. A race loop stops at its exit; its matching stinger plays once before the next world starts. The shared room cutoff overrides the transition. Bundled references to separate main/danger-layer files describe pack variants that are not present in this checkout; runtime uses only the supplied full loops. The shared files in `audio/sfx/` are retained as supplied assets; replacing existing biome effects is outside this music integration.
+Paths in this table are relative to `public/assets/audio/`. Each entire loop repeats without layering a separate danger track. A race loop stops at its exit; its matching stinger plays once before the next world starts. The shared room cutoff overrides the transition. Bundled references to separate main/danger-layer files describe pack variants that are not present in this checkout; runtime uses only the supplied full loops.
+
+The user-supplied **Game Day Universal SFX** pack under `public/assets/audio/sfx/` contains 28 mono, 16-bit PCM WAV effects at 32 kHz. Its README and manifest describe original programmatic 8/16-bit-inspired synthesis. The game plays these files directly for all levels, including the lobby and podium, without theme overrides or runtime synthesis. Existing cues use the corresponding coin pickup, jump, death, respawn, checkpoint, enemy defeat, UI select, countdown tick/go, score popup, and power activation files; claiming a chest power uses `powerup.wav`. Unused pack sounds remain available assets and do not introduce new gameplay mechanics. Music and victory stingers remain as listed above.
 
 ## Shared avatar and creature atlas
 

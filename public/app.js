@@ -186,7 +186,7 @@ function onMessage(msg) {
   const me = room.players.find(p => p.id === you);
   const previousMe=previous?.players.find(p=>p.id===you);
   if(role==='player'&&me?.powerQuiz&&`${me.powerQuiz.transactionId}:${me.powerQuiz.id}`!==`${previousMe?.powerQuiz?.transactionId}:${previousMe?.powerQuiz?.id}`)zeroInput();
-  if(me?.power?.claimed&&me.power.itemId!==previousMe?.power?.itemId){playTone('checkpoint',sceneForLevel(localRun?.state.level));toast(`${me.power.power.name} found! Press F or USE to unleash it.`);}
+  if(me?.power?.claimed&&me.power.itemId!==previousMe?.power?.itemId){playTone('powerup',sceneForLevel(localRun?.state.level));toast(`${me.power.power.name} found! Press F or USE to unleash it.`);}
   if (role === 'player' && localRun) me.state = localRun.state;
   renderRoom();
   if (previous?.status === 'lobby' && room.status === 'running') { closeModal(); toast('The race is on. Good luck out there!'); playTone('start',sceneForLevel(normalizeWorldOrder(room.settings.worldOrder)[0])); }

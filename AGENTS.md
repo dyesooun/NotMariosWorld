@@ -107,7 +107,7 @@ The notes below document the retained original art and legacy fixture. They do n
 - Place vines as canopy-attached scenery, flowers and mushrooms on supported ground, and carved decorations behind gameplay actors. Vines are decorative; no climbing mechanic has been requested.
 - Add harmless animated glow moths alongside birds. Forest enemies include mushlings and acorn beetles alongside slimes; all retain platform-bound patrol/chase and existing shooter behavior where configured. Body contact is harmless; projectile and authored melee attack hits kill instantly.
 - Forest reward and decoy chest artwork uses the living-wood chest. Reward chests retain the cyan marker, per-chest claims, and normal Attack / Replace rules.
-- Forest background music uses the supplied `public/assets/audio/forest/music/forest_danger_full_loop_30s.wav`; its stage-clear cue is `forest_victory_stinger.wav` from the same directory. Preserve default-on audio, biome effects, and mute/visibility behavior.
+- Forest background music uses the supplied `public/assets/audio/forest/music/forest_danger_full_loop_30s.wav`; its stage-clear cue is `forest_victory_stinger.wav` from the same directory. Preserve default-on audio, shared WAV effects, and mute/visibility behavior.
 
 ## Death, checkpoints, and scoring
 
@@ -238,7 +238,7 @@ The notes below document the retained original art and legacy fixture. They do n
 - Background music **and sound effects are enabled by default**. Preserve the single speaker control that mutes/enables both.
 - Unlock playback on the first user click/key press to comply with browser autoplay behavior; do not silently change the default preference to muted.
 - Use the supplied WAV loops under `public/assets/audio`: `lobby/lobby_main_loop_30s.wav` for the lobby, the respective `forest`, `tide`, and `hell` `music/*_danger_full_loop_30s.wav` for race biomes, and `lobby/podium_main_loop_30s.wav` for the podium. Loop each complete file. Use each race biome's matching `*_victory_stinger.wav` once on its stage clear; do not layer the old synthesized music or clear/finish jingles over it. After the final stage's stinger, use the podium loop while waiting for the shared timer.
-- Effects are appropriate to the current world: light plucks/chirps in the forest, bubbles/glides at sea, and low crunchy tones in the inferno.
+- Use the supplied theme-neutral WAV effects under `public/assets/audio/sfx/` for every level, the lobby, and podium. Replace runtime-composed effects with these shared files; do not apply biome overrides or synthesized fallbacks. Play effects at 30% gain. Music and victory stingers retain their biome identity.
 - Include feedback for jumping, coins, death, respawn, checkpoints, broadcasts, countdowns, race start, level clear, and the final teleport.
 - Pause audio in hidden tabs and resume when visible. Keep audio from multiplying on rerenders, reconnects, or repeated phase snapshots.
 
@@ -302,7 +302,7 @@ The notes below document the retained original art and legacy fixture. They do n
 | `public/game/power-quiz-controls.js` | Actual player's DOM question/input/submit card |
 | `public/game/world-ui.js` | In-world votes, announcements, quiz phase notices, countdown |
 | `public/game/podium.js` | Ranked ceremony world |
-| `public/game/audio.js` | Supplied music/stinger playback, biome effects, audio lifecycle |
+| `public/game/audio.js` | Supplied music/stinger playback, universal WAV effects, audio lifecycle |
 | `public/game/audio-tracks.js` | Biome WAV paths and measured victory-cue durations |
 | `public/game/default-questions.js` | Five default lobby icebreakers |
 | `public/game/client-state.js` | World progress models, quiz movement restrictions, runtime compatibility guards |
@@ -327,6 +327,6 @@ The notes below document the retained original art and legacy fixture. They do n
   - Final 10 seconds remaining playable, exact cutoff reports including current points, two-second settlement, immutable published ranks, all podium positions, and reconnect/spectator stability.
   - Local movement independent of network latency; no server physics, movement packets, CCTV payloads/canvases, or unchanged-state broadcast loops. Ordered reports, death reductions, duplicate/stale rejection, host-only detailed patches, and 25-player aggregation.
   - Optional/default icebreakers, named live votes, 15-second closure, manual skip, and in-world presentation.
-  - Default-on music/effects, biome variation, mute, hidden-tab behavior, and no duplicated playback.
+  - Default-on music/effects, biome music variation, universal WAV effects across themes, mute, hidden-tab behavior, and no duplicated playback.
 - Do not treat simulation tests as proof of visual quality, browser audio, internet behavior, or 25-player event readiness. Describe any manual checks and rehearsal still needed when relevant.
 - Do not leave temporary QA pages, fixture servers, test rooms, or debug controls in production code. Keep deliberate screenshots/provenance artifacts under `docs/`.

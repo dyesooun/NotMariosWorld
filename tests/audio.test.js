@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { GameAudio, MUSIC_TRACKS, VICTORY_TRACKS, EFFECT_PALETTES } from '../public/game/audio.js';
+import { GameAudio, MUSIC_TRACKS, VICTORY_TRACKS, EFFECT_SOUNDS, EFFECT_SFX } from '../public/game/audio.js';
 
 class Param { constructor(value = 0) { this.value = value; } setValueAtTime(v) { this.value = v; } linearRampToValueAtTime(v) { this.value = v; } exponentialRampToValueAtTime(v) { this.value = v; } cancelScheduledValues() {} }
 class Node { constructor() { this.gain = new Param(); this.frequency = new Param(); this.started = false; this.stopped = false; } connect() {} disconnect() {} start(when=0,offset=0) { this.started = true; this.offset=offset; } stop(when) { if(when!=null)return;this.stopped = true; this.onended?.(); } }
@@ -28,7 +28,7 @@ test('victory stops background, resolves on source end, and does not duplicate l
 });
 test('scene change cancels an active victory and allows new music', async () => { const audio = new GameAudio({ AudioContext: Context, fetch: fakeFetch, ...timers() }); await audio.unlock(); const pending = audio.playVictory('forest'); audio.setScene('results'); assert.equal(await pending, false); audio.dispose(); });
 test('mute/hidden pauses timeline and never traps completion', async () => { let now = 0; const audio = new GameAudio({ AudioContext: Context, fetch: fakeFetch, clock: () => now, ...timers() }); await audio.unlock(); const pending = audio.playVictory('hell'); await Promise.resolve(); await Promise.resolve(); now = 5000; audio.setHidden(true); assert.equal(await pending, true); audio.dispose(); });
-test('FX palettes remain available and biome-specific', () => { for (const biome of ['forest', 'ocean', 'hell']) for (const cue of ['coin', 'death', 'finish', 'checkpoint', 'teleport']) assert.ok(EFFECT_PALETTES[biome][cue]); });
+test('FX map uses supplied WAVs for every cue', () => { assert.equal(EFFECT_SOUNDS.powerup, 'powerup'); for (const stem of Object.values(EFFECT_SOUNDS)) assert.equal(fs.existsSync(`public${EFFECT_SFX[stem]}`), true, stem); });
 
 // Controlled wall time lets fallback/race tests run without waiting for audio.
 function fixture(t,options={}){
@@ -50,14 +50,14 @@ test('buffer cache and scene switches prevent duplicate or stale background sour
   const {audio}=fixture(t,{fetch:src=>{if(src===MUSIC_TRACKS.ocean.src){oceanLoads++;return slow.promise;}return fakeFetch(src);}});
   await audio.unlock();await flush();
   const lobby=audio._musicSource;
-  audio.playEffect('coin');const fx=[...audio._fxVoices];
+  audio.playEffect('coin'); await flush(); const fx=[...audio._fxVoices];
   audio.setScene('ocean');audio.setScene('ocean');await audio.unlock();
   audio.setScene('hell');await flush();
-  assert.equal(lobby.stopped,true);assert.ok(fx.every(voice=>!voice.oscillator.stopped));
+  assert.equal(lobby.stopped,true);assert.ok(fx.every(voice=>!voice.stopped));
   const inferno=audio._musicSource;
   slow.resolve(await fakeFetch());await flush();
   assert.equal(audio._musicSource,inferno);assert.equal(oceanLoads,1);
-  assert.equal(audio.context.sources.filter(source=>!source.stopped).length,1);
+  assert.equal(audio.context.sources.filter(source=>!source.stopped && source.loop).length,1);
 });
 
 test('late background loads cannot overlap a loading victory cue',async t=>{
@@ -140,16 +140,47 @@ test('cancellation and disposal ignore late loads and old ended handlers',async 
   assert.equal(await audio.playVictory('forest'),false);
 });
 
-test('default-on audio stays lazy and all biome FX stop on mute and hide',async t=>{
+test('default-on audio stays lazy and shared FX stop on mute and hide',async t=>{
   const {audio}=fixture(t);assert.equal(audio.enabled,true);assert.equal(audio.context,null);
   audio.setEnabled(false);assert.equal(await audio.unlock(),false);assert.equal(audio.context,null);
   audio.setEnabled(true);await audio.unlock();
-  for(const scene of ['lobby','forest','ocean','hell','results']){
-    const before=audio.context.oscillators.length;assert.equal(audio.playEffect('coin',scene),true);
-    assert.equal(audio.context.oscillators.length-before,EFFECT_PALETTES[scene].coin.notes.length);
-  }
-  assert.ok(audio._fxVoices.size>0);audio.setEnabled(false);
-  assert.equal(audio._fxVoices.size,0);assert.ok(audio.context.oscillators.every(node=>node.stopped));
+  for(const scene of ['lobby','forest','ocean','hell','results']) assert.equal(audio.playEffect('coin',scene),true);
+  await flush(); assert.equal(audio.context.oscillators.length, 0); assert.equal(audio._fxVoices.size, 5);
+  audio.setEnabled(false); assert.equal(audio._fxVoices.size,0);
   audio.setEnabled(true);audio.playEffect('jump','forest');audio.setHidden(true);
   assert.equal(audio._fxVoices.size,0);assert.equal(audio.playEffect('jump','forest'),false);
+});
+
+test('all themes reuse cached WAV buffers and one-shots clean up independently',async t=>{
+  const {audio,loads}=fixture(t);await audio.unlock();await flush();
+  const buffer=await audio._bufferPromises.get(EFFECT_SFX.coin_pickup);
+  for(const scene of ['lobby','forest','ocean','hell','results','future-theme']) assert.equal(audio.playEffect('coin',scene),true);
+  await flush();const voices=[...audio._fxVoices];assert.equal(voices.length,6);
+  assert.ok(voices.every(source=>source.buffer===buffer && !source.loop && source.started));
+  assert.equal(loads.filter(src=>src===EFFECT_SFX.coin_pickup).length,1);
+  voices[0].onended();assert.equal(audio._fxVoices.size,5);
+  audio.setEnabled(false);assert.ok(voices.slice(1).every(source=>source.stopped));
+  assert.equal(audio._fxVoices.size,0);
+});
+
+for(const mode of ['muted','hidden','disposed']){
+  test(`pending FX cannot play late after being ${mode}`,async t=>{
+    const slow=deferred();const {audio}=fixture(t,{fetch:src=>src===EFFECT_SFX.jump?slow.promise:fakeFetch(src)});
+    await audio.unlock();await flush();assert.equal(audio.playEffect('jump'),true);
+    if(mode==='muted'){audio.setEnabled(false);audio.setEnabled(true);}
+    else if(mode==='hidden'){audio.setHidden(true);audio.setHidden(false);}
+    else audio.dispose();
+    slow.resolve(await fakeFetch());await flush();
+    assert.equal(audio._fxVoices.size,0);
+    if(mode!=='disposed'){
+      assert.equal(audio.playEffect('jump'),true);await flush();assert.equal(audio._fxVoices.size,1);
+    }
+  });
+}
+
+test('missing effect downloads stay silent without synthesizing substitutes',async t=>{
+  const {audio}=fixture(t,{fetch:src=>src.startsWith('/assets/audio/sfx/')?Promise.reject(new Error('missing WAV')):fakeFetch(src)});
+  await audio.unlock();await flush();assert.equal(audio.playEffect('coin'),true);await flush();
+  assert.equal(audio._fxVoices.size,0);assert.equal(audio.context.oscillators.length,0);
+  assert.equal(audio.playEffect('unknown-effect'),false);
 });
