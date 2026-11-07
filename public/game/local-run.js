@@ -1,6 +1,6 @@
 import { createState, startRun, step, advanceStage, getJsonRuntime } from './engine.js';
 import { LEVELS } from './levels.js';
-import { summarizeRun } from './run-protocol.js';
+import { summarizeRun, locationFromState } from './run-protocol.js';
 
 // The browser owns the responsive simulation.  The server receives compact
 // summaries and remains authoritative for room/quiz/power coordination.
@@ -53,7 +53,7 @@ export class LocalRunRuntime {
     this.history = [];
     this.finishedAt = null;
     this.lastLocalUpdateAt = this.now();
-    this.historyBaseline = { at: this.lastLocalUpdateAt, summary: copy(runSummary(this.state)), chestId: null };
+    this.historyBaseline = { at: this.lastLocalUpdateAt, summary: copy(runSummary(this.state)), location: locationFromState(this.state), chestId: null };
     this.pendingCoinDirtyAt = null;
     this.respawnWallDeadline = null;
     this.finalReportValue = null;
@@ -79,7 +79,7 @@ export class LocalRunRuntime {
     this.history = [];
     this.finishedAt = null;
     this.lastLocalUpdateAt = this.now();
-    this.historyBaseline = { at: this.lastLocalUpdateAt, summary: copy(runSummary(this.state)), chestId: null };
+    this.historyBaseline = { at: this.lastLocalUpdateAt, summary: copy(runSummary(this.state)), location: locationFromState(this.state), chestId: null };
     this.pendingCoinDirtyAt = null;
     this.respawnWallDeadline = null;
     this.finalReportValue = null;
@@ -189,8 +189,9 @@ export class LocalRunRuntime {
     this.lastLocalUpdateAt = at;
     const summary = runSummary(this.state, { finishedAt: this.finishedAt });
     const prior = this.history.at(-1);
-    if (!prior || JSON.stringify(prior.summary) !== JSON.stringify(summary) || prior.chestId !== this.lastChestId) {
-      this.history.push({ at, summary: copy(summary), chestId: this.lastChestId });
+    const location = locationFromState(this.state);
+    if (!prior || JSON.stringify(prior.summary) !== JSON.stringify(summary) || JSON.stringify(prior.location) !== JSON.stringify(location) || prior.chestId !== this.lastChestId) {
+      this.history.push({ at, summary: copy(summary), location, chestId: this.lastChestId });
       while (this.history.length > 1 && at - this.history[1].at > 10000) this.history.shift();
     }
   }
@@ -206,7 +207,8 @@ export class LocalRunRuntime {
     if (!this.state.started || !this.runId || !this.roundId) return null;
     if (!force && at - this.lastReportAt < REPORT_INTERVAL_MS) return null;
     const summary = runSummary(this.state, { finishedAt: this.finishedAt });
-    const report = { roundId: this.roundId, runId: this.runId, seq: ++this.seq, at, summary, chestId: chestId || null, final: false };
+    const location = locationFromState(this.state);
+    const report = { roundId: this.roundId, runId: this.runId, seq: ++this.seq, at, summary, ...(location ? { location } : {}), chestId: chestId || null, final: false };
     this.lastReportAt = at;
     this.lastReport = report;
     this._recordLocalSummary(at);
@@ -223,7 +225,8 @@ export class LocalRunRuntime {
     const prior = [...this.history].reverse().find(entry => entry.at <= cutoffAt) || this.historyBaseline;
     const summary = this.finalSummary || (cutoffAt >= this.lastLocalUpdateAt ? runSummary(this.state, { finishedAt: this.finishedAt }) : prior.summary);
     const chestId = this.finalChestId ?? (cutoffAt >= this.lastLocalUpdateAt ? this.lastChestId : prior.chestId);
-    const report = { roundId: this.roundId, runId: this.runId, seq: ++this.seq, at: Math.min(cutoffAt, this.now()), summary, chestId, final: true };
+    const location = cutoffAt >= this.lastLocalUpdateAt ? locationFromState(this.state) : prior.location;
+    const report = { roundId: this.roundId, runId: this.runId, seq: ++this.seq, at: Math.min(cutoffAt, this.now()), summary, ...(location ? { location } : {}), chestId, final: true };
     this.lastReport = report;
     this.finalReportValue = report;
     this.finalCutoffAt = cutoffAt;

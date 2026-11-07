@@ -16,6 +16,8 @@ import { LEVEL_CATALOG } from './game/level-catalog.js';
 import { createLobbyProfileControls } from './game/lobby-profile-controls.js';
 import { GAME_CARD_SCALE } from './game/overlay-layout.js';
 import { createCoinAttackControls } from './game/coin-attack-ui.js';
+import { hostLocationSnapshotKey, renderHostLocationSnapshot, hostLocationCaption, shouldDrawHostLocation } from './game/host-location-snapshots.js';
+import { locationFromState } from './game/run-protocol.js';
 
 await prepareLevelArt();
 
@@ -50,6 +52,8 @@ let connected = false, reconnectTimer, reconnectAttempts = 0, intentionalClose =
 let checkedRuntime = null, runtimeError = null;
 let clockOffset = 0, clockOffsetReady = false, clockSynced = false, lastStatus = null, rosterKey = '', scoreKey = '', questionKey = '', screenKey = '';
 let hostReportsOpen = true;
+const hostLocationDrawKeys = new Map();
+let lobbyLocationRunKey = null;
 let localRun = null, input = {left:false,right:false,jump:false};
 let localFinalizing = false, simulationCursor = null, finalPending = false;
 const audio = new GameAudio();
@@ -75,7 +79,9 @@ function send(type, data = {}) {
   if (localRun && room?.status==='running' && ['usePower','powerChestChoice','powerAnswer','coinAttack'].includes(type)) localRun.report('before-action', true, serverNow());
   const me = room?.players?.find(p => p.id === you);
   const lifecycle = role === 'player' && me && room?.roundId && me.runId ? { roundId: room.roundId, runId: me.runId } : {};
-  ws.send(JSON.stringify({type, ...lifecycle, ...data})); return true;
+  const locationActions = ['profile','spawn','vote','usePower','powerChestChoice','powerAnswer','coinAttack','leave'];
+  const location = role === 'player' && locationActions.includes(type) ? locationFromState(localRun?.state) : null;
+  ws.send(JSON.stringify({type, ...lifecycle, ...data, ...(location ? { location } : {})})); return true;
 }
 function ensureLocalRun(me) {
   if (role !== 'player' || !me) return null;
@@ -92,11 +98,16 @@ function ensureLocalRun(me) {
         if(tone)playTone(tone,scene);
         if(event.type==='checkpoint')toast('Checkpoint saved! Your respawn position and distance are protected.');
       } });
+    lobbyLocationRunKey = null;
   }
   localRun.settings = {...room.settings,powerEffects:activePowerEffects(me,serverNow())};
   Object.assign(localRun.state,room.status==='lobby'?{...profile,name:profile.name.trim()||'Player'}:{name:me.name,avatar:me.avatar,color:me.color});
   if (room?.status === 'running' && me.spawned && !localRun.state.started) localRun.begin(room.settings?.worldOrder);
   me.state=localRun.state;
+  const locationRunKey = `${roundId}:${runId}`;
+  if (room?.status === 'lobby' && lobbyLocationRunKey !== locationRunKey && locationFromState(localRun.state)) {
+    if (send('playerLocation', { location: locationFromState(localRun.state) })) lobbyLocationRunKey = locationRunKey;
+  }
   return localRun;
 }
 const serverNow=()=>Date.now()+clockOffset;
@@ -491,13 +502,17 @@ function updateHost() {
   const key='players:'+players.map(p=>p.id).sort().join('|');
   if(key!==rosterKey) {
     rosterKey=key;
-    $('#feed-grid').innerHTML=players.length ? [...players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<article class="report-card"><div class="report-identity"><canvas width="44" height="48" data-roster-avatar="${p.id}" aria-label="${esc(p.avatar)} avatar"></canvas><div><strong data-feed-name="${p.id}"></strong><small data-feed-level="${p.id}">LOBBY</small></div><span class="report-score" data-feed-score="${p.id}">0 PTS</span></div><div class="report-track"><i data-report-bar="${p.id}"></i></div><div class="report-line"><span data-feed-progress="${p.id}"></span><span data-feed-status="${p.id}"></span></div><div class="report-line"><span data-report-coins="${p.id}"></span><span data-report-bank="${p.id}"></span></div><div class="report-line muted"><span data-feed-deaths="${p.id}"></span><span data-report-age="${p.id}"></span></div></article>`).join('') : `<div class="empty-feed"><div class="pixel-prompt">☕</div><h3>Waiting for the usual suspects.</h3><p>Share <b style="color:var(--lime)">${esc(room.code)}</b> with your team. Their run reports will appear here.</p><button class="button small ghost" style="margin-top:18px" data-action="copy-link">${icon('copy')} Copy invite link</button></div>`;
+    $('#feed-grid').innerHTML=players.length ? [...players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<article class="report-card"><div class="report-location"><canvas width="240" height="135" data-location-snapshot="${p.id}" aria-label="${esc(p.name)} last known location"></canvas><small data-location-caption="${p.id}">Waiting for location</small></div><div class="report-identity"><canvas width="44" height="48" data-roster-avatar="${p.id}" aria-label="${esc(p.avatar)} avatar"></canvas><div><strong data-feed-name="${p.id}"></strong><small data-feed-level="${p.id}">LOBBY</small></div><span class="report-score" data-feed-score="${p.id}">0 PTS</span></div><div class="report-track"><i data-report-bar="${p.id}"></i></div><div class="report-line"><span data-feed-progress="${p.id}"></span><span data-feed-status="${p.id}"></span></div><div class="report-line"><span data-report-coins="${p.id}"></span><span data-report-bank="${p.id}"></span></div><div class="report-line muted"><span data-feed-deaths="${p.id}"></span><span data-report-age="${p.id}"></span></div></article>`).join('') : `<div class="empty-feed"><div class="pixel-prompt">☕</div><h3>Waiting for the usual suspects.</h3><p>Share <b style="color:var(--lime)">${esc(room.code)}</b> with your team. Their run reports will appear here.</p><button class="button small ghost" style="margin-top:18px" data-action="copy-link">${icon('copy')} Copy invite link</button></div>`;
+    hostLocationDrawKeys.clear();
   }
   for(const p of players) {
     setHTML(`[data-feed-name="${p.id}"]`,`<i class="player-color" style="background:${esc(p.color)}"></i>${esc(p.name)}`);
     setText(`[data-feed-score="${p.id}"]`,`${number(p.score)} PTS`);
     const summary=p.summary||{};
     const avatar=$(`[data-roster-avatar="${p.id}"]`);if(avatar)drawAvatar(avatar,p.avatar,p.color);
+    const locationCanvas=$(`[data-location-snapshot="${p.id}"]`),locationKey=hostLocationSnapshotKey(p);
+    const locationCaption=$(`[data-location-caption="${p.id}"]`); if(locationCaption)locationCaption.textContent=hostLocationCaption(p);
+    if(locationCanvas && shouldDrawHostLocation({open:hostReportsOpen,previousKey:hostLocationDrawKeys.get(p.id),nextKey:locationKey})){renderHostLocationSnapshot(locationCanvas,p);hostLocationDrawKeys.set(p.id,locationKey);}
     setText(`[data-feed-level="${p.id}"]`,summary.finished?'ALL WORLDS CLEARED':summary.level?`WORLD ${racePosition(summary.level,p)} / ${levelNames[summary.level]}`:'LOBBY');
     setText(`[data-feed-status="${p.id}"]`,!p.connected?'Disconnected':!p.spawned?'Choosing character':summary.respawnRemaining>0?'Respawning…':summary.finished?'Finished':room.status==='lobby'?'Exploring the lobby':summary.checkpoint?'Checkpoint saved':'Running');
     setText(`[data-feed-deaths="${p.id}"]`,`${summary.deaths||0} DEATHS`);
@@ -693,7 +708,7 @@ document.addEventListener('submit',async e=>{
     send('settings',{settings});closeModal();toast('Game settings saved.');
   }
 });
-document.addEventListener('toggle',e=>{if(e.target.id==='host-run-reports'){hostReportsOpen=e.target.open;const label=$('.report-toggle',e.target);if(label)label.textContent=hostReportsOpen?'HIDE':'SHOW';}},{capture:true});
+document.addEventListener('toggle',e=>{if(e.target.id==='host-run-reports'){hostReportsOpen=e.target.open;const label=$('.report-toggle',e.target);if(label)label.textContent=hostReportsOpen?'HIDE':'SHOW';if(hostReportsOpen)updateHost();}},{capture:true});
 document.addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b||b.disabled)return;
   if(b.dataset.hostPower){if(runtimeError||!connected||role!=='host'||room?.status!=='running')return;send('hostAttack',{roundId:room.roundId,powerType:b.dataset.hostPower});return;}

@@ -2,9 +2,28 @@ import { LEVELS } from './levels.js';
 import { normalizeWorldOrder } from './world-order.js';
 
 // Gameplay lives in the browser. Only this compact projection crosses the wire.
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 export const FINAL_REPORT_WINDOW_MS = 2000;
 export const PROGRESS_REPORT_STEP = .05;
+
+const LOCATION_LIMIT = 10000000;
+
+// Location is an intentionally tiny, host-only projection of the local run.
+// Keep it independent from score summaries and reject values that cannot be a
+// useful world position (including NaN/Infinity and absurd coordinates).
+export function normalizePlayerLocation(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+    || !Number.isInteger(value.level) || !Number.isFinite(value.x) || !Number.isFinite(value.y)
+    || Math.abs(value.x) > LOCATION_LIMIT || Math.abs(value.y) > LOCATION_LIMIT) return null;
+  const knownLevel = value.level === 0 || LEVELS[value.level] != null;
+  if (!knownLevel) return null;
+  return { level: value.level, x: Math.round(value.x), y: Math.round(value.y) };
+}
+
+export function locationFromState(state) {
+  if (!state || !Number.isInteger(state.level)) return null;
+  return normalizePlayerLocation({ level: state.level, x: state.x, y: state.y });
+}
 
 export function emptyRunSummary(level = 0) {
   return {

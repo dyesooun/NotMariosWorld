@@ -11,7 +11,7 @@ import { POWER_DEFINITIONS, chestPower, collectPower, powerEffects, powerStrengt
 import { DEFAULT_QUESTIONS } from '../public/game/default-questions.js';
 import { beginPowerDuel, answerPowerDuel, advancePowerDuel, prunePowerDuel, duelView, privateDuelQuiz } from './power-duels.js';
 import { normalizeWorldOrder } from '../public/game/world-order.js';
-import { PROTOCOL_VERSION, FINAL_REPORT_WINDOW_MS, emptyRunSummary, validateRunSummary, summaryScore } from '../public/game/run-protocol.js';
+import { PROTOCOL_VERSION, FINAL_REPORT_WINDOW_MS, emptyRunSummary, validateRunSummary, summaryScore, normalizePlayerLocation } from '../public/game/run-protocol.js';
 
 const { WebSocketServer } = createRequire(import.meta.url)('ws');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -77,6 +77,7 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
       powerOffer:privileged ? player.powerOffer || null : undefined,
       powerQuiz:privileged ? privateDuelQuiz(room,player) : null,
       effects:privileged ? powerEffects(player,now()) : undefined,
+      location:viewer.host && player.location ? {...player.location} : undefined,
       coinAttack:privileged ? coinAttackView(player,now()) : undefined,
     };
   };
@@ -94,6 +95,17 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
   const sendPlayerState = (room, player) => send(player.ws,{type:'state',room:snapshot(room,{id:player.id}),you:player.id,serverTime:now()});
   const broadcast = room => { for (const player of room.players.values()) sendPlayerState(room,player); send(room.hostWs,{type:'state',room:snapshot(room,{host:true}),you:null,serverTime:now()}); };
   const reportProgress = (room, player) => { send(room.hostWs,{type:'progress',players:[playerDTO(room,player,{host:true})],serverTime:now()}); room.leaderboardDirty=true; };
+  const updatePlayerLocation = (room, player, msg, { lobbyOnly=false, reportAt=null } = {}) => {
+    if (!Object.prototype.hasOwnProperty.call(msg || {}, 'location')) return null;
+    if (msg.roundId !== room.roundId || msg.runId !== player.runId) return null;
+    if (reportAt==null && !['lobby','running'].includes(room.status)) return null;
+    const location=normalizePlayerLocation(msg.location);
+    if (!location || (lobbyOnly ? location.level !== 0 : location.level !== player.summary.level)) return null;
+    const changed=!player.location || player.location.level!==location.level || player.location.x!==location.x || player.location.y!==location.y;
+    player.location={...location,at:reportAt ?? now()};
+    return changed;
+  };
+  const reportLocationProgress = (room, player) => send(room.hostWs,{type:'progress',players:[playerDTO(room,player,{host:true})],serverTime:now()});
   const syncPower = (room, player) => {
     const existing=player.power, slot=player.powerSlots?.[existing?.level];
     const held=existing && slot?.itemId===existing.itemId && slot.power;
@@ -200,6 +212,7 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     player.runId=randomUUID(); player.summary=emptyRunSummary(level); player.state={level,finished:false,deadUntil:0};
     player.spawned=false; player.score=0; player.finishTime=null; player.lastSeq=0; player.lastReportAt=0; player.lastReportTime=null;
     player.chestContact=null; player.powerOffer=null; player.finalAccepted=false; player.effects={}; resetPowerInventory(player); resetCoinAttack(player);
+    player.location=null;
   };
   const start = room => {
     if (room.status!=='lobby') return;
@@ -250,16 +263,18 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     player.powerOffer=null;
     return !!collectPower(player,level,Math.random,chest.id,{durationMs:room.settings.powerDurationSeconds*1000});
   };
-  const queuePower = (room, player, ws) => {
+  const queuePower = (room, player, ws, msg = null) => {
     const quiz=privateDuelQuiz(room,player);
     if (quiz&&!quiz.answered) return error(ws,'Answer your current power question first','QUIZ_ACTIVE');
     const result=reservePower(room,player,{now:now()});
     if (!result.ok) return error(ws,result.code==='NO_TARGET'?'No opponents are ready for this power yet':'Power could not be used',result.code);
     const item={...result,casterId:player.id,casterName:player.name,kind:'power'};
     room.powerQueue.push(item); room.announcementQueue.push(item); player.powerOffer=null;
+    updatePlayerLocation(room,player,msg);
     send(ws,{type:'powerQueued',name:item.power.name,position:room.powerQueue.length});
     if (!room.announcement) nextAnnouncement(room);
     syncPowers(room); broadcast(room);
+    return true;
   };
   const queueHostAttack = (room, ws, msg) => {
     if (room.status !== 'running') return error(ws,'Host attacks are only available during a running round','ROUND_ENDED');
@@ -291,9 +306,11 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     wallet.reserved+=cost;
     const item={id:randomUUID(),source:'coin',kind:'power',caster:player,casterId:player.id,casterName:player.name,runId:player.runId,targetId:target.id,targetRunId:target.runId,cost,level:player.state.level,power:{...definition,target:'player',durationMs:room.settings.powerDurationSeconds*1000,strength:powerStrength(room.settings,definition.type)}};
     room.powerQueue.push(item); room.announcementQueue.push(item);
+    updatePlayerLocation(room,player,msg);
     send(ws,{type:'coinAttackQueued',id:item.id,powerType:type,name:definition.name,cost,position:room.powerQueue.length,cooldownEndsAt:wallet.cooldownEndsAt});
     if (!room.announcement) nextAnnouncement(room);
     syncCoinAttacks(room); broadcast(room);
+    return true;
   };
   const acceptReport = (room, player, msg, ws) => {
     const time=now();
@@ -304,12 +321,17 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     if (room.status==='settling'&&(!isFinal||time>=room.settleEndsAt||msg.at>room.cutoffAt||!room.pendingFinal.has(player.runId)||player.finalAccepted)) return error(ws,'Final report closed','RUN_REPORT_CLOSED');
     if (room.status==='running'&&(isFinal||msg.at>room.endsAt)) return error(ws,'Final report is not open yet','RUN_REPORT_CLOSED');
     const summary=validateRunSummary(msg.summary,room.settings.worldOrder), before=player.summary;
+    if (Object.prototype.hasOwnProperty.call(msg,'location')) {
+      const supplied=normalizePlayerLocation(msg.location);
+      if (!supplied || supplied.level!==summary?.level) return error(ws,'Run report rejected','RUN_REPORT_INVALID');
+    }
     if (!summary||summary.level===0||room.status==='running'&&(before.completedWorlds.some((id,index)=>summary.completedWorlds[index]!==id)||summary.deaths<before.deaths)||summary?.finishedAt!=null&&(summary.finishedAt<room.startedAt||summary.finishedAt>msg.at)) return error(ws,'Run report rejected','RUN_REPORT_INVALID');
     if (player.lastReportTime!=null&&msg.at<player.lastReportTime&&room.status==='running') return error(ws,'Stale run report','RUN_REPORT_INVALID');
     if (msg.chestId!=null&&!LEVELS[summary.level]?.powerChests?.some(c=>c.id===msg.chestId)) return error(ws,'Unknown chest','RUN_REPORT_INVALID');
     const inventoryBefore=JSON.stringify([player.power,player.powerOffer,player.powerSlots]);
     const coinEarnedBefore=player.coinAttack?.earned||0;
     player.lastSeq=msg.seq; player.lastReportAt=time; player.lastReportTime=msg.at; player.summary=summary;
+    updatePlayerLocation(room,player,msg,{reportAt:msg.at});
     // Coin attacks use cumulative earned coins, independent of the current
     // world's displayed coin count. Never allow a stale report to mint funds.
     if (Number.isSafeInteger(summary.earnedCoins) && summary.earnedCoins >= (player.coinAttack?.earned||0)) player.coinAttack.earned=summary.earnedCoins;
@@ -384,10 +406,17 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     if (msg.type==='coinAttack') return queueCoinAttack(room,player,ws,msg);
     if (msg.type==='profile') {
       if (room.status!=='lobby') return error(ws,'Player identity is locked after the race starts','PROFILE_LOCKED');
-      Object.assign(player,profile(msg)); return broadcast(room);
+      Object.assign(player,profile(msg)); updatePlayerLocation(room,player,msg,{lobbyOnly:true}); return broadcast(room);
     }
-    if (msg.type==='spawn'&&['lobby','running'].includes(room.status)) { player.spawned=true; return broadcast(room); }
-    if (msg.type==='vote'&&room.status==='lobby'&&room.question&&!room.question.closed&&now()<room.question.endsAt&&(msg.choice===0||msg.choice===1)) { room.question.votes.set(player.id,msg.choice); return broadcast(room); }
+    if (msg.type==='spawn'&&['lobby','running'].includes(room.status)) { player.spawned=true; updatePlayerLocation(room,player,msg,{lobbyOnly:room.status==='lobby'}); return broadcast(room); }
+    if (msg.type==='playerLocation') {
+      if (room.status!=='lobby'||!player.spawned) return error(ws,'Location snapshot is lobby-only','LOCATION_INVALID');
+      const changed=updatePlayerLocation(room,player,msg,{lobbyOnly:true});
+      if (changed === null) return error(ws,'Location snapshot rejected','LOCATION_INVALID');
+      if (changed) reportLocationProgress(room,player);
+      return;
+    }
+    if (msg.type==='vote'&&room.status==='lobby'&&room.question&&!room.question.closed&&now()<room.question.endsAt&&(msg.choice===0||msg.choice===1)) { room.question.votes.set(player.id,msg.choice); updatePlayerLocation(room,player,msg,{lobbyOnly:true}); return broadcast(room); }
     if (['usePower','powerAnswer','powerChestChoice'].includes(msg.type)) {
       if (room.status!=='running') return error(ws,'The round has ended','ROUND_ENDED',{transactionId:msg.transactionId,challengeId:msg.challengeId});
       if (msg.roundId!==room.roundId||msg.runId!==player.runId) return error(ws,'This action belongs to another run','RUN_INVALID',{transactionId:msg.transactionId,challengeId:msg.challengeId});
@@ -395,6 +424,7 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     if (msg.type==='powerAnswer') {
       const result=answerPowerDuel(room,player,{transactionId:msg.transactionId,challengeId:msg.challengeId,answer:msg.answer,now:now()});
       if (!result.ok) return error(ws,'Power quiz answer rejected',result.code,{transactionId:msg.transactionId,challengeId:msg.challengeId});
+      updatePlayerLocation(room,player,msg);
       send(ws,{type:'powerAnswerResult',transactionId:msg.transactionId,challengeId:msg.challengeId,correct:result.correct,role:result.role,powerName:room.powerDuel.entry.power.name});
       if (result.role==='attack'&&result.correct) room.announcement={...room.announcement,phase:'defense',text:room.powerDuel.entry.source==='coin'?`${room.powerDuel.defenses.values().next().value?.player?.name||'Target'} must defend!`:'Everyone else must defend!',startedAt:now(),endsAt:room.powerDuel.endsAt,durationMs:room.powerDuel.defendMs};
       for(const p of room.players.values())tryCollect(room,p);
@@ -402,17 +432,18 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
       if (result.advance&&room.powerDuel?.phase==='effect') enterEffect(room); else broadcast(room);
       return;
     }
-    if (msg.type==='usePower') return queuePower(room,player,ws);
+    if (msg.type==='usePower') return queuePower(room,player,ws,msg);
     if (msg.type==='powerChestChoice') {
       const offer=player.powerOffer, level=player.summary.level, quiz=privateDuelQuiz(room,player);
       if (!offer||offer.runId!==player.runId||offer.level!==level||msg.offerId!==offer.id||msg.itemId!==offer.itemId||offer.chestId!==player.chestContact||!player.spawned||player.state.deadUntil||player.state.finished||Object.values(player.powerSlots||{}).some(s=>s.reserved)||player.power?.used||player.power?.itemId!==offer.itemId||player.powerSlots?.[level]?.chests?.[offer.chestId]?.claimed||(quiz&&!quiz.answered)) return error(ws,'Power chest choice rejected','POWER_OFFER_INVALID');
-      if (msg.choice==='attack') return queuePower(room,player,ws);
+      if (msg.choice==='attack') return queuePower(room,player,ws,msg);
       if (msg.choice!=='replace') return error(ws,'Choose attack or replace','POWER_OFFER_INVALID');
       const previous=player.power; player.power=null;
       if (!collectPower(player,level,Math.random,offer.chestId,{durationMs:room.settings.powerDurationSeconds*1000})) { player.power=previous; return error(ws,'Power chest choice rejected','POWER_OFFER_INVALID'); }
-      player.powerOffer=null; syncPower(room,player); sendPlayerState(room,player); reportProgress(room,player); return;
+      player.powerOffer=null; syncPower(room,player); updatePlayerLocation(room,player,msg); sendPlayerState(room,player); reportProgress(room,player); return;
     }
     if (msg.type==='leave') {
+      updatePlayerLocation(room,player,msg);
       player.ws=null; drop(room,player); session.player=null;
       if (room.status==='lobby') room.players.delete(player.id);
       return broadcast(room);
