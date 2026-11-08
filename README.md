@@ -49,6 +49,8 @@ Add that object to the catalog's `levels` array. Use a unique positive integer I
 
 After editing the catalog or a level JSON, restart the game server and refresh player/host tabs. Invalid documents and missing files fail visibly instead of falling back to a different course. The source forest JSON is kept unchanged by renderer integration.
 
+The game loads lossless `.compressed.webp` artwork copies while retaining the original PNGs. **Export game JSON** in the editor and `npm run export:game` automatically prefer an existing compressed sibling of each matched project PNG; images without a compressed copy keep their original path. **Export editor JSON** retains the original sources for authoring. Regenerate compressed copies after changing their source artwork.
+
 ## Host a game
 
 1. Click **Host a game** in the homepage header to create a room immediately, or choose **Host a room → Create a game room**.

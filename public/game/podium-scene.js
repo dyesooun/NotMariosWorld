@@ -1,6 +1,6 @@
 const WIDTH = 1200;
 const HEIGHT = 720;
-const SOURCE = '/assets/sprites/podium/courtyard-ruins.png';
+const SOURCE = '/assets/sprites/podium/courtyard-ruins.compressed.webp';
 
 let scenePromise = null;
 let sceneImage = null;

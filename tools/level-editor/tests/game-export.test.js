@@ -1,9 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { webcrypto } from 'node:crypto';
+import { createContext, runInContext } from 'node:vm';
+import { URL as NativeURL } from 'node:url';
 import { createGameDocument, serializeGameDocument } from '../../../public/game/json-level/game-export.js';
 import { parseDocument, serializeDocument, validateDocument } from '../document.js';
 import { getPreviewState } from '../preview.js';
 import { embeddedAssetHash, resolveProjectAssetPaths } from '../project-images.mjs';
+import { compressedSiblingPath } from '../../../public/game/json-level/project-image-path.js';
+
+const editorSource = readFileSync(new URL('../editor.js', import.meta.url), 'utf8');
+const browserExportSource = editorSource.slice(editorSource.indexOf('async function exportGameProject()'), editorSource.indexOf('function downloadJSON'));
 
 function fixture() {
   const definition = (id, kind, frameId) => ({
@@ -76,6 +85,78 @@ test('asset resolution uses exact content and fails for missing used images whil
   source.assets.atlas.src = '/assets/sprites/missing.png';
   assert.throws(() => createGameDocument(source, resolveProjectAssetPaths(source, index)), /atlas.*missing/);
   assert.throws(() => createGameDocument(source, { atlas: '/assets/sprites/../outside.png' }), /project path/);
+});
+
+test('asset resolution prefers an available compressed sibling without double-suffixing', () => {
+  const source = fixture(), hash = embeddedAssetHash(source.assets.atlas.src);
+  const index = [
+    { src: '/assets/sprites/forest/atlas.png', sha256: hash },
+    { src: '/assets/sprites/forest/atlas.compressed.webp', sha256: 'different-webp-bytes' },
+  ];
+  assert.equal(resolveProjectAssetPaths(source, index).atlas, '/assets/sprites/forest/atlas.compressed.webp');
+  source.assets.atlas.src = '/assets/sprites/forest/atlas.compressed.webp';
+  assert.equal(resolveProjectAssetPaths(source, index).atlas, '/assets/sprites/forest/atlas.compressed.webp');
+  source.assets.atlas.src = '/assets/sprites/forest/missing.png';
+  assert.equal(resolveProjectAssetPaths(source, index).atlas, null);
+  const jpg = { ...source, assets: { atlas: { src: '/assets/sprites/forest/atlas.jpg' } } };
+  assert.equal(resolveProjectAssetPaths(jpg, [...index, { src: '/assets/sprites/forest/atlas.compressed.webp', sha256: 'jpg-sibling-is-not-valid' }]).atlas, null);
+});
+
+test('browser game export chooses compressed siblings and preserves the editor document', async () => {
+  const embedded = 'data:image/png;base64,YQ==';
+  const embeddedHash = createHash('sha256').update(Buffer.from('a')).digest('hex');
+  const source = {
+    name: 'Browser export',
+    assets: {
+      embedded: { src: embedded },
+      direct: { src: '/assets/sprites/tide/My%20Atlas.png' },
+      fallback: { src: '/assets/sprites/tide/no-compressed.png' },
+    },
+  };
+  const index = [
+    { src: '/assets/sprites/forest/atlas.png', sha256: embeddedHash },
+    { src: '/assets/sprites/forest/atlas.compressed.webp', sha256: 'webp-bytes' },
+    { src: '/assets/sprites/tide/My Atlas.png', sha256: 'atlas-bytes' },
+    { src: '/assets/sprites/tide/My Atlas.compressed.webp', sha256: 'compressed-atlas-bytes' },
+    { src: '/assets/sprites/tide/no-compressed.png', sha256: 'fallback-bytes' },
+  ];
+  let exported = null, anchorClicks = 0, notices = [];
+  const button = { disabled: false };
+  const context = createContext({
+    $: selector => selector === '#exportGameBtn' ? button : null,
+    clone: value => JSON.parse(JSON.stringify(value)),
+    doc: source,
+    fetch: async () => ({ ok: true, json: async () => index }),
+    crypto: webcrypto,
+    atob: value => Buffer.from(value, 'base64').toString('binary'),
+    serializeGameDocument: (_project, paths) => { exported = paths; return JSON.stringify(paths); },
+    compressedSiblingPath,
+    URL: class BrowserURL {
+      constructor(value, base) { this.pathname = new NativeURL(value, base).pathname; }
+      static createObjectURL(blob) { return 'blob:browser-export'; }
+      static revokeObjectURL() {}
+    },
+    Blob,
+    location: { origin: 'http://127.0.0.1:10001' },
+    document: { createElement: () => ({ set href(value) {}, set download(value) {}, click: () => { anchorClicks++; } }) },
+    toast: (message, error) => notices.push({ message, error }),
+    setTimeout,
+  });
+  runInContext(browserExportSource, context);
+  await context.exportGameProject();
+  assert.equal(JSON.stringify(exported), JSON.stringify({
+    embedded: '/assets/sprites/forest/atlas.compressed.webp',
+    direct: '/assets/sprites/tide/My Atlas.compressed.webp',
+    fallback: '/assets/sprites/tide/no-compressed.png',
+  }), notices.at(-1)?.message || 'no toast');
+  assert.deepEqual(source.assets, {
+    embedded: { src: embedded },
+    direct: { src: '/assets/sprites/tide/My%20Atlas.png' },
+    fallback: { src: '/assets/sprites/tide/no-compressed.png' },
+  });
+  assert.equal(anchorClicks, 1);
+  assert.equal(button.disabled, false);
+  assert.equal(notices.at(-1).error, undefined);
 });
 
 test('calibration is optional for game documents and invalid supplied values still fail validation', () => {

@@ -1,9 +1,9 @@
 // Cosmetic Waiting Woods scene. World geometry and gameplay never depend on this module.
 const W = 960;
 const H = 540;
-const ATLAS_URL = '/assets/sprites/lobby/waiting-woods-scenery.png';
-const FRIENDS_URL = '/assets/sprites/friendly-creatures.png';
-const BACKDROP_URL = '/assets/sprites/forest/tileset/whimsical_forest_3.png';
+const ATLAS_URL = '/assets/sprites/lobby/waiting-woods-scenery.compressed.webp';
+const FRIENDS_URL = '/assets/sprites/friendly-creatures.compressed.webp';
+const BACKDROP_URL = '/assets/sprites/forest/tileset/whimsical_forest_3.compressed.webp';
 let sceneryImage = null;
 let sceneryReady = null;
 let friendsImage = null;

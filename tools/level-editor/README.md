@@ -167,6 +167,8 @@ Reusable modules are `level-runtime.js` (fixed-step simulation/contact events), 
 
 Images reference existing files under `public/assets/sprites/`; no image bytes are embedded or copied into the export. Embedded images are matched by SHA-256 content against project files, so duplicate filenames cannot select the wrong artwork. If a used image has no match, export fails with the atlas name. Copy the exact artwork into that project directory and retry; renaming or replacing a different PNG is insufficient. Export does not write to your project files or publish the level.
 
+After matching a PNG, game export automatically uses its sibling `<name>.compressed.webp` if that file exists in the project image index. Otherwise it keeps the original path. This applies to both **Export game JSON** and the command-line exporter, including embedded PNGs matched to original project files. Existing compressed paths are retained. Full editor exports and the working document keep their original image sources. Keep compressed copies current whenever you replace source artwork; export selects existing copies and does not generate them.
+
 The same export is available from the project root:
 
 ```sh

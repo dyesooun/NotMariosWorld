@@ -19,6 +19,14 @@ test('game export exposes a read-only index of project image paths and content h
   }
   assert.equal((await fetch(base + '/api/project-images', { method: 'POST' })).status, 405);
   assert.equal((await fetch(base + '/public/game/json-level/game-export.js')).status, 200);
+  const resolver=await fetch(base+'/public/game/json-level/project-image-path.js');
+  assert.equal(resolver.status,200);
+  assert.match(await resolver.text(),/export function compressedSiblingPath/);
+  const compressed = '/assets/sprites/lobby/waiting-woods-scenery.compressed.webp';
+  const original = '/assets/sprites/lobby/waiting-woods-scenery.png';
+  assert.equal((await fetch(base + compressed)).status, 200);
+  assert.match((await fetch(base + compressed)).headers.get('content-type'), /image\/webp/);
+  assert.equal((await fetch(base + original)).status, 200);
   const toolbar = await (await fetch(base + '/')).text();
   assert.match(toolbar, /id="exportGameBtn"/);
   assert.match(toolbar, /Export editor JSON/);

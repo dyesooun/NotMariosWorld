@@ -34,5 +34,5 @@ export function initLoadingScreen() {
     });
   };
   atlas.onerror = () => {};
-  atlas.src = '/assets/sprites.png';
+  atlas.src = '/assets/sprites.compressed.webp';
 }

@@ -72,7 +72,7 @@ export function drawForestPlatform(ctx,platform,{earth='#5e4937'}={}){
 }
 export function loadForestAtlas(){
   if (typeof Image==='undefined'||image||loading) return;
-  loading=true; image=new Image(); image.onload=()=>{ready=true;}; image.onerror=()=>{loading=false;image=null;}; image.src='/assets/forest-sprites.png';
+  loading=true; image=new Image(); image.onload=()=>{ready=true;}; image.onerror=()=>{loading=false;image=null;}; image.src='/assets/forest-sprites.compressed.webp';
 }
 function trimmed(name){
   if (!ready||!image||typeof document==='undefined') return null;

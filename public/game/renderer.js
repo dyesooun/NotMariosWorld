@@ -38,7 +38,7 @@ function loadAtlas(){
       for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)if(pixels[(y*atlas.width+x)*4+3]>70){left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y);}
       cells[name]={x:left,y:top,w:Math.max(1,right-left+1),h:Math.max(1,bottom-top+1)};
     });
-  };atlas.src='/assets/sprites.png';
+  };atlas.src='/assets/sprites.compressed.webp';
 }
 function tinted(name,color){
   const key=name+color;if(cache.has(key))return cache.get(key);

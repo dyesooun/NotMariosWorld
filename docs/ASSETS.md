@@ -1,5 +1,9 @@
 # Original game assets
 
+## Lossless compressed copies
+
+The genuine PNG artwork under `public/assets/` also has sibling `<original-name>.compressed.webp` files, including the retained Hell Express atlases. These use lossless WebP encoding (quality 100, method 6, exact transparent RGB preservation), retain the original dimensions/transparency, and are checked for identical decoded RGBA pixels. Originals remain untouched. The startup loader, shared sprites, lobby, podium and active JSON levels reference these compressed copies. Both editor game-export routes prefer an existing `.compressed.webp` sibling after resolving the original project image, falling back to the original when unavailable. Regenerate a compressed sibling whenever its original artwork changes. Documentation screenshots with `.png` filenames that contain JPEG data are excluded because lossless conversion increases their size.
+
 ## Castle courtyard podium
 
 `public/assets/sprites/podium/courtyard-ruins.png` is an original opaque 1619×971 PNG generated with the built-in imagegen tool on 2026-11-07. It supplies the full castle courtyard scene for both score finalization and the ranked ceremony, drawn with nearest-neighbor sampling. Broken arches, fractured columns, ivy-covered walls, distant towers and flagstones frame the existing avatar art. Weathered podium masonry and cosmetic wind/celebration effects are rendered in code; no licensed game art or race-level JSON is used or replaced.
@@ -12,6 +16,8 @@ Use case: stylized-concept. Asset type: production pixel-art background for the 
 </details>
 
 ## Waiting Woods lobby scenery
+
+Lossless WebP copies are available alongside the original PNGs as `public/assets/sprites/lobby/waiting-woods-scenery.compressed.webp` and `public/assets/sprites/friendly-creatures.compressed.webp`. Created with Pillow's lossless WebP encoder (quality 100, method 6, exact transparent RGB preservation), they retain the original dimensions and identical decoded RGBA pixels. The lobby now loads these copies; the original PNGs are preserved.
 
 `public/assets/sprites/lobby/waiting-woods-scenery.png` is an original 1536×1024 transparent PNG generated with the built-in imagegen tool on 2026-11-07. It is a regular three-column, two-row atlas with 512×512 cells: broadleaf oak, slender woodland tree, ruined arch; fractured column, broken wall, fern/flower/rubble cluster. `public/game/lobby-scene.js` trims cell-local transparent margins and caches sprites at logical pixel sizes, drawing without smoothing. The existing `public/assets/sprites/friendly-creatures.png` supplies its animated birds and butterflies; `whimsical_forest_3.png` supplies the distant parallax woodland, and `forest-sprites.png` supplies grass-shelf-aligned practice terrain. No existing source atlas or authored race JSON is replaced. Wind, leaves and root-anchored tree sway are cosmetic code-rendered effects.
 

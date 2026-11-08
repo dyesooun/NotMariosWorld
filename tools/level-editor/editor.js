@@ -20,6 +20,7 @@ import {vfxBounds} from '../../public/game/json-level/vfx.js';
 import {drawDetectionRanges,drawProjectileSpawns} from './range-overlay.js';
 import {projectileSpawnOffset} from '../../public/game/projectiles.js';
 import {supportIdsFor,toggleSupportId,writeSupportIds,cleanupSupportIds,remapSupportIds,pickPlatformAtPoint} from './support-picker.js';
+import { compressedSiblingPath } from '../../public/game/json-level/project-image-path.js';
 
 const $ = selector => document.querySelector(selector);
 const stage = $('#stage'), context = stage.getContext('2d'), STORAGE_KEY = 'nmw-level-editor';
@@ -486,10 +487,11 @@ async function exportGameProject() {
     const response = await fetch('/api/project-images');
     if (!response.ok) throw new Error('Cannot read project images. Restart the local editor server and try again.');
     const index = await response.json();
-    const byHash = new Map(), byPath = new Map();
+    const byHash = new Map(), byPath = new Map(), available = new Set();
     for (const image of index) {
       if (!byHash.has(image.sha256)) byHash.set(image.sha256, image.src);
       byPath.set(image.src, image.src);
+      available.add(image.src);
     }
     const assetPaths = {}, hashed = new Map();
     for (const [id, asset] of Object.entries(project.assets)) {
@@ -498,12 +500,14 @@ async function exportGameProject() {
           const bytes = Uint8Array.from(atob(asset.src.slice(asset.src.indexOf(',') + 1)), character => character.charCodeAt(0));
           const digest = await crypto.subtle.digest('SHA-256', bytes);
           const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-          hashed.set(asset.src, byHash.get(hash));
+          const match = byHash.get(hash);
+          hashed.set(asset.src, match ? compressedSiblingPath(match, available) : undefined);
         }
         if (hashed.get(asset.src)) assetPaths[id] = hashed.get(asset.src);
       } else {
         const path = decodeURIComponent(new URL(asset.src, location.origin).pathname);
-        assetPaths[id] = byPath.get(path) || null;
+        const match = byPath.get(path);
+        assetPaths[id] = match ? compressedSiblingPath(match, available) : null;
       }
     }
     const text = serializeGameDocument(project, assetPaths);
