@@ -1,7 +1,15 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { locationFromState, normalizePlayerLocation, PROTOCOL_VERSION } from '../public/game/run-protocol.js';
 import { LocalRunRuntime } from '../public/game/local-run.js';
+import { LEVELS } from '../public/game/engine.js';
+import { legacyOceanFixture } from './legacy-level-fixtures.js';
+
+// These protocol tests exercise legacy movement, while production world 2 is
+// authored JSON. Keep the fixture local to this test module and restore it.
+const authoredWorld2 = LEVELS[2];
+LEVELS[2] = legacyOceanFixture();
+after(() => { LEVELS[2] = authoredWorld2; });
 
 test('player locations are compact, rounded, catalog-validated, and allow negative Y', () => {
   assert.equal(PROTOCOL_VERSION, 5);
@@ -13,8 +21,8 @@ test('player locations are compact, rounded, catalog-validated, and allow negati
 test('local reports carry location without adding movement report triggers', () => {
   const reports=[];
   let clock=1000;
-  const runtime=new LocalRunRuntime({roundId:'round',runId:'run',profile:{level:3},now:()=>clock,sendReport:report=>reports.push(report)});
-  runtime.begin([3,1,2]);
+  const runtime=new LocalRunRuntime({roundId:'round',runId:'run',profile:{level:2},now:()=>clock,sendReport:report=>reports.push(report)});
+  runtime.begin([2,1]);
   const start=reports.at(-1);
   assert.deepEqual(start.location, locationFromState(runtime.state));
   const count=reports.length;
@@ -29,7 +37,7 @@ test('local reports carry location without adding movement report triggers', () 
 test('final cutoff location comes from the same history as score and stays frozen on retry',()=>{
   let clock=1000;
   const runtime=new LocalRunRuntime({roundId:'round',runId:'run',now:()=>clock});
-  runtime.begin([3,1,2]);
+  runtime.begin([2,1]);
   Object.assign(runtime.state,{x:200,y:450,current:10});
   clock=2000;runtime.tick(1/60,{serverNow:clock});
   const cutoffLocation=locationFromState(runtime.state);

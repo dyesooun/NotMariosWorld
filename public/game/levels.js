@@ -108,7 +108,7 @@ function makeForestLevel() {
 }
 
 const LOBBY = { id: 'L0', theme: 'lobby', width: 1400, height: 600, endX: 999999, platforms: [platform(0, 500, 1400, 100, 'ground'), platform(320, 410, 180), platform(650, 350, 180), platform(980, 410, 180)], coins: [], hazards: [], enemies: [], checkpoints: [], sign: 'WELCOME TO THE WAITING WOODS' };
-function legacyLevel(entry) {
+export function legacyLevel(entry) {
   if (entry.id === 2) return makeLevel('ocean', 19417, '#48b8d1', 'A tidepool trail where crabs have strong opinions.');
   if (entry.id === 3) return makeLevel('hell', 19417, '#e35b53', 'A warm little lava walk. Nothing to worry about. Probably.');
   return null;

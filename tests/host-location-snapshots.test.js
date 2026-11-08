@@ -21,6 +21,7 @@ test('host location snapshot keys skip timestamp/status-only changes but include
   assert.notEqual(hostLocationSnapshotKey(base), hostLocationSnapshotKey({ ...base, runId: 'r2' }));
   assert.equal(hostLocationSnapshotKey(base), hostLocationSnapshotKey({ ...base, connected: false, summary: {finished:true} }));
   assert.equal(hostLocationState({ location: { level: 999, x: 1, y: 2 } }), null);
+  assert.equal(hostLocationState({ location: { level: 3, x: 1, y: 2 } }), null);
   assert.equal(hostLocationState({ location: { level: 1, x: null, y: 2 } }), null);
 });
 

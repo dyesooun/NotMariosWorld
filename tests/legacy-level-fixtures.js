@@ -1,10 +1,10 @@
-import { LEVELS } from '../public/game/levels.js';
+import { legacyLevel } from '../public/game/levels.js';
 
 // The procedural ocean course was retired from production when authored tide
 // JSON became live. Adapt the remaining legacy inferno course for regressions
 // that target legacy collision, combat, and chest behavior.
 export function legacyOceanFixture() {
-  const level = structuredClone(LEVELS[3]);
+  const level = structuredClone(legacyLevel({ id: 3 }));
   level.id = 'ocean';
   level.theme = 'ocean';
   level.flavor = 'A tidepool trail where crabs have strong opinions.';

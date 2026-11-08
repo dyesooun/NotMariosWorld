@@ -6,6 +6,7 @@ import { legacyOceanFixture } from './legacy-level-fixtures.js';
 // Forest's authored JSON intentionally has no legacy hazards. Exercise the
 // existing spike/decoy collision contract with the ocean fixture in its slot.
 LEVELS[1] = legacyOceanFixture();
+LEVELS[2] = legacyOceanFixture();
 
 function withHazard(levelIndex,predicate,check){
   const level=LEVELS[levelIndex],hazard=level.hazards.find(predicate);
@@ -20,7 +21,7 @@ function withHazard(levelIndex,predicate,check){
 }
 
 test('visible and decoy spikes in every world allow the outer 7.5% on each side',()=>{
-  for(const level of [1,3])for(const kind of ['spikes','decoy'])withHazard(level,h=>h.kind===kind&&h.actualKind==='spikes',(h,probe)=>{
+  for(const level of [1,2])for(const kind of ['spikes','decoy'])withHazard(level,h=>h.kind===kind&&h.actualKind==='spikes',(h,probe)=>{
     const inset=h.w*.075,y=h.y+h.h/2+18;
     assert.equal(probe(h.x+inset/2-14,y).dead,false,'grazing the left art edge is safe');
     assert.equal(probe(h.x+inset+.1-14,y).dead,true,'crossing the inset left edge is lethal');
@@ -31,7 +32,7 @@ test('visible and decoy spikes in every world allow the outer 7.5% on each side'
 });
 
 test('spike vertical collision is also 15% smaller in every world',()=>{
-  for(const level of [1,3])withHazard(level,h=>h.kind==='spikes',(h,probe)=>{
+  for(const level of [1,2])withHazard(level,h=>h.kind==='spikes',(h,probe)=>{
     const inset=h.h*.075,x=h.x+h.w/2;
     assert.equal(probe(x,h.y+inset/2).dead,false,'slightly grazing the spike tip is safe');
     assert.equal(probe(x,h.y+inset+.1).dead,true,'landing inside the spike body is lethal');
@@ -41,7 +42,7 @@ test('spike vertical collision is also 15% smaller in every world',()=>{
 });
 
 test('a decoy spike death reveals the original trap position rather than its inset hitbox',()=>{
-  for(const level of [1,3])withHazard(level,h=>h.kind==='decoy'&&h.actualKind==='spikes',(h,probe)=>{
+  for(const level of [1,2])withHazard(level,h=>h.kind==='decoy'&&h.actualKind==='spikes',(h,probe)=>{
     const {state,dead}=probe(h.x+h.w/2,h.y+h.h/2+18);
     assert.equal(dead,true);assert.equal(state.deathCause.actualKind,'spikes');
     assert.equal(state.reveal.x,h.x);assert.equal(state.reveal.y,h.y);
@@ -49,7 +50,7 @@ test('a decoy spike death reveals the original trap position rather than its ins
 });
 
 test('bomb decoys retain their original collision boundaries',()=>{
-  for(const level of [1,3])withHazard(level,h=>h.kind==='decoy'&&h.actualKind==='bomb',(h,probe)=>{
+  for(const level of [1,2])withHazard(level,h=>h.kind==='decoy'&&h.actualKind==='bomb',(h,probe)=>{
     const {dead,state}=probe(h.x+1-14,h.y+h.h/2+18);
     assert.equal(dead,true);assert.equal(state.deathCause.actualKind,'bomb');
   });

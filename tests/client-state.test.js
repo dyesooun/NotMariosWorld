@@ -22,12 +22,11 @@ test('runtime guard catches legacy servers and changed simulation files', () => 
 });
 
 test('progress indicators follow the selected route rather than increasing world identity',()=>{
-  assert.deepEqual(worldProgressModel({level:0,worldOrder:[1,2,3]},[3,1,2]).order,[3,1,2]);
-  const state={worldOrder:[3,1,2],level:3,completedWorlds:[]};
-  assert.deepEqual(worldProgressModel(state),{order:[3,1,2],ordinal:1,done:[false,false,false]});
-  state.level=1;state.completedWorlds=[3];assert.equal(worldProgressModel(state).ordinal,2);assert.deepEqual(worldProgressModel(state).done,[true,false,false]);
-  state.level=2;state.completedWorlds=[3,1];assert.equal(worldProgressModel(state).ordinal,3);assert.deepEqual(worldProgressModel(state).done,[true,true,false]);
-  state.finished=true;assert.deepEqual(worldProgressModel(state).done,[true,true,true]);
+  assert.deepEqual(worldProgressModel({level:0,worldOrder:[1,2]},[2,1]).order,[2,1]);
+  const state={worldOrder:[2,1],level:2,completedWorlds:[]};
+  assert.deepEqual(worldProgressModel(state),{order:[2,1],ordinal:1,done:[false,false]});
+  state.level=1;state.completedWorlds=[2];assert.equal(worldProgressModel(state).ordinal,2);assert.deepEqual(worldProgressModel(state).done,[true,false]);
+  state.finished=true;assert.deepEqual(worldProgressModel(state).done,[true,true]);
 });
 test('five editable default icebreakers preserve the executive choices and valid custom prompts', () => {
   assert.equal(DEFAULT_QUESTIONS.length,5);

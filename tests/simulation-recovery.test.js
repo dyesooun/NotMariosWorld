@@ -1,10 +1,18 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createContext, runInContext } from 'node:vm';
 import { LocalRunRuntime, FIXED_STEP_SECONDS, MAX_CATCHUP_STEPS } from '../public/game/local-run.js';
 import { activePowerEffects } from '../public/game/power-ui.js';
 import { isDuelFrozen } from '../public/game/client-state.js';
+import { LEVELS } from '../public/game/engine.js';
+import { legacyOceanFixture } from './legacy-level-fixtures.js';
+
+// Recovery timing uses deterministic legacy physics; restore authored world 2
+// after this module so the production fixture is never changed by the test.
+const authoredWorld2 = LEVELS[2];
+LEVELS[2] = legacyOceanFixture();
+after(() => { LEVELS[2] = authoredWorld2; });
 
 // Exercise the actual browser scheduler without loading artwork or a DOM.
 const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
@@ -14,7 +22,7 @@ const maxElapsed = FIXED_STEP_SECONDS * MAX_CATCHUP_STEPS;
 function fixture({ running = false, endsAt = 600000 } = {}) {
   let context;
   const runtime = new LocalRunRuntime({ profile: { level: 0 }, roundId: 'round', runId: 'run', now: () => context?.clock ?? 0 });
-  if (running) runtime.begin([3, 1, 2]);
+  if (running) runtime.begin([2, 1]);
   const me = { id: 'player', spawned: true, effects: {} };
   context = createContext({
     clock: 0, serverNow: () => context.clock, role: 'player', you: me.id,
@@ -22,12 +30,40 @@ function fixture({ running = false, endsAt = 600000 } = {}) {
     connected: true, runtimeError: null, finalSentRound: null, simulationCursor: 0,
     FIXED_STEP_SECONDS, MAX_CATCHUP_STEPS, activePowerEffects, isDuelFrozen,
     localFinalizing: false, performance: { now: () => 0 },
+    sceneTransitionActive: false,
+    transitionViewport(callback) { return callback?.(); },
     closeModal() {}, zeroInput() { runtime.setInput({}); }, playTone() {}, renderRoom() {},
     finalizeLocal(at) { runtime.pause(true); runtime.finalReport(at); context.finalSentRound = 'round'; },
   });
   runInContext(scheduler, context);
   return { runtime, me, context, advance(at) { context.clock = at; context.advanceLocalSimulation(); } };
 }
+
+test('iris holds gameplay input and traversal while the authoritative cutoff still finalizes', () => {
+  const { runtime, context, advance } = fixture({ running: true, endsAt: 5000 });
+  runtime.setInput({ right: true });
+  const startX=runtime.state.x;
+  context.sceneTransitionActive=true;
+  advance(1000);
+  assert.equal(runtime.state.x,startX);
+  assert.equal(runtime.input.right,false);
+  assert.equal(context.simulationCursor,1000);
+  advance(5000);
+  assert.equal(runtime.finalCutoffAt,5000);
+  assert.equal(context.finalSentRound,'round');
+  assert.equal(runtime.state.x,startX);
+});
+
+test('iris time is discarded instead of replayed after opening', () => {
+  const { runtime, context, advance } = fixture({ running: true });
+  const startX=runtime.state.x;
+  context.sceneTransitionActive=true;
+  advance(300000);
+  context.sceneTransitionActive=false;
+  advance(300016);
+  assert.equal(runtime.state.x,startX);
+  assert.ok(runtime.accumulator<FIXED_STEP_SECONDS);
+});
 
 test('minutes of suspended callbacks cannot create accelerated catchup frames', () => {
   const { runtime, context, advance } = fixture();

@@ -48,12 +48,12 @@ test('supplied background WAV files are served as audio',async t=>{
 });
 
 test('a victory hold reports its banked score and settles without entering the next world',async t=>{
-  const f=await fixture(t,{settings:{worldOrder:[3,1,2]}});
+  const f=await fixture(t,{settings:{worldOrder:[2,1]}});
   await f.start();
-  const cleared={level:3,completedWorlds:[3],current:0,distanceMax:0,banked:500,progress:1};
+  const cleared={level:2,completedWorlds:[2],current:0,distanceMax:0,banked:500,progress:1};
   assert.equal((await f.report(0,cleared)).type,'reportAck');
   assert.equal(f.players[0].score,500);
-  assert.equal(f.players[0].summary.level,3);
+  assert.equal(f.players[0].summary.level,2);
   await f.end();
   assert.equal((await f.report(0,cleared,{final:true})).type,'reportAck');
   await wait(()=>f.room.status==='ended');
@@ -124,6 +124,7 @@ test('idle rooms emit no gameplay snapshots or input traffic and ignore legacy m
 
 test('report sequences, schema, and run identity reject duplicate or stale awards',async t=>{
   const f=await fixture(t);await f.start();await f.report(0,{current:20});
+  assert.equal((await f.report(0,{level:3,current:900})).code,'RUN_REPORT_INVALID');
   for(const options of [{seq:1},{runId:'old-run'},{roundId:'old-round'},{seq:2.5}])assert.equal((await f.report(0,{current:900},options)).code,'RUN_REPORT_INVALID');
   assert.equal((await f.report(0,{current:Infinity})).code,'RUN_REPORT_INVALID');assert.equal(f.players[0].score,20);
   const stranger=await open(f.url);send(stranger,'runReport',{playerId:f.players[0].id});assert.equal((await receive(stranger,m=>m.type==='error')).message,'Join a room first');stranger.close();
@@ -139,10 +140,10 @@ test('death reports replace points with checkpoint totals and preserve banked wo
 });
 
 test('late arrivals and refreshed runs start the selected first biome with shared remaining time',async t=>{
-  const f=await fixture(t,{settings:{worldOrder:[3,1,2]}});await f.start();await f.advance(5000);
-  const late=await f.join('Late arrival');assert.equal(late.player.summary.level,3);assert.equal(late.player.spawned,true);const deadline=f.room.endsAt;
+  const f=await fixture(t,{settings:{worldOrder:[2,1]}});await f.start();await f.advance(5000);
+  const late=await f.join('Late arrival');assert.equal(late.player.summary.level,2);assert.equal(late.player.spawned,true);const deadline=f.room.endsAt;
   const oldRun=f.players[0].runId;await f.report(0,{current:80});f.clients[0].close();await wait(()=>!f.players[0].connected);
-  const refreshed=await f.join(f.players[0].name);assert.equal(refreshed.player,f.players[0]);assert.notEqual(refreshed.player.runId,oldRun);assert.equal(refreshed.player.summary.level,3);
+  const refreshed=await f.join(f.players[0].name);assert.equal(refreshed.player,f.players[0]);assert.notEqual(refreshed.player.runId,oldRun);assert.equal(refreshed.player.summary.level,2);
   assert.equal(refreshed.player.score,0);assert.equal(refreshed.player.lastSeq,0);assert.equal(f.room.endsAt,deadline);
   assert.equal(refreshed.player.spawned,true);
 });
@@ -183,7 +184,7 @@ test('settlement protects captured runs, and ended refreshes and spectators cann
 
 test('full-course tiebreak time is room-relative and independent of packet arrival order',async t=>{
   const f=await fixture(t,{count:3});await f.start();await f.advance(1000);
-  const finished={level:3,completedWorlds:[1,2,3],finished:true,banked:900};
+  const finished={level:2,completedWorlds:[1,2],finished:true,banked:900};
   await f.report(0,{...finished,finishedAt:f.room.startedAt+900});
   await f.report(1,{...finished,finishedAt:f.room.startedAt+700});
   await f.report(2,{...finished,finishedAt:f.room.startedAt+700});

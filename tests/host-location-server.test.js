@@ -53,7 +53,7 @@ test('malformed, duplicate, foreign-run and mismatched-world reports cannot move
   const f=await fixture(t);await f.start();
   assert.equal((await f.report(0,{level:1,x:250.6,y:-31.8},{current:70})).type,'reportAck');
   const saved={...f.players[0].location},seq=f.players[0].lastSeq;
-  for(const location of [null,[],{level:1,x:null,y:1},{level:1,x:'20',y:1},{level:999,x:1,y:1},{level:2,x:1,y:1},{level:1,x:10000001,y:1}]){
+  for(const location of [null,[],{level:1,x:null,y:1},{level:1,x:'20',y:1},{level:999,x:1,y:1},{level:3,x:1,y:1},{level:2,x:1,y:1},{level:1,x:10000001,y:1}]){
     assert.equal((await f.report(0,location,{current:900})).code,'RUN_REPORT_INVALID');
     assert.deepEqual(f.players[0].location,saved);assert.equal(f.players[0].score,70);assert.equal(f.players[0].lastSeq,seq);
   }

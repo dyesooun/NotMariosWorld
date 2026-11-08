@@ -18,6 +18,7 @@ import { GAME_CARD_SCALE } from './game/overlay-layout.js';
 import { createCoinAttackControls } from './game/coin-attack-ui.js';
 import { hostLocationSnapshotKey, renderHostLocationSnapshot, hostLocationCaption, shouldDrawHostLocation } from './game/host-location-snapshots.js';
 import { locationFromState } from './game/run-protocol.js';
+import { irisTransitionFor } from './game/iris-transition.js';
 
 await prepareLevelArt();
 
@@ -58,6 +59,9 @@ let localRun = null, input = {left:false,right:false,jump:false};
 let localFinalizing = false, simulationCursor = null, finalPending = false;
 const audio = new GameAudio();
 let stageVictory = null;
+let irisTransition = null;
+let sceneTransitionActive=false, sceneTransitionApplying=false, pendingRoomState=null;
+const SCENE_TRANSITION_DURATION=500;
 let podiumArrivedAt=0,lastCountdownSecond=null,lastCountdownRoom=null,finalSentRound=null;
 let playerQuizControls=null,playerQuizViewport=null;
 let playerChestControls=null,playerChestViewport=null;
@@ -162,6 +166,19 @@ async function connect() {
 function scheduleReconnect() { if (role === 'host' && hostSession) { clearTimeout(reconnectTimer); reconnectTimer = setTimeout(async () => { try { await connect(); send('hostJoin',hostSession); } catch { scheduleReconnect(); } },3000); } }
 function updateConnection() { $$('.connection').forEach(el => { el.classList.toggle('offline',!connected); el.innerHTML = `<i class="dot"></i>${connected ? 'Connected' : 'Reconnecting'}`; }); }
 function onMessage(msg) {
+  if(msg.type==='state'&&!sceneTransitionApplying&&room&&$('.world-screen')){
+    const sceneKey=r=>['settling','ended'].includes(r?.status)?'podium':r?.status;
+    if(sceneTransitionActive||sceneKey(room)!==sceneKey(msg.room)){
+      // Final reports retain the server cutoff even while presentation closes.
+      if(msg.room.status==='settling'&&role==='player')finalizeLocal(msg.room.cutoffAt??msg.room.endsAt);
+      pendingRoomState=msg;
+      if(!sceneTransitionActive)void transitionViewport(()=>{
+        const latest=pendingRoomState;pendingRoomState=null;
+        if(latest)onMessage(latest);
+      });
+      return;
+    }
+  }
   if(msg.type==='reportAck'){if(msg.runId===localRun?.runId&&msg.seq===localRun?.lastReport?.seq&&localRun.lastReport.final)finalPending=false;return;}
   if(msg.type==='error'&&msg.transactionId){const q=room?.players.find(p=>p.id===you)?.powerQuiz;if(q&&q.transactionId===msg.transactionId&&q.id===msg.challengeId){playerQuizControls?.resetSubmission();syncPlayerQuiz();}}
   if(msg.type==='powerAnswerResult'){toast(msg.correct?(msg.role==='attack'?(room?.powerDuel?.source==='coin'?'Correct! Your selected opponent must defend.':'Correct! Your opponents must defend.'):'Correct! You blocked this attack.'):(msg.role==='attack'?'Incorrect. Your power backfires on you.':'Incorrect. The power will affect you.'));return;}
@@ -197,7 +214,7 @@ function onMessage(msg) {
   if (role === 'player' && metaMe && ['lobby','running'].includes(room.status)) ensureLocalRun(metaMe);
   if(room.status==='settling'&&role==='player')finalizeLocal(room.cutoffAt??room.endsAt);
   if(ceremony()&&!['settling','ended'].includes(previous?.status)){podiumArrivedAt=performance.now();closeModal();coinAttackControls?.close();zeroInput();playTone('teleport','results');}
-  if (room.status !== lastStatus) { lastStatus=room.status; coinAttackControls?.close(); zeroInput(); }
+  if (room.status !== lastStatus) { lastStatus=room.status; coinAttackControls?.close(); zeroInput(); $$('.player-world-panel').forEach(panel=>panel.open=false); }
   const me = room.players.find(p => p.id === you);
   const previousMe=previous?.players.find(p=>p.id===you);
   if(role==='player'&&me?.powerQuiz&&`${me.powerQuiz.transactionId}:${me.powerQuiz.id}`!==`${previousMe?.powerQuiz?.transactionId}:${previousMe?.powerQuiz?.id}`){coinAttackControls?.close();zeroInput();}
@@ -211,6 +228,7 @@ function header(content = '') {
 }
 function renderEntry() {
   cancelStageVictory();
+  irisTransition?.cancel();pendingRoomState=null;sceneTransitionActive=false;
   lobbyProfileControls?.destroy();lobbyProfileControls=null;lobbyProfileViewport=null;
   screen='entry'; screenKey='entry'; role=null; rosterKey=scoreKey=questionKey='';
   updateMusicScene();
@@ -222,21 +240,26 @@ function renderEntry() {
     ${entryTab==='join' ? `<form id="join-form"><div class="field-row"><label class="field"><span class="field-label">ROOM CODE</span><input id="room-code" class="room-input" placeholder="ABC123" autocomplete="off" minlength="6" maxlength="6" pattern="[A-Za-z0-9]{6}" value="${esc(code)}" required aria-label="Six character room code"></label><label class="field"><span class="field-label">YOUR NAME</span><input id="player-name" placeholder="Your team knows you as…" maxlength="24" autocomplete="nickname" value="${esc(profile.name)}" required></label></div><button class="button primary wide entry-submit" type="submit">Let's do this ${icon('arrow')}</button></form><p class="entry-note">${icon('shield')} No accounts. Just a room code and questionable instincts.</p>` : `<p class="host-entry-copy">Your team brings the chaos. You get the control room.<br>Set the timer, launch icebreakers, and follow every milestone.</p><button class="button primary wide entry-submit" data-action="create">Create a game room ${icon('arrow')}</button><p class="entry-note">${icon('users')} One host · Up to 25 players · Your rules</p>${hostSession?'<button class="link-button" data-action="resume" style="margin-top:12px;color:var(--lime)">RESUME YOUR HOST ROOM →</button>':''}`}
     </div></div>
     <div class="hero-art"><div class="scene-frame"><div class="scene-topbar"><span>01 / ${esc(levelNames[DEFAULT_WORLD_ORDER[0]].toUpperCase())}</span><div class="window-dots"><i></i><i></i><i></i></div></div><div class="scene-window"><canvas id="demo-canvas" width="960" height="600" aria-label="Animated pixel forest preview"></canvas><div class="scene-caption"><span>LOOKS SAFE.<br><b>Probably isn't.</b></span><span class="pill lime">${icon('play')} READY PLAYER YOU</span></div></div></div><div class="float-tag">100% ORIGINAL CHAOS ↗</div><div class="hero-art-bottom"><span>A LITTLE ADVENTURE. A LOT OF BETRAYAL.</span><span>← → + SPACE</span></div></div>
-  </section><section class="realm-strip"><div class="section-kicker"><span>THE SCENIC ROUTE TO DISASTER</span><span class="muted">${LEVEL_CATALOG.length} WORLDS TO ESCAPE · 5–10 MINUTES OF MAYHEM</span></div><div class="realms">
+  </section><section class="realm-strip"><div class="section-kicker"><span>THE SCENIC ROUTE TO DISASTER</span><span class="muted">${LEVEL_CATALOG.length} WORLDS TO ESCAPE · 5–10 MINUTES OF MAYHEM</span></div><div class="realms" style="--realm-columns:${Math.min(3,LEVEL_CATALOG.length)}">
     ${LEVEL_CATALOG.map((level,index)=>`<div class="realm-card"><span class="realm-number">${String(index+1).padStart(2,'0')}</span><span class="realm-icon ${level.theme==='ocean'?'sea':level.theme==='hell'?'hell':''}">${({forest:'🌲',ocean:'🌊',hell:'🔥'})[level.theme]||'🏁'}</span><div class="realm-copy"><h3>${esc(level.name)}</h3><p>${esc(LEVELS[level.id]?.flavor||'A new route to explore.')}</p></div><span class="arrow">↗</span></div>`).join('')}
   </div></section><footer class="landing-footer"><div class="landing-stats"><span><strong>25</strong> RUNNERS</span><span><strong>∞</strong> SECOND CHANCES</span><span><strong>1</strong> BRAGGING RIGHT</span></div><div class="keyboard-note"><kbd>A</kbd><kbd>D</kbd><span>MOVE &nbsp;</span><kbd>SPACE</kbd><span>JUMP &nbsp; · &nbsp; DESKTOP ONLY</span></div></footer></main>`;
 }
 function roomCode() { return `<div class="room-badge"><div><small>ROOM CODE</small><strong class="code">${esc(room.code)}</strong></div><button data-action="copy-code" title="Copy room code" aria-label="Copy room code">${icon('copy')}</button></div>`; }
 function renderRoom(force=false) {
   if (!room) return;
-  const key = `${role}-${ceremony()?(room.status==='ended'?'ended':'settling'):room.status}`;
+  if(sceneTransitionActive&&!sceneTransitionApplying)return;
+  if(!sceneTransitionApplying&&$('.world-screen')&&Boolean($('#podium-canvas'))!==ceremony()){
+    void transitionViewport(()=>renderRoom(force));return;
+  }
+  const key = `${role}-${ceremony()?(room.status==='ended'?'ended':'settling'):role==='player'?'play':room.status}`;
+  const rebuilding=key!==screenKey||force;
   if (key !== screenKey || force) {
     screenKey=key; screen=role; rosterKey=scoreKey=questionKey='';
     if (ceremony()) renderResults(); else if (role==='host') renderHost(); else renderPlayer();
   }
   updateMusicScene();
   updateConnection();
-  if (ceremony()) { updateResults(); updateAnnouncement();syncLobbyProfile();syncPlayerQuiz();syncPlayerChest();return; }
+  if (ceremony()) { updateResults(); updateAnnouncement();syncLobbyProfile();syncPlayerQuiz();syncPlayerChest();if(rebuilding)paintCurrentScene(performance.now());return; }
   updateQuestion(); updateAnnouncement();
   if (role==='host') updateHost(); else updatePlayer();
   syncLobbyProfile();
@@ -551,6 +574,9 @@ function updateHostPowerPanel(){
 function reportAge(player){return player.lastReportAt?`Updated ${new Date(player.lastReportAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`:'Awaiting race report';}
 function updatePlayer() {
   const me=room.players.find(p=>p.id===you); if(!me) return;
+  setText('.header-adventure h1',room.status==='running'?'Run. Collect. Question everything.':'Your adventure starts here.');
+  setText('.header-adventure p',room.status==='running'?'Coins are good. The floor is negotiable.':'Pick your character, find your color, and take a practice jump.');
+  setHTML('.header-adventure .eyebrow',`<i class="dot"></i>${room.status==='running'?'THE RACE IS ON':'GOOD COMPANY. BAD DECISIONS.'}`);
   if(localRun) me.state=localRun.state;
   const s=me.state;
   if(!s)return;
@@ -655,6 +681,27 @@ function cancelStageVictory() {
   stageVictory=null;
   audio.cancelVictory();
 }
+async function transitionViewport(changeScene){
+  if(sceneTransitionActive)return false;
+  const viewport=$('.world-screen');
+  if(!viewport){changeScene();return true;}
+  sceneTransitionActive=true;zeroInput();coinAttackControls?.close();
+  irisTransition=irisTransitionFor(viewport,{duration:SCENE_TRANSITION_DURATION});
+  try{
+    await irisTransition.run(async()=>{
+      sceneTransitionApplying=true;
+      try{changeScene();if(ceremony())renderRoom();}finally{sceneTransitionApplying=false;}
+      irisTransition.retarget($('.world-screen')||viewport);
+      paintCurrentScene(performance.now());
+      await new Promise(resolve=>requestAnimationFrame(resolve));
+    });
+  }finally{
+    sceneTransitionActive=false;zeroInput();simulationCursor=serverNow();
+    if(pendingRoomState){const latest=pendingRoomState;pendingRoomState=null;onMessage(latest);}
+    else renderRoom();
+  }
+  return true;
+}
 function playStageVictory(level) {
   cancelStageVictory();
   zeroInput();
@@ -662,18 +709,26 @@ function playStageVictory(level) {
   stageVictory=token;
   const scene=sceneForLevel(level);
   audio.setScene(scene);
-  const complete=()=>{
+  const complete=async()=>{
     if(stageVictory!==token)return;
     // Consume time spent at the exit before allowing the new world to move.
     advanceLocalSimulation();
     if(stageVictory!==token)return;
     stageVictory=null;
-    const now=serverNow();
-    if(localRun===token.run&&connected&&!runtimeError&&room?.status==='running'&&!ceremony()&&now<room.endsAt){
-      zeroInput();
-      localRun.advanceStage({serverNow:now});
-      simulationCursor=now;
-    }
+    if(!localRun?.state.stageTransition){updateMusicScene();return;}
+    const switchScene=()=>{
+      const now=serverNow();
+      if(localRun===token.run&&connected&&!runtimeError&&room?.status==='running'&&!ceremony()&&now<room.endsAt&&!pendingRoomState){
+        zeroInput();
+        localRun.advanceStage({serverNow:serverNow()});
+        simulationCursor=serverNow();
+        renderRoom();
+      }
+    };
+    await transitionViewport(()=>{
+      if(pendingRoomState){const latest=pendingRoomState;pendingRoomState=null;onMessage(latest);}
+      else switchScene();
+    });
     updateMusicScene();
   };
   void audio.playVictory(scene).then(complete,complete);
@@ -766,6 +821,7 @@ document.addEventListener('change',e=>{
 });
 const keyMap={a:'left',ArrowLeft:'left',d:'right',ArrowRight:'right',w:'jump',ArrowUp:'jump',' ':'jump'};
 function keyboard(e,pressed){
+  if(sceneTransitionActive){if(keyMap[e.key]||keyMap[e.key.toLowerCase()]||['f','q','1','2'].includes(e.key.toLowerCase()))e.preventDefault();return;}
   const quiz=room?.players.find(p=>p.id===you)?.powerQuiz;
   if(role==='player'&&quiz&&!quiz.answered){if(!e.target.closest('input,textarea,select,button')&&(keyMap[e.key]||keyMap[e.key.toLowerCase()])){e.preventDefault();if(pressed)syncPlayerQuiz({focus:true});}return;}
   if(pressed&&role==='player'&&coinAttackControls?.isOpen&&!e.target.closest('input,textarea,select')&&coinAttackControls.handleKeydown(e))return;
@@ -774,7 +830,7 @@ function keyboard(e,pressed){
   if(pressed&&!e.repeat&&e.key.toLowerCase()==='q'&&!(e.ctrlKey||e.altKey||e.metaKey)&&role==='player'&&room?.status==='running'&&!modal.open&&!runtimeError&&!e.target.closest('input,textarea,select')&&!$('.coin-attack-controls.is-dialog')){const attack=$('.coin-attack-open');if(attack&&!attack.disabled){e.preventDefault();attack.click();return;}}
   if(pressed&&!e.repeat&&e.key.toLowerCase()==='f'&&role==='player'&&room?.status==='running'&&!modal.open&&!$('.coin-attack-controls.is-dialog')&&!runtimeError&&!e.target.closest('input,textarea,select')){e.preventDefault();useHeldPower();return;}
   const k=keyMap[e.key]||keyMap[e.key.toLowerCase()];if(!k)return;
-  if(role!=='player'||!room||ceremony()||modal.open||$('.coin-attack-controls.is-dialog')||runtimeError||e.target.closest('input,textarea,select'))return;
+  if(role!=='player'||!room||ceremony()||irisTransition?.active||modal.open||$('.coin-attack-controls.is-dialog')||runtimeError||e.target.closest('input,textarea,select'))return;
   if(!room.players.find(p=>p.id===you)?.spawned)return;
   e.preventDefault();if(input[k]===pressed)return;
   const state=localRun?.state;
@@ -806,7 +862,11 @@ function advanceLocalSimulation(){
   simulationCursor??=now;
   const target=room.status==='running'?Math.min(now,room.endsAt):now;
   localRun.pause(false);
-  if(target-simulationCursor>.001){
+  if(sceneTransitionActive){
+    localRun.setInput({});
+    localRun.advanceLifecycle(Math.min(MAX_CATCHUP_STEPS*FIXED_STEP_SECONDS,Math.max(0,(target-simulationCursor)/1000)),{serverNow:target});
+    simulationCursor=target;
+  }else if(target-simulationCursor>.001){
     // Background timers can be suspended for minutes. Drop missed physics time
     // instead of replaying it at high speed over subsequent visible frames.
     const delta=Math.min(MAX_CATCHUP_STEPS*FIXED_STEP_SECONDS,(target-simulationCursor)/1000);
@@ -819,7 +879,21 @@ function advanceLocalSimulation(){
   if(room.status==='running'&&now>=room.endsAt){
     const first=!localFinalizing;localFinalizing=true;
     if(simulationCursor>=room.endsAt-.001)finalizeLocal(room.endsAt);
-    if(first){podiumArrivedAt=performance.now();closeModal();zeroInput();playTone('teleport','results');renderRoom();}
+    if(first){podiumArrivedAt=performance.now();closeModal();zeroInput();playTone('teleport','results');void transitionViewport(()=>renderRoom());}
+  }
+}
+function paintCurrentScene(time){
+  const t=time/1000,now=serverNow();
+  if(screen==='entry') {const canvas=$('#demo-canvas');if(canvas)renderGame(canvas,demo,{time:t,compact:true});}
+  if($('#podium-canvas')){
+    const canvas=$('#podium-canvas');if(canvas){if(room.status!=='ended')renderPendingPodium(canvas,{time:t});else renderPodium(canvas,room.results||[],{time:t,viewerId:you,arrivalAge:(time-podiumArrivedAt)/1000});renderWorldUI(canvas,room,{now,viewerId:you,isHost:role==='host'});}
+  }
+  if(role==='player'&&room&&$('#game-canvas')){
+    const me=room?.players.find(p=>p.id===you),canvas=$('#game-canvas');
+    if(canvas){const visual=me?.spawned?localRun.state:createState(profile);renderGame(canvas,visual,{time:t,compact:true,powerChestClaims:me?.powerChestClaims||[],showInstructions:room.status==='lobby'||!me?.spawned});drawPlayerPowers(canvas,me,{now,time:t});syncCoinAttack();drawWorldBroadcasts(canvas,{now});drawPlayerQuiz(canvas,me,{now});}
+    const state=localRun?.state,death=$('#death-caption');
+    if(death&&state){const remain=state.respawnRemaining||0;death.hidden=remain<=0||!!me?.powerQuiz;if(remain>0)death.innerHTML=`<strong>WELL, THAT HAPPENED.</strong><p>${esc(state.deathCause?.label||'A surprise encounter with danger.')}</p><span class="respawn-countdown">RESPAWNING IN ${Math.max(1,Math.ceil(remain))}s</span><small>${state.checkpoint?'BACK TO YOUR CHECKPOINT · COLLECTED COINS & TREASURE SAFE':'BACK TO THE WORLD START · COLLECTED COINS & TREASURE SAFE'}</small>`;}
+    syncLobbyProfile();
   }
 }
 function frame(time){
@@ -827,17 +901,7 @@ function frame(time){
   if(document.hidden)return;
   const t=time/1000,now=serverNow();
   advanceLocalSimulation();
-  if(screen==='entry') {const canvas=$('#demo-canvas');if(canvas)renderGame(canvas,demo,{time:t,compact:true});}
-  if(ceremony()){
-    const canvas=$('#podium-canvas');if(canvas){if(room.status!=='ended')renderPendingPodium(canvas,{time:t});else renderPodium(canvas,room.results||[],{time:t,viewerId:you,arrivalAge:(time-podiumArrivedAt)/1000});renderWorldUI(canvas,room,{now,viewerId:you,isHost:role==='host'});}
-  }
-  if(role==='player'&&room&&!ceremony()){
-    const me=room?.players.find(p=>p.id===you),canvas=$('#game-canvas');
-    if(canvas){const visual=me?.spawned?localRun.state:createState(profile);renderGame(canvas,visual,{time:t,compact:true,powerChestClaims:me?.powerChestClaims||[],showInstructions:room.status==='lobby'||!me?.spawned});drawPlayerPowers(canvas,me,{now,time:t});syncCoinAttack();drawWorldBroadcasts(canvas,{now});drawPlayerQuiz(canvas,me,{now});}
-    const state=localRun?.state,death=$('#death-caption');
-    if(death&&state){const remain=state.respawnRemaining||0;death.hidden=remain<=0||!!me?.powerQuiz;if(remain>0)death.innerHTML=`<strong>WELL, THAT HAPPENED.</strong><p>${esc(state.deathCause?.label||'A surprise encounter with danger.')}</p><span class="respawn-countdown">RESPAWNING IN ${Math.max(1,Math.ceil(remain))}s</span><small>${state.checkpoint?'BACK TO YOUR CHECKPOINT · COLLECTED COINS & TREASURE SAFE':'BACK TO THE WORLD START · COLLECTED COINS & TREASURE SAFE'}</small>`;}
-    syncLobbyProfile();
-  }
+  paintCurrentScene(time);
   if(role==='host'&&room&&!ceremony()&&time-lastHostDraw>120){
     lastHostDraw=time;
     const stage=$('#host-world-canvas');

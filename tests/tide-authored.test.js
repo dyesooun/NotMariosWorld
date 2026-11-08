@@ -30,14 +30,14 @@ test('authored Troubled Tides resolves catalog metadata and gameplay roles', () 
     document.placements.filter(placement => role(placement) === 'power-chest').map(placement =>
       gameplay(placement).chestId));
   assert.equal(document.placements.filter(placement => role(placement) === 'exit').length, 1);
-  const state = startRun(createState(), { worldOrder: [2, 3, 1] });
+  const state = startRun(createState(), { worldOrder: [2, 1] });
   const runtime = getJsonRuntime(state);
   const selectedSpawn = runtime.getStates().find(entry => entry.placement.id === spawn.id);
   assert.deepEqual(runtime.spawn, gameplayAnchor(selectedSpawn.state, runtime.player.width, runtime.player.height));
 });
 
 test('authored tide exit completes world 2 and advances ordered run', () => {
-  const state = startRun(createState(), { worldOrder: [2, 3, 1] });
+  const state = startRun(createState(), { worldOrder: [2, 1] });
   assert.equal(state.level, 2);
   const runtime = getJsonRuntime(state);
   const exit = LEVELS[2].jsonDocument.placements.find(placement => role(placement) === 'exit');
@@ -49,5 +49,5 @@ test('authored tide exit completes world 2 and advances ordered run', () => {
   const events = step(state, {}, 1 / 60);
   assert.ok(events.some(event => event.type === 'levelComplete' && event.level === 2));
   assert.deepEqual(state.completedWorlds, [2]);
-  assert.equal(state.level, 3);
+  assert.equal(state.level, 1);
 });

@@ -57,7 +57,7 @@ test('correct attack waits for all defenses; only failed defenders get a full fi
 
 test('duel phase freeze is represented by coordinator metadata and local runtime',async t=>{
   const f=await fixture(t);await f.use();assert.equal(isDuelFrozen(duelView(f.room),f.players[0].id),true);
-  const local=new LocalRunRuntime({roundId:'r',runId:'u',profile:{name:'local'},settings:{worldOrder:[1,2,3]}});local.begin([1,2,3]);local.setInput({right:true});local.tick(.2);const x=local.state.x;local.setFrozen(true);local.tick(.2);assert.equal(local.state.x,x);assert.equal(local.state.vx,0);
+  const local=new LocalRunRuntime({roundId:'r',runId:'u',profile:{name:'local'},settings:{worldOrder:[1,2]}});local.begin([1,2]);local.setInput({right:true});local.tick(.2);const x=local.state.x;local.setFrozen(true);local.tick(.2);assert.equal(local.state.x,x);assert.equal(local.state.vx,0);
   await f.answer(0);assert.equal(isDuelFrozen(duelView(f.room),f.players[0].id),true);assert.equal(isDuelFrozen(duelView(f.room),f.players[1].id),true);
   await f.answer(1);await f.answer(2,false);assert.equal(f.room.powerDuel.phase,'effect');
 });
@@ -124,7 +124,7 @@ test('a defender who refreshes or finishes cannot receive an old attack in the n
   assert.notEqual(f.players[1].runId,oldRun);send(rejoined,'spawn');await waitFor(()=>f.players[1].spawned);
   const state=await receive(rejoined,m=>m.type==='state'&&m.room.players.find(p=>p.id===f.players[1].id)?.spawned);
   assert.equal(state.room.players.find(p=>p.id===f.players[1].id).powerQuiz,null);
-  await f.report(2,{level:3,completedWorlds:[1,2,3],finished:true,finishedAt:f.now()});await f.advance(1);
+  await f.report(2,{level:2,completedWorlds:[1,2],finished:true,finishedAt:f.now()});await f.advance(1);
   assert.equal(f.room.powerDuel.phase,'effect');assert.deepEqual(f.room.powerDuel.affectedIds,[]);
   assert.deepEqual(powerEffects(f.players[1],f.now()),{});
 });
@@ -150,7 +150,7 @@ test('round end and reset cancel every quiz phase and reject answers at the dead
 
 test('selected defenders receive an answer prompt even without a held chest power',async t=>{
   const f=await fixture(t);f.players[1].powerSlots={};f.players[1].power=null;
-  await f.report(2,{level:3,completedWorlds:[1,2,3],finished:true,finishedAt:f.now()});
+  await f.report(2,{level:2,completedWorlds:[1,2],finished:true,finishedAt:f.now()});
   f.players[0].powerSlots[1].power.target='random';
   await f.use();
   while(!f.room.powerDuel) await f.advance(2000);
@@ -164,7 +164,7 @@ test('selected defenders receive an answer prompt even without a held chest powe
 
 test('a queued caster still receives their attack question after finishing the level run',async t=>{
   const f=await fixture(t);await f.use();await f.answer(0);await f.answer(1,false);await f.answer(2,false);
-  await f.use(1);await f.report(1,{level:3,completedWorlds:[1,2,3],finished:true,finishedAt:f.now()});await f.advance(5000);
+  await f.use(1);await f.report(1,{level:2,completedWorlds:[1,2],finished:true,finishedAt:f.now()});await f.advance(5000);
   const state=await receive(f.clients[1],m=>m.room?.powerDuel?.phase==='attack'&&m.room.powerDuel.casterId===f.players[1].id);
   assert.equal(state.room.players.find(p=>p.id===f.players[1].id).summary.finished,true);
   assert.ok(state.room.players.find(p=>p.id===f.players[1].id).powerQuiz?.prompt);

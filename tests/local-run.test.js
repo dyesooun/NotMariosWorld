@@ -15,10 +15,10 @@ const make = (extra = {}) => {
   const reports = [];
   const runtime = new LocalRunRuntime({
     roundId: 'round-1', runId: 'run-1', profile: { name: 'Runner' },
-    settings: { worldOrder: [1, 2, 3], coinPoints: 10, distancePoints: 1 },
+    settings: { worldOrder: [1, 2], coinPoints: 10, distancePoints: 1 },
     sendReport: report => reports.push(report), ...extra,
   });
-  runtime.begin([1, 2, 3]);
+  runtime.begin([1, 2]);
   return { runtime, reports };
 };
 
@@ -38,8 +38,8 @@ test('fixed-step catchup is bounded', () => {
 
 test('fixed-step reports carry chronological simulation timestamps', () => {
   const reports = [];
-  const runtime = new LocalRunRuntime({ roundId: 'r', runId: 'u', now: () => 0, profile: { name: 'Runner' }, settings: { worldOrder: [1, 2, 3] }, sendReport: r => reports.push(r) });
-  runtime.begin([1, 2, 3]);
+  const runtime = new LocalRunRuntime({ roundId: 'r', runId: 'u', now: () => 0, profile: { name: 'Runner' }, settings: { worldOrder: [1, 2] }, sendReport: r => reports.push(r) });
+  runtime.begin([1, 2]);
   runtime.setInput({ right: true });
   runtime.tick(.1, { serverNow: 100 });
   const times = reports.map(r => r.at);
@@ -148,7 +148,7 @@ test('death preserves coin totals while rewinding traversal and clears chest con
 
 test('local runtime follows the shared engine through all ordered worlds', () => {
   const { runtime } = make();
-  for (const level of [1, 2, 3]) {
+  for (const level of [1, 2]) {
     runtime.state.level = level;
     runtime.state.x = 14000;
     runtime.state.y = 500;
@@ -158,11 +158,11 @@ test('local runtime follows the shared engine through all ordered worlds', () =>
     runtime.tick(FIXED_STEP_SECONDS, { serverNow: level * 1000 });
   }
   assert.equal(runtime.state.finished, true);
-  assert.deepEqual(runtime.state.completedWorlds, [1, 2, 3]);
+  assert.deepEqual(runtime.state.completedWorlds, [1, 2]);
 });
 
 test('victory holds bank once, stay safe, and release into the correct next biome in all orders', () => {
-  for (const order of [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]) {
+  for (const order of [[1,2],[2,1]]) {
     const events=[];
     const {runtime,reports}=make({deferStageTransition:true,onEvent:event=>events.push(event)});
     runtime.begin(order);
@@ -181,7 +181,7 @@ test('victory holds bank once, stay safe, and release into the correct next biom
       assert.equal(runtime.state.deaths,deaths);
       assert.equal(runtime.state.banked,banked);
       assert.equal(reports.length,count,'no repeated exit reports or score banking');
-      if(position<2){
+      if(position<1){
         assert.equal(runtime.state.finished,false);
         assert.equal(runtime.advanceStage({serverNow:position*10000+4000}),true);
         assert.equal(runtime.state.level,order[position+1]);
@@ -196,7 +196,7 @@ test('victory holds bank once, stay safe, and release into the correct next biom
         assert.equal(runtime.advanceStage(),false);
       }
     }
-    assert.equal(events.filter(event=>event.type==='levelComplete').length,3);
+    assert.equal(events.filter(event=>event.type==='levelComplete').length,2);
   }
 });
 
@@ -208,11 +208,11 @@ test('cutoff and reset during a victory hold cannot launch an old next stage', (
   now=2000;
   const final=runtime.finalReport(now);
   assert.equal(summaryScore(final.summary),runtime.state.banked);
-  assert.ok(validateRunSummary(final.summary,[1,2,3]));
+  assert.ok(validateRunSummary(final.summary,[1,2]));
   assert.equal(runtime.advanceStage(),false);
   runtime.reset({roundId:'new-round',runId:'new-run'});
-  runtime.begin([3,2,1]);
+  runtime.begin([2,1]);
   assert.equal(runtime.advanceStage(),false);
-  assert.equal(runtime.state.level,3);
+  assert.equal(runtime.state.level,2);
   assert.equal(runtime.state.banked,0);
 });

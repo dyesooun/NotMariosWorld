@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { after } from 'node:test';
 import { AVATARS, LEVELS, createState, startRun as engineStartRun, step, score, snapshot } from '../public/game/engine.js';
 import { platformAt } from '../public/game/levels.js';
 import { PROJECTILE_RULES } from '../public/game/projectiles.js';
@@ -7,12 +7,15 @@ import { legacyOceanFixture } from './legacy-level-fixtures.js';
 
 // Forest is now the authored JSON course and intentionally has no legacy
 // hazards/critters/power fixtures. These physics regressions use ocean first.
-const startRun = (state, config = {}) => engineStartRun(state, { worldOrder: [2, 3, 1], ...config });
+const startRun = (state, config = {}) => engineStartRun(state, { worldOrder: [1, 2], ...config });
 // Preserve the old hand-authored forest fixture for this legacy physics file;
 // authored forest gameplay is covered by forest.test.js and renderer tests.
 const legacyOcean = legacyOceanFixture();
+const authoredWorld1 = LEVELS[1];
+const authoredWorld2 = LEVELS[2];
 LEVELS[1] = legacyOcean;
 LEVELS[2] = legacyOcean;
+after(() => { LEVELS[1] = authoredWorld1; LEVELS[2] = authoredWorld2; });
 
 test('holding jump cannot repeatedly bounce, and a fresh press can jump again', () => {
   const state = createState();
@@ -64,22 +67,22 @@ test('legacy coins earn currency once and keep it across world transitions', () 
   assert.equal(state.earnedCoins, 1);
   Object.assign(state, { x: LEVELS[state.level].endX + 1, y: 400 });
   step(state, {}, 1 / 60, config);
-  assert.equal(state.level, 3);
+  assert.equal(state.level, 2);
   assert.equal(state.coins, 0);
   assert.equal(state.earnedCoins, 1);
   assert.equal(score(state, config), 0);
 });
 test('hazard death preserves collected coin points while rewinding traversal and respawns after three seconds', () => { const state = startRun(createState()); state.x = LEVELS[1].hazards.find(h=>h.kind==='spikes').x + 29; state.y = 500; state.current = 99; state.coins = 5; state.collected = ['coin-a']; state.progress = .4; state.distanceMax = 500; const events = step(state, {}, .016); assert.equal(events[0]?.type, 'death'); assert.equal(state.current, 99); assert.equal(state.coins, 5); assert.deepEqual(state.collected, ['coin-a']); assert.equal(state.progress, 0); assert.equal(state.distanceMax, 0); assert.equal(score(state), 99); assert.equal(state.deathCause.actualKind, 'spikes'); for (let i = 0; i < 59; i++) step(state, {}, .05); assert.ok(state.respawnRemaining > 0); step(state, {}, .05); assert.equal(state.deathCause, null); assert.equal(state.x, 90); assert.equal(state.y, 500); assert.equal(state.grounded, true); });
-test('level completion banks coin and distance score without final double count', () => { const state = startRun(createState()); state.current = 20; state.distanceMax = 320; state.x = LEVELS[1].endX + 1; state.y = 400; const first = step(state, {}, .016); assert.ok(first.some(e => e.type === 'levelComplete')); assert.ok(state.banked >= 20 + Math.floor((LEVELS[1].endX + 1 - 90) / 32)); assert.equal(state.current, 0); assert.equal(state.level, 3); state.level = 1; state.x = LEVELS[1].endX + 1; state.y = 400; state.current = 10; state.distanceMax = 64; const last = step(state, {}, .016); assert.ok(last.some(e => e.type === 'finished')); assert.equal(state.finished, true); assert.equal(state.current, 0); assert.equal(state.distanceMax, 0); assert.equal(score(state), state.banked); });
+test('level completion banks coin and distance score without final double count', () => { const state = startRun(createState()); state.current = 20; state.distanceMax = 320; state.x = LEVELS[1].endX + 1; state.y = 400; const first = step(state, {}, .016); assert.ok(first.some(e => e.type === 'levelComplete')); assert.ok(state.banked >= 20 + Math.floor((LEVELS[1].endX + 1 - 90) / 32)); assert.equal(state.current, 0); assert.equal(state.level, 2); state.level = 2; state.x = LEVELS[2].endX + 1; state.y = 400; state.current = 10; state.distanceMax = 64; const last = step(state, {}, .016); assert.ok(last.some(e => e.type === 'finished')); assert.equal(state.finished, true); assert.equal(state.current, 0); assert.equal(state.distanceMax, 0); assert.equal(score(state), state.banked); });
 test('progress is maximum reached in an attempt and snapshot retains simulation clocks', () => { const state = startRun(createState()); state.x = 900; step(state, {}, .016); const max = state.progress; state.x = 200; step(state, {}, .016); assert.equal(state.progress, max); const copy = snapshot(state); assert.equal(copy._levelTime, state._levelTime); assert.equal(copy._enemyPhase, state._enemyPhase); });
-test('world dimensions, stable ids, and ground gaps remain deterministic and traversable', () => { assert.equal(LEVELS.length, 4); assert.deepEqual(LEVELS.slice(1).map(l => l.width), [14200, 14200, 14200]); for (const level of LEVELS.slice(1)) { assert.equal(new Set(level.coins.map(c => c.id)).size, level.coins.length); const grounds = level.platforms.filter(p => p.kind === 'ground').sort((a, b) => a.x - b.x); for (let i = 1; i < grounds.length; i++) assert.ok(grounds[i].x - (grounds[i - 1].x + grounds[i - 1].w) <= 120 || grounds[i - 1].x + grounds[i - 1].w > grounds[i].x); } });
+test('world dimensions, stable ids, and ground gaps remain deterministic and traversable', () => { assert.equal(LEVELS.length, 3); assert.deepEqual(LEVELS.slice(1).map(l => l.width), [14200, 14200]); for (const level of LEVELS.slice(1)) { assert.equal(new Set(level.coins.map(c => c.id)).size, level.coins.length); const grounds = level.platforms.filter(p => p.kind === 'ground').sort((a, b) => a.x - b.x); for (let i = 1; i < grounds.length; i++) assert.ok(grounds[i].x - (grounds[i - 1].x + grounds[i - 1].w) <= 120 || grounds[i - 1].x + grounds[i - 1].w > grounds[i].x); } });
 
 test('checkpoint activates once and keeps an immutable collected snapshot', () => {
   const level = LEVELS[1], original = level.checkpoints;
   level.checkpoints = [...(original || []), { id: 'test-checkpoint', x: 200, y: 500 }];
   try {
     const state = startRun(createState()); state.x = 200; state.current = 30; state.coins = 3; state.collected = ['coin-a']; state.distanceMax = 110; state.progress = .2;
-    const first = step(state, {}, 0); assert.deepEqual(first.find(e => e.type === 'checkpoint'), { type: 'checkpoint', id: 'test-checkpoint', level: 2 });
+    const first = step(state, {}, 0); assert.deepEqual(first.find(e => e.type === 'checkpoint'), { type: 'checkpoint', id: 'test-checkpoint', level: 1 });
     state.collected.push('coin-b'); state.current = 40;
     assert.deepEqual(state.checkpoint, { id: 'test-checkpoint', x: 200, y: 500, current: 30, coins: 3, collected: ['coin-a'], distanceMax: 110, progress: .2 });
     assert.equal(step(state, {}, 0).some(e => e.type === 'checkpoint'), false);
@@ -100,12 +103,12 @@ test('checkpoint death restores score immediately and respawns at saved clocks',
 
 test('new level and new run clear checkpoint state while preserving banked score', () => {
   const state = startRun(createState()); state.checkpoint = { id: 'cp', x: 100, y: 500, current: 10, coins: 1, collected: [], distanceMax: 20, progress: .1 }; state.current = 10; state.distanceMax = 20; state.banked = 77;
-  state.level = 2; state.x = LEVELS[2].endX + 1; state.y = 400; const clear = step(state, {}, .016); assert.equal(state.checkpoint, null); assert.equal(state.banked, 77 + clear[0].score);
+  state.level = 1; state.x = LEVELS[1].endX + 1; state.y = 400; const clear = step(state, {}, .016); assert.equal(state.checkpoint, null); assert.equal(state.banked, 77 + clear[0].score);
   startRun(state); assert.equal(state.checkpoint, null); assert.equal(state.banked, 0);
 });
 
 test('all three real checkpoints save monotonically and restore the latest progress after death', () => {
-  for (let levelIndex = 1; levelIndex <= 3; levelIndex++) {
+  for (const levelIndex of [1, 2]) {
     const level = LEVELS[levelIndex], state = startRun(createState());
     assert.deepEqual(level.checkpoints.map(cp => cp.x), [3500, 7000, 10500]);
     state.level = levelIndex; state.banked = 500; state.current = 20; state.coins = 2; state.collected = [];
@@ -130,7 +133,7 @@ test('all three real checkpoints save monotonically and restore the latest progr
 });
 
 test('checkpoint spawn areas stay safe, and falling below a flag does not activate it', () => {
-  for (let levelIndex = 1; levelIndex <= 3; levelIndex++) {
+  for (const levelIndex of [1, 2]) {
     const level = LEVELS[levelIndex];
     for (const cp of level.checkpoints) {
     const falling = startRun(createState());
@@ -150,8 +153,8 @@ test('checkpoint spawn areas stay safe, and falling below a flag does not activa
   }
 });
 
-test('each of the nine flags protects traversal without allowing coin farming',()=>{
-  for(let levelIndex=1;levelIndex<=3;levelIndex++)for(const cp of LEVELS[levelIndex].checkpoints){
+test('each of the six race flags protects traversal without allowing coin farming',()=>{
+  for(const levelIndex of [1,2])for(const cp of LEVELS[levelIndex].checkpoints){
     const level=LEVELS[levelIndex],state=startRun(createState());
     Object.assign(state,{level:levelIndex,banked:500,x:cp.x,y:cp.y,current:20,coins:2,collected:level.coins.slice(0,2).map(c=>c.id)});
     step(state,{},0);const savedScore=score(state),saved=JSON.stringify(state.checkpoint);
@@ -243,7 +246,7 @@ test('larger fireball body collides at its visible edge',()=>{
 });
 
 test('world starts give players time to begin moving without projectile spawn camping',()=>{
-  for(let level=1;level<=3;level++){
+  for(const level of [1,2]){
     const state=createState({level});state.started=true;
     for(let i=0;i<600;i++)step(state,{},1/60);
     assert.equal(state.deaths,0,`world ${level} start must remain clear`);

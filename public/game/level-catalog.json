@@ -3,7 +3,6 @@
   "version": 1,
   "levels": [
     { "id": 1, "name": "Whimsical Woods", "theme": "forest", "src": "/assets/sprites/forest/tileset/WhimsicalForest.json" },
-    { "id": 2, "name": "Troubled Tides", "theme": "ocean", "src": "/assets/sprites/tide/tileset/TroubleTides.json" },
-    { "id": 3, "name": "Inferno Express", "theme": "hell", "legacy": true }
+    { "id": 2, "name": "Troubled Tides", "theme": "ocean", "src": "/assets/sprites/tide/tileset/TroubleTides.json" }
   ]
 }

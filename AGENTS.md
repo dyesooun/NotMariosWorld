@@ -28,7 +28,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Clicking **Host a game** in the homepage header immediately creates a room and opens its host dashboard using the normal authenticated creation flow and default settings. Keep the existing duplicate-click guard and error handling; room creation does not start the race. The separate Host a room tab may still expose the create/resume controls.
 - Room states are lobby, running, settling, and ended. Settling stops gameplay and collects final reports for at most two seconds before publishing immutable ranks. Host actions are authenticated separately from player access; a room code must not grant host control.
 - Host settings are editable in the lobby. Round duration defaults to **10 minutes** and is configurable from **1–60 minutes**.
-- The host can reorder every catalog level in Game settings, including putting ocean or inferno first for testing. Every sequence includes each configured race level exactly once. The catalog order is the default (currently forest → ocean → inferno); there is no three-level limit. The selected order is room-specific and fixed when a run starts. Late joins and refreshed runs begin at the first world in that selected order, with the shared remaining time.
+- The host can reorder every catalog level in Game settings, including putting ocean first for testing. Every sequence includes each configured race level exactly once. The catalog order is the default (currently forest → ocean); there is no three-level limit. The selected order is room-specific and fixed when a run starts. Late joins and refreshed runs begin at the first world in that selected order, with the shared remaining time.
 - Keep biome identity separate from race position. Stage numbers, progress indicators, and the host dashboard follow the selected sequence; artwork, music, chests, checkpoint IDs, and escape broadcasts follow the actual biome. Finish only after the last world in the selected sequence, even if it is the forest or ocean. Do not reorder the global `LEVELS` array to implement this setting.
 - Scoring settings default to **10 points per coin** and **1 point per 32-pixel distance tile**; the current supported range for each weight is 0–1000.
 - Coin-funded attacks default to **30 coins** and a **60-second per-player cooldown**. The host can configure the cost (1–1000 coins) and cooldown (1–3600 seconds) in lobby Game settings. These are separate from score weights and shared power/quiz durations.
@@ -69,12 +69,14 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 ## Race worlds and presentation
 
+- Scene changes use a viewport-centered cartoon iris wipe: a pure-black cover closes around a live circular opening, the scene switches only at full black, then the circle opens past all four corners. Each direction defaults to 500 ms and is configurable in the reusable transition controller. Keep circles round through resize/fullscreen, cover viewport UI, clear/block player input, and serialize transitions. Preserve victory-stinger holds and authoritative room cutoffs/final reports; the wipe grants no extra playtime.
+
 | World ID | World | Required theme |
 | --- | --- | --- |
 | 0 | Lobby / The Waiting Woods | Safe practice and instructions |
 | 1 | Whimsical Woods | Whimsical forest |
 | 2 | Troubled Tides | Ocean |
-| 3 | Inferno Express | Hell / lava |
+| 3 (disabled) | Inferno Express | Retained legacy course; excluded from the active race catalog |
 | Separate ceremony | Podium | Shared ranked end-of-round ceremony; positive catalog IDs, including 4, remain available for race levels |
 
 - Race levels include coins, lethal traps, disguised decoys, enemies, moving platforms, and vanishing platforms.
@@ -88,7 +90,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 ### JSON race levels (current source of truth)
 
 - Editable source levels live under `tools/level-editor/levels/`. The live forest loads the compact game export at `public/assets/sprites/forest/tileset/WhimsicalForest.json`. Preserve source documents and their authored artwork, geometry, placements and gameplay roles. Game exports retain only runtime fields and placed-object dependencies, use project image paths instead of embedded images, and omit notes, import manifests and editor metadata. Keep the full editor export available for continued authoring. Do not regenerate the old forest or insert missing enemies, checkpoints or chests. It currently contains 91 coins, two checkpoints, one selected spawn, one exit, three power chests, three decoy chests and 12 creature/shooter placements.
-- `public/game/level-catalog.json` registers ordered, unique positive numeric IDs, names, audio themes and per-level JSON paths. More than three levels and repeated themes are supported. ID 0 stays the lobby; the podium is outside the race registry. Tide (ID 2, audio theme `ocean`) loads `/assets/sprites/tide/tileset/TroubleTides.json`, preserving its authored artwork, world bounds, placements, spawn, checkpoints, chests and exit. Inferno retains an explicit legacy compatibility entry until its authored JSON is supplied.
+- `public/game/level-catalog.json` registers ordered, unique positive numeric IDs, names, audio themes and per-level JSON paths. More than three levels and repeated themes are supported. ID 0 stays the lobby; the podium is outside the race registry. Tide (ID 2, audio theme `ocean`) loads `/assets/sprites/tide/tileset/TroubleTides.json`, preserving its authored artwork, world bounds, placements, spawn, checkpoints, chests and exit. Inferno Express is disabled and absent from the active catalog. Its legacy generator and assets remain available for later restoration. The current default session route is lobby → forest → tide → the separate podium ceremony.
 - The shared renderer/runtime under `public/game/json-level/` is biome agnostic and consumes exported v2 documents: separate atlases, definitions, placements, transforms, authored collision/hazard shapes, motion, beams, vanishing, animations and explicit gameplay roles. Relative atlas sources resolve against each level JSON.
 - The browser and server load the same catalog before accepting gameplay; server validation uses authored checkpoint/chest IDs. Geometry stays local. Runtime objects and embedded atlases never enter player reports. Preserve scoring, death rollback, banking, queued powers, cue holds and cutoff behavior across JSON/legacy transitions. Catalog and authored JSON changes participate in the runtime compatibility fingerprint.
 - The editor and JSON viewer import the same shared runtime modules. Editor changes stay in tool storage until the user exports/replaces the configured JSON; do not silently change production JSON.
@@ -339,7 +341,7 @@ The notes below document the retained original art and legacy fixture. They do n
 - Install with `npm ci`; run with `npm start` or use `npm run dev` for watched local edits. The test command is `npm test` (`node --test`).
 - Run checks appropriate to changed behavior; use real multi-client WebSocket checks for authoritative multiplayer rules and browser checks for viewport/focus/rendering behavior. Documentation-only edits do not require restarting the server or rerunning the game suite.
 - When touching relevant systems, preserve or extend coverage for these prior failures:
-  - All nine local checkpoint saves, persistent gold flags, safe ground contact, saved coins/points/location, no backward overwrite/farming, and no coordinator-message rollback.
+  - All authored local checkpoint saves, persistent gold flags, safe ground contact, saved coins/points/location, no backward overwrite/farming, and no coordinator-message rollback.
   - Three distinct chest claims per level, death/checkpoint persistence, one held/reserved item, Attack / Replace choices, stable previews, stale-item rejection, no-target behavior, cross-level FIFO, and cleanup at disconnect/reset/end.
   - Host timing settings, normalization, configured quiz progress/deadlines, and full-duration effect/result banners, including nondefault durations.
   - Attack correctness/failure/timeout, individual defenses, mixed results, no-inventory defenders, committed queued attackers, one-attempt authentication, run refresh isolation, and private answer keys.

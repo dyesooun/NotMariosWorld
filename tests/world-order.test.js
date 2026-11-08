@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
 import { LEVELS, createState, startRun, step, score, getJsonRuntime } from '../public/game/engine.js';
 import { DEFAULT_WORLD_ORDER, normalizeWorldOrder, worldOrdinal } from '../public/game/world-order.js';
+import { LEVEL_CATALOG } from '../public/game/level-catalog.js';
 import { createGameServer } from '../server/index.js';
 
 function placeAtExit(state, levelId) {
@@ -57,17 +58,19 @@ function waitFor(check, timeout = 2500) {
 }
 
 test('world order normalization accepts only complete permutations and never mutates defaults', () => {
-  assert.deepEqual(DEFAULT_WORLD_ORDER, [1, 2, 3]);
-  assert.deepEqual(normalizeWorldOrder([3, 1, 2]), [3, 1, 2]);
-  for (const value of [undefined, [], [1, 1, 2], [0, 2, 3], ['1', 2, 3], [1, 2], [,2,3], [null,2,3]]) assert.deepEqual(normalizeWorldOrder(value), [1, 2, 3]);
-  const order = normalizeWorldOrder([2, 3, 1]); order[0] = 9;
-  assert.deepEqual(DEFAULT_WORLD_ORDER, [1, 2, 3]);
-  assert.equal(worldOrdinal(0, [3, 2, 1]), 0);
-  assert.equal(worldOrdinal(2, [3, 2, 1]), 2);
+  assert.deepEqual(DEFAULT_WORLD_ORDER, [1, 2]);
+  assert.deepEqual(normalizeWorldOrder([2, 1]), [2, 1]);
+  for (const value of [undefined, [], [1, 1], [0, 2], ['1', 2], [1], [,2], [null,2], [3,1,2], [1,2,3]]) assert.deepEqual(normalizeWorldOrder(value), [1, 2]);
+  const order = normalizeWorldOrder([2, 1]); order[0] = 9;
+  assert.deepEqual(DEFAULT_WORLD_ORDER, [1, 2]);
+  assert.equal(worldOrdinal(0, [2, 1]), 0);
+  assert.equal(worldOrdinal(2, [2, 1]), 1);
+  assert.deepEqual(LEVEL_CATALOG.map(level => level.id), [1, 2]);
+  assert.equal(LEVELS[3], undefined);
 });
 
-test('all six orders start, transition, bank once, and finish on the final ordered identity', () => {
-  for (const order of [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]) {
+test('both configured orders start, transition, bank once, and finish on the final ordered identity', () => {
+  for (const order of [[1, 2], [2, 1]]) {
     const state = startRun(createState(), { worldOrder: order });
     assert.equal(state.level, order[0]);
     for (const [position, levelId] of order.entries()) {
@@ -85,22 +88,23 @@ test('all six orders start, transition, bank once, and finish on the final order
     assert.equal(score(state), state.banked);
     const banked=state.banked;assert.deepEqual(step(state,{},.016),[]);assert.equal(state.banked,banked);
   }
-  assert.deepEqual(LEVELS.slice(1).map(level=>level.id),[1,2,'hell']);
+  assert.deepEqual(LEVELS.slice(1).map(level=>level.id),[1,2]);
 });
 
 test('level transitions retain latched order and completed identities while resetting checkpoint state', () => {
-  const state = startRun(createState(), { worldOrder: [3, 1, 2] });
+  const state = startRun(createState(), { worldOrder: [2, 1] });
   state.checkpoint = { id: 'checkpoint', x: 300, y: 500, current: 4, coins: 1, collected: ['coin'], distanceMax: 300, progress: .2 };
-  placeAtExit(state, 3); state.current = 10; state.distanceMax = 500;
-  step(state, {}, .016, {worldOrder:[1,2,3]});
+  placeAtExit(state, 2); state.current = 10; state.distanceMax = 500;
+  step(state, {}, .016, {worldOrder:[1,2]});
   assert.equal(state.level, 1);
-  assert.deepEqual(state.worldOrder, [3, 1, 2]);
-  assert.deepEqual(state.completedWorlds, [3]);
+  assert.deepEqual(state.worldOrder, [2, 1]);
+  assert.deepEqual(state.completedWorlds, [2]);
   assert.equal(state.checkpoint, null);
   placeAtExit(state, 1);
   step(state, {}, .016);
-  assert.equal(state.level, 2);
-  assert.deepEqual(state.completedWorlds, [3, 1]);
+  assert.equal(state.level, 1);
+  assert.equal(state.finished, true);
+  assert.deepEqual(state.completedWorlds, [2, 1]);
 });
 
 test('WebSocket host order starts first identity and survives late join and same-name refresh', async t => {
@@ -108,19 +112,19 @@ test('WebSocket host order starts first identity and survives late join and same
   const server = createGameServer({ port: 0, host: '127.0.0.1', tickMs: 2, now: () => clock });
   await server.listen(); t.after(() => server.close());
   const url = `ws://127.0.0.1:${server.httpServer.address().port}`;
-  const host = await socket(url); host.send(JSON.stringify({ type: 'create', settings: { worldOrder: [3, 1, 2] } }));
+  const host = await socket(url); host.send(JSON.stringify({ type: 'create', settings: { worldOrder: [2, 1] } }));
   const made = await receive(host, message => message.type === 'created');
   host.send(JSON.stringify({ type: 'start' }));
   const started = await receive(host, message => message.type === 'state' && message.room.status === 'running');
   const first = await socket(url); first.send(JSON.stringify({ type: 'join', code: made.code, name: 'Late' }));
   const joined = await receive(first, message => message.type === 'joined');
-  const firstState = await receive(first, message => message.type === 'state' && message.room.players.some(player => player.id === joined.id && player.summary.level === 3));
-  assert.equal(firstState.room.settings.worldOrder.join(','), '3,1,2');
+  const firstState = await receive(first, message => message.type === 'state' && message.room.players.some(player => player.id === joined.id && player.summary.level === 2));
+  assert.equal(firstState.room.settings.worldOrder.join(','), '2,1');
   assert.equal(firstState.room.endsAt, started.room.endsAt);
   first.close(); await waitFor(() => !server.rooms.get(made.code).players.get(joined.id).ws);
   const refreshed = await socket(url); refreshed.send(JSON.stringify({ type: 'join', code: made.code, name: 'Late' }));
   await receive(refreshed, message => message.type === 'joined');
-  const refreshedState = await receive(refreshed, message => message.type === 'state' && message.room.players.some(player => player.id === joined.id && player.summary.level === 3));
+  const refreshedState = await receive(refreshed, message => message.type === 'state' && message.room.players.some(player => player.id === joined.id && player.summary.level === 2));
   assert.equal(refreshedState.room.endsAt, started.room.endsAt);
   refreshed.close(); host.close();
 });
@@ -130,16 +134,16 @@ test('WebSocket rooms isolate valid orders and invalid orders fall back to defau
   await server.listen(); t.after(() => server.close());
   const url = `ws://127.0.0.1:${server.httpServer.address().port}`;
   const hostA = await socket(url), hostB = await socket(url);
-  hostA.send(JSON.stringify({ type: 'create', settings: { worldOrder: [2, 3, 1] } }));
-  hostB.send(JSON.stringify({ type: 'create', settings: { worldOrder: [2, 2, 1] } }));
+  hostA.send(JSON.stringify({ type: 'create', settings: { worldOrder: [2, 1] } }));
+  hostB.send(JSON.stringify({ type: 'create', settings: { worldOrder: [3, 1, 2] } }));
   const roomA = await receive(hostA, message => message.type === 'created'), roomB = await receive(hostB, message => message.type === 'created');
   hostA.send(JSON.stringify({ type: 'start' })); hostB.send(JSON.stringify({ type: 'start' }));
   const stateA = await receive(hostA, message => message.type === 'state' && message.room.status === 'running');
   const stateB = await receive(hostB, message => message.type === 'state' && message.room.status === 'running');
-  assert.deepEqual(stateA.room.settings.worldOrder, [2, 3, 1]);
-  assert.deepEqual(stateB.room.settings.worldOrder, [1, 2, 3]);
-  assert.equal(server.rooms.get(roomA.code).settings.worldOrder.join(','), '2,3,1');
-  assert.equal(server.rooms.get(roomB.code).settings.worldOrder.join(','), '1,2,3');
+  assert.deepEqual(stateA.room.settings.worldOrder, [2, 1]);
+  assert.deepEqual(stateB.room.settings.worldOrder, [1, 2]);
+  assert.equal(server.rooms.get(roomA.code).settings.worldOrder.join(','), '2,1');
+  assert.equal(server.rooms.get(roomB.code).settings.worldOrder.join(','), '1,2');
   hostA.close(); hostB.close();
 });
 
@@ -148,27 +152,27 @@ test('WebSocket ordered completion broadcasts identity, banks once, resets check
   const server = createGameServer({ port: 0, host: '127.0.0.1', tickMs: 2, now:()=>clock });
   await server.listen(); t.after(() => server.close());
   const url = `ws://127.0.0.1:${server.httpServer.address().port}`;
-  const host = await socket(url); host.send(JSON.stringify({ type: 'create', settings: { worldOrder: [3, 1, 2] } }));
+  const host = await socket(url); host.send(JSON.stringify({ type: 'create', settings: { worldOrder: [2, 1] } }));
   const made = await receive(host, message => message.type === 'created');
   const playerSocket = await socket(url); playerSocket.send(JSON.stringify({ type: 'join', code: made.code, name: 'Runner' }));
   const joined = await receive(playerSocket, message => message.type === 'joined'); playerSocket.send(JSON.stringify({ type: 'spawn' }));
   await waitFor(() => server.rooms.get(made.code).players.get(joined.id).spawned);
   host.send(JSON.stringify({ type: 'start' })); await receive(host, message => message.type === 'state' && message.room.status === 'running');
   const room = server.rooms.get(made.code), runner = room.players.get(joined.id), local=startRun(createState(),room.settings);
-  const names = { 1: 'Whimsical Woods', 2: 'Troubled Tides', 3: 'Inferno Express' };
+  const names = { 1: 'Whimsical Woods', 2: 'Troubled Tides' };
   let seq=0;
   async function report(){
     playerSocket.send(JSON.stringify({type:'runReport',roundId:room.roundId,runId:runner.runId,seq:++seq,at:clock,chestId:null,final:false,summary:{level:local.level,completedWorlds:local.completedWorlds,coins:local.coins,current:local.current,banked:local.banked,distanceMax:local.distanceMax,progress:local.progress,checkpoint:local.checkpoint?{id:local.checkpoint.id}:null,deaths:local.deaths,respawnRemaining:local.respawnRemaining,finished:local.finished,finishedAt:local.finished?clock:null}}));
     await receive(playerSocket,m=>m.type==='reportAck'&&m.seq===seq);
   }
-  for (const [index, levelId] of [3, 1, 2].entries()) {
+  for (const [index, levelId] of [2, 1].entries()) {
     local.current = 5; placeAtExit(local, levelId);
     const before = local.banked;
     step(local,{},1/60,room.settings);await report();
     const announcement = await receive(host, message => message.type === 'state' && message.room.announcement?.kind === 'level' && message.room.announcement.text.includes(names[levelId]));
     assert.equal(runner.summary.banked > before, true);
-    assert.deepEqual(runner.summary.completedWorlds, [3, 1, 2].slice(0, index + 1));
-    if (index < 2) assert.equal(runner.summary.finished, false);
+    assert.deepEqual(runner.summary.completedWorlds, [2, 1].slice(0, index + 1));
+    if (index < 1) assert.equal(runner.summary.finished, false);
     if (index === 0) assert.equal(runner.summary.checkpoint, null);
     assert.ok(announcement.room.announcement.text.includes(names[levelId]));
     if (index === 0) {
@@ -182,14 +186,14 @@ test('WebSocket ordered completion broadcasts identity, banks once, resets check
         local.y=620;local.x=100;local.grounded=false;local._standingPlatform=null;
       }
       step(local,{},1/60,room.settings);await report();assert.equal(runner.summary.deaths,1);
-      assert.deepEqual(local.worldOrder,[3,1,2]);assert.deepEqual(runner.summary.completedWorlds,[3]);
+      assert.deepEqual(local.worldOrder,[2,1]);assert.deepEqual(runner.summary.completedWorlds,[2]);
       for(let frame=0;frame<181;frame++)step(local,{},1/60,room.settings);
       clock+=3100;await report();assert.equal(runner.summary.respawnRemaining,0);
     }
     clock+=2001;await new Promise(resolve=>setTimeout(resolve,20));
   }
-  assert.equal(runner.summary.finished, true); assert.equal(runner.summary.level, 2);
-  assert.deepEqual(local.worldOrder, [3, 1, 2]);
-  assert.deepEqual(runner.summary.completedWorlds, [3, 1, 2]);
+  assert.equal(runner.summary.finished, true); assert.equal(runner.summary.level, 1);
+  assert.deepEqual(local.worldOrder, [2, 1]);
+  assert.deepEqual(runner.summary.completedWorlds, [2, 1]);
   playerSocket.close(); host.close();
 });
