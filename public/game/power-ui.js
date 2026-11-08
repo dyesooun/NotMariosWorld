@@ -1,11 +1,11 @@
-import { POWER_DEFINITIONS } from './powers.js';
+import { POWER_DEFINITIONS, POWER_STRENGTH_DEFAULTS } from './powers.js';
 import { LEVELS } from './levels.js';
 import { GAME_CARD_SCALE } from './overlay-layout.js';
 
 // This is the rendered logical bounds (not the former unscaled design size).
 // Keep it authoritative so shared announcements can avoid the actual card.
 export const POWER_HUD_RECT = Object.freeze({ x: 14, y: 14, w: 308 * GAME_CARD_SCALE, h: 80 * GAME_CARD_SCALE });
-export const INK_EXTRA_DARKNESS = .95;
+export const INK_EXTRA_DARKNESS = POWER_STRENGTH_DEFAULTS.inkDarknessPercent / 100;
 
 export function activePowerEffects(player, now = Date.now()) {
   return Object.fromEntries(Object.entries(player?.effects || {}).filter(([, effect]) => effect.endsAt > now));
@@ -16,7 +16,7 @@ export function powerUIModel(player, { now = Date.now(), running = true, isHost 
   const visible = !!(running && player?.spawned && state?.level > 0 && !state.finished);
   const queued = !!slot?.queued, testing=!!slot?.testing, held = slot?.claimed && (!slot.used || queued || testing);
   const canUse = !!(visible && held && !queued && !testing && (!player.powerQuiz||player.powerQuiz.answered) && !state.respawnRemaining && player.connected && !isHost);
-  const active = activePowerEffects(player, now), darkness = Math.max(0, Math.min(.95, Number(active.fog?.strength?.darknessPercent ?? 95) / 100));
+  const active = activePowerEffects(player, now), darkness = Math.max(0, Math.min(.95, Number(active.fog?.strength?.darknessPercent ?? POWER_STRENGTH_DEFAULTS.inkDarknessPercent) / 100));
   const powerName = slot?.power?.name || null, powerType = slot?.power?.type || null;
   return { visible, held, queued, testing, queuePosition:slot?.queuePosition??null, canUse, fog: !!active.fog, darkness,
     powerName, powerType,

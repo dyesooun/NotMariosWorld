@@ -6,14 +6,14 @@ export const POWER_DEFINITIONS = Object.freeze([
   Object.freeze({ type: 'slippery', name: 'Ice Skates', durationMs: 5000 }),
   Object.freeze({ type: 'fog', name: 'Ink Cloud', durationMs: 5000 })
 ]);
-export const POWER_STRENGTH_DEFAULTS = Object.freeze({ slowSpeedPercent: 55, reverseSpeedPercent: 100, slipperySpeedPercent: 170, slipperyGripPercent: 12, inkDarknessPercent: 95 });
+export const POWER_STRENGTH_DEFAULTS = Object.freeze({ slowSpeedPercent: 25, reverseSpeedPercent: 100, slipperySpeedPercent: 170, slipperyGripPercent: 12, inkDarknessPercent: 88 });
 export const COIN_ATTACK_DEFAULTS = Object.freeze({ attackCoinCost: 30, attackCooldownSeconds: 60 });
 export function powerStrength(settings = {}, type) {
   const value = (name, fallback, min, max) => Math.max(min, Math.min(max, Number.isFinite(Number(settings[name])) ? Number(settings[name]) : fallback));
-  if (type === 'slow') return { speedPercent: value('slowSpeedPercent', 55, 10, 90) };
+  if (type === 'slow') return { speedPercent: value('slowSpeedPercent', 25, 10, 90) };
   if (type === 'reverse') return { speedPercent: value('reverseSpeedPercent', 100, 50, 200) };
   if (type === 'slippery') return { speedPercent: value('slipperySpeedPercent', 170, 110, 250), gripPercent: value('slipperyGripPercent', 12, 2, 50) };
-  if (type === 'fog') return { darknessPercent: value('inkDarknessPercent', 95, 0, 95) };
+  if (type === 'fog') return { darknessPercent: value('inkDarknessPercent', 88, 0, 95) };
   return {};
 }
 

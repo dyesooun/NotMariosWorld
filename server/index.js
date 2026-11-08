@@ -26,11 +26,11 @@ const biomeNames = Object.fromEntries([[0, 'the lobby'], ...LEVEL_CATALOG.map(le
 function settings(input = {}) {
   const result = { worldOrder:normalizeWorldOrder(input.worldOrder) };
   for (const [key, fallback, low, high] of [
-    ['durationMinutes',10,1,60], ['coinPoints',10,0,1000], ['distancePoints',1,0,1000],
+    ['durationMinutes',15,1,60], ['coinPoints',10,0,1000], ['distancePoints',1,0,1000],
     ['powerDurationSeconds',5,1,60], ['attackWindowSeconds',10,1,60], ['defendWindowSeconds',10,1,60],
     ['attackCoinCost',30,1,1000], ['attackCooldownSeconds',60,1,3600],
-    ['slowSpeedPercent',55,10,90], ['reverseSpeedPercent',100,50,200], ['slipperySpeedPercent',170,110,250],
-    ['slipperyGripPercent',12,2,50], ['inkDarknessPercent',95,0,95],
+    ['slowSpeedPercent',25,10,90], ['reverseSpeedPercent',100,50,200], ['slipperySpeedPercent',170,110,250],
+    ['slipperyGripPercent',12,2,50], ['inkDarknessPercent',88,0,95],
   ]) result[key] = input[key] == null ? fallback : (key==='attackCoinCost'||key==='attackCooldownSeconds' ? Math.trunc(clamp(input[key], low, high)) : clamp(input[key], low, high));
   result.questions = Array.isArray(input.questions)
     ? input.questions.slice(0,5).map(q => ({ prompt:clean(q?.prompt,240), choices:Array.isArray(q?.choices) ? q.choices.slice(0,2).map(c => clean(c,100)) : [] })).filter(q => q.prompt && q.choices.length === 2 && q.choices.every(Boolean))

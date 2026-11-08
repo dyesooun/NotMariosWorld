@@ -12,10 +12,10 @@ const run = (effects, config = {}, frames = 120) => {
 };
 
 test('power strength defaults and clamps are shared', () => {
-  assert.deepEqual(powerStrength({}, 'slow'), { speedPercent: 55 });
+  assert.deepEqual(powerStrength({}, 'slow'), { speedPercent: 25 });
   assert.deepEqual(powerStrength({}, 'reverse'), { speedPercent: 100 });
   assert.deepEqual(powerStrength({}, 'slippery'), { speedPercent: 170, gripPercent: 12 });
-  assert.deepEqual(powerStrength({}, 'fog'), { darknessPercent: 95 });
+  assert.deepEqual(powerStrength({}, 'fog'), { darknessPercent: 88 });
   assert.deepEqual(powerStrength({ slowSpeedPercent: -1, reverseSpeedPercent: 999, slipperySpeedPercent: 1, slipperyGripPercent: 999, inkDarknessPercent: 999 }, 'slippery'), { speedPercent: 110, gripPercent: 50 });
 });
 

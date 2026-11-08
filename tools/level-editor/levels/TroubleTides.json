@@ -22645,7 +22645,7 @@
     {
       "id": "object-4fc70cb6-0f69-450d-894f-134a529efd56",
       "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-1",
-      "x": 2730,
+      "x": 2835,
       "y": 540,
       "width": 175,
       "height": 40,
@@ -22657,7 +22657,7 @@
     {
       "id": "c1c5e3cc-2157-448e-aab9-5405f7087b64",
       "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-1",
-      "x": 3070,
+      "x": 3065,
       "y": 540,
       "width": 175,
       "height": 40,
@@ -22669,7 +22669,7 @@
     {
       "id": "6a1e1d38-9c52-4983-8464-604e41290c7d",
       "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-1",
-      "x": 3410,
+      "x": 3515,
       "y": 540,
       "width": 175,
       "height": 40,
@@ -22681,7 +22681,7 @@
     {
       "id": "4a3ce7f7-638b-4702-b497-45678f8ac688",
       "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-1",
-      "x": 3715,
+      "x": 3745,
       "y": 540,
       "width": 175,
       "height": 40,
@@ -22741,7 +22741,7 @@
     {
       "id": "object-09851706-e354-4a24-ba89-19774198b9eb",
       "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-0009",
-      "x": 2750,
+      "x": 2855,
       "y": 511.3423886820747,
       "width": 40.55869558178074,
       "height": 36.292515079941836,
@@ -22753,7 +22753,7 @@
     {
       "id": "object-7858743f-82c9-4aad-95c0-f62ff74658fd",
       "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-0008",
-      "x": 3185,
+      "x": 3180,
       "y": 505,
       "width": 38.143655374180526,
       "height": 41.499292770583395,
@@ -22765,8 +22765,8 @@
     {
       "id": "object-f0070aa1-cf78-4ac3-a820-7485d0316cd6",
       "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-0006",
-      "x": 3430,
-      "y": 512.4400119542629,
+      "x": 3525,
+      "y": 510,
       "width": 37.7922545218089,
       "height": 32.559988045737214,
       "layer": -5,
@@ -23271,7 +23271,22 @@
         ]
       },
       "gameplay": {
-        "role": "spawnpoint"
+        "role": "none",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": false
       }
     },
     {
@@ -23455,6 +23470,66 @@
       "y": 470,
       "width": 33.69402111383715,
       "height": 40.12043823140482,
+      "layer": -5,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "0376ce3c-6110-42d3-bcd6-92b74f92de2a",
+      "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-1",
+      "x": 3955,
+      "y": 540,
+      "width": 175,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "79aeae95-42b4-4316-ad68-2a11add65047",
+      "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-1",
+      "x": 3290,
+      "y": 540,
+      "width": 175,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "9cb39ce2-64f5-46fc-b258-b28aa9aaf6ea",
+      "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-1",
+      "x": 2470,
+      "y": 540,
+      "width": 175,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "4afb6c28-b463-4b44-9aa8-1e1717668336",
+      "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-1",
+      "x": 2655,
+      "y": 540,
+      "width": 175,
+      "height": 40,
+      "layer": 0,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {}
+    },
+    {
+      "id": "object-7225c1b1-1c2e-4e3a-b2b8-29b0f080c0db",
+      "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-0007",
+      "x": 4095,
+      "y": 380,
+      "width": 55.177513028616886,
+      "height": 46.812200366401726,
       "layer": -5,
       "flipX": false,
       "rotation": 0,

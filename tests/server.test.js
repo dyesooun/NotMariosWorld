@@ -33,7 +33,9 @@ async function fixture(t,{count=1,settings={}}={}){
 test('health, cache protection, defaults, and explicitly disabled icebreakers',async t=>{
   const f=await fixture(t);const response=await fetch(f.origin+'/health'),health=await response.json();
   assert.equal(health.ok,true);assert.equal(health.needsRestart,false);assert.equal(health.protocolVersion,PROTOCOL_VERSION);assert.equal(response.headers.get('cache-control'),'no-store');
-  assert.equal(f.room.settings.inkDarknessPercent,95);
+  assert.equal(f.room.settings.inkDarknessPercent,88);
+  assert.equal(f.room.settings.slowSpeedPercent,25);
+  assert.equal(f.room.settings.durationMinutes,15);
   assert.equal((await fetch(f.origin+'/app.js')).headers.get('cache-control'),'no-store');assert.equal(f.room.settings.questions.length,5);
   send(f.host,'settings',{settings:{questions:[]}});await wait(()=>f.room.settings.questions.length===0);
   for(const endpoint of ['/server/power-questions.js','/../server/power-questions.js'])assert.equal((await fetch(f.origin+endpoint)).status,404);

@@ -74,11 +74,11 @@ test('chest choices are hidden during private questions, death, and world change
   p.state.respawnRemaining=0;p.state.level=2;assert.equal(powerChestOfferModel(p),null);
 });
 
-test('ink defaults to 95 percent darkness before drawing the HUD',()=>{
+test('ink defaults to 88 percent darkness before drawing the HUD',()=>{
   const calls=[],ctx={save(){},restore(){},setTransform(){},fillRect(...rect){calls.push({color:this.fillStyle,rect});},strokeRect(){},fillText(){}};
   const p={connected:true,spawned:true,state:{level:1},effects:{fog:{endsAt:5000}}};
   renderPowerUI({width:960,height:540,getContext:()=>ctx},p,{now:0});
-  const darkness=calls.findIndex(call=>call.color==='rgba(0,0,0,0.95)');
+  const darkness=calls.findIndex(call=>call.color==='rgba(0,0,0,0.88)');
   assert.ok(darkness>0);assert.deepEqual(calls[darkness].rect,[0,0,960,540]);
   assert.equal(calls[darkness+1].color,'#08161288');
 });
