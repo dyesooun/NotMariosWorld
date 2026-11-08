@@ -10,15 +10,20 @@ class Context { static instances = []; constructor() { this.state = 'suspended';
 const fakeFetch = async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) });
 const timers = () => ({ setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: id => clearTimeout(id) });
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
-const wavDuration = path => { const data = fs.readFileSync(`public${path}`); return data.readUInt32LE(40) / (data.readUInt32LE(24) * data.readUInt16LE(22) * data.readUInt16LE(34) / 8); };
+const flacStreamInfo = path => { const data = fs.readFileSync(`public${path}`); assert.equal(data.subarray(0,4).toString(), 'fLaC'); const blockLength=data.readUIntBE(5,3); assert.ok(blockLength>=34); const stream=data.subarray(8,8+blockLength); const packed=BigInt('0x'+stream.subarray(10,18).toString('hex')); return { sampleRate:Number(packed>>44n), channels:Number((packed>>41n)&7n)+1, bitsPerSample:Number((packed>>36n)&31n)+1, totalSamples:Number(packed&0xfffffffffn) }; };
+const wavStreamInfo = path => { const data=fs.readFileSync(`public${path}`); assert.equal(data.subarray(0,4).toString(),'RIFF'); const sampleRate=data.readUInt32LE(24), channels=data.readUInt16LE(22), bitsPerSample=data.readUInt16LE(34), dataBytes=data.readUInt32LE(40); return {sampleRate,channels,bitsPerSample,totalSamples:dataBytes/(channels*bitsPerSample/8)}; };
 
-test('shipped WAV maps and durations are exact', () => {
+test('shipped compressed tracks preserve exact WAV stream metadata', () => {
   assert.deepEqual(Object.keys(MUSIC_TRACKS), ['lobby', 'forest', 'ocean', 'hell', 'results']);
   assert.equal(VICTORY_TRACKS.forest.durationSeconds, 4.3); assert.equal(VICTORY_TRACKS.ocean.durationSeconds, 4.4); assert.equal(VICTORY_TRACKS.hell.durationSeconds, 4.4);
-  for (const track of Object.values(MUSIC_TRACKS)) { assert.equal(fs.existsSync(`public${track.src}`), true, track.src); assert.equal(wavDuration(track.src), 30); }
-  for (const track of Object.values(VICTORY_TRACKS)) { assert.equal(fs.existsSync(`public${track.src}`), true, track.src); assert.equal(wavDuration(track.src), track.durationSeconds); }
+  for (const track of [...Object.values(MUSIC_TRACKS),...Object.values(VICTORY_TRACKS)]) { assert.equal(fs.existsSync(`public${track.src}`), true, track.src); const original=track.src.replace('.compressed.flac','.wav'); assert.deepEqual(flacStreamInfo(track.src),wavStreamInfo(original),track.src); }
 });
-test('unlock starts one looping WAV source and repeated unlock does not duplicate', async () => {
+test('all compressed audio copies preserve exact stream metadata', () => {
+  const files=[]; const walk=dir=>{for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const full=`${dir}/${entry.name}`;if(entry.isDirectory())walk(full);else if(entry.name.endsWith('.compressed.flac'))files.push(full.replaceAll('\\','/'));}};
+  walk('public/assets/audio'); assert.equal(files.length,35);
+  for(const file of files){const relative=file.slice('public'.length);const original=relative.replace('.compressed.flac','.wav'); assert.deepEqual(flacStreamInfo(relative),wavStreamInfo(original),relative);}
+});
+test('unlock starts one looping compressed source and repeated unlock does not duplicate', async () => {
   const audio = new GameAudio({ AudioContext: Context, fetch: fakeFetch, ...timers() }); assert.equal(await audio.unlock(), true); await flush(); await flush();
   assert.equal(Context.instances.at(-1).sources.length, 1); assert.equal(Context.instances.at(-1).sources[0].loop, true); await audio.unlock(); await Promise.resolve(); assert.equal(Context.instances.at(-1).sources.length, 1); audio.dispose();
 });
@@ -28,7 +33,21 @@ test('victory stops background, resolves on source end, and does not duplicate l
 });
 test('scene change cancels an active victory and allows new music', async () => { const audio = new GameAudio({ AudioContext: Context, fetch: fakeFetch, ...timers() }); await audio.unlock(); const pending = audio.playVictory('forest'); audio.setScene('results'); assert.equal(await pending, false); audio.dispose(); });
 test('mute/hidden pauses timeline and never traps completion', async () => { let now = 0; const audio = new GameAudio({ AudioContext: Context, fetch: fakeFetch, clock: () => now, ...timers() }); await audio.unlock(); const pending = audio.playVictory('hell'); await Promise.resolve(); await Promise.resolve(); now = 5000; audio.setHidden(true); assert.equal(await pending, true); audio.dispose(); });
-test('FX map uses supplied WAVs for every cue', () => { assert.equal(EFFECT_SOUNDS.powerup, 'powerup'); for (const stem of Object.values(EFFECT_SOUNDS)) assert.equal(fs.existsSync(`public${EFFECT_SFX[stem]}`), true, stem); });
+test('FX map uses supplied compressed audio for every cue', () => { assert.equal(EFFECT_SOUNDS.powerup, 'powerup'); for (const stem of Object.values(EFFECT_SOUNDS)) { assert.match(EFFECT_SFX[stem], /\.compressed\.flac$/); assert.equal(fs.existsSync(`public${EFFECT_SFX[stem]}`), true, stem); } });
+
+test('compressed audio falls back to the original WAV when fetch or decode fails', async () => {
+  const loads=[]; const audio = new GameAudio({ AudioContext: Context, fetch: async src => { loads.push(src); if (src.endsWith('.compressed.flac')) throw new Error('compressed unavailable'); return { ok:true, arrayBuffer:async()=>new ArrayBuffer(8) }; }, ...timers() });
+  await audio.unlock(); const buffer=await audio._loadBuffer(MUSIC_TRACKS.lobby.src); assert.ok(buffer); const index=loads.indexOf(MUSIC_TRACKS.lobby.src); const fallback=MUSIC_TRACKS.lobby.src.replace('.compressed.flac','.wav'); assert.equal(loads.slice(index).includes(fallback),true); assert.equal(loads.indexOf(fallback)>index,true); audio.dispose();
+});
+test('decode rejection retries the original WAV and successful FLAC never requests WAV', async () => {
+  class DecodeRejectContext extends Context { decodeAudioData(data) { if (data.byteLength===1) return Promise.reject(new Error('unsupported FLAC')); return Promise.resolve({duration:30}); } }
+  const fallbackLoads=[]; const fallbackAudio=new GameAudio({AudioContext:DecodeRejectContext,fetch:async src=>{fallbackLoads.push(src);return {ok:true,arrayBuffer:async()=>new ArrayBuffer(src.endsWith('.flac')?1:8)};},...timers()});
+  await fallbackAudio.unlock(); assert.ok(await fallbackAudio._loadBuffer(MUSIC_TRACKS.lobby.src)); const wav=MUSIC_TRACKS.lobby.src.replace('.compressed.flac','.wav'); const primaryIndex=fallbackLoads.indexOf(MUSIC_TRACKS.lobby.src); assert.equal(primaryIndex>=0,true);assert.equal(fallbackLoads.indexOf(wav)>primaryIndex,true); fallbackAudio.dispose();
+  const successLoads=[]; const successAudio=new GameAudio({AudioContext:Context,fetch:async src=>{successLoads.push(src);return {ok:true,arrayBuffer:async()=>new ArrayBuffer(8)};},...timers()}); await successAudio.unlock(); assert.ok(await successAudio._loadBuffer(MUSIC_TRACKS.lobby.src)); assert.equal(successLoads.includes(MUSIC_TRACKS.lobby.src.replace('.compressed.flac','.wav')),false); successAudio.dispose();
+});
+test('both compressed and WAV failures resolve null and cache both requests', async () => {
+  const loads=[]; const audio=new GameAudio({AudioContext:Context,fetch:async src=>{loads.push(src);throw new Error('missing audio');},...timers()}); await audio.unlock(); const first=await audio._loadBuffer(MUSIC_TRACKS.lobby.src),second=await audio._loadBuffer(MUSIC_TRACKS.lobby.src); assert.equal(first,null);assert.equal(second,null); const fallback=MUSIC_TRACKS.lobby.src.replace('.compressed.flac','.wav'); assert.equal(loads.filter(src=>src===MUSIC_TRACKS.lobby.src).length,1);assert.equal(loads.filter(src=>src===fallback).length,1);audio.dispose();
+});
 
 // Controlled wall time lets fallback/race tests run without waiting for audio.
 function fixture(t,options={}){

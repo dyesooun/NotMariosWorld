@@ -53,6 +53,8 @@ The previous synthesized **Mosslight Mountain** forest arrangement has been repl
 
 ## Supplied audio packs
 
+All 35 WAVs also have lossless sibling `<stem>.compressed.flac` files. Encoded with SoundFile 0.14.0/libsndfile at maximum FLAC compression (`compression_level=1.0`), they preserve the original PCM subtype, sample rate, channel layout and frame count. Each copy was decoded and compared sample-for-sample against its WAV; original file hashes were checked unchanged. The complete set is 8,240,895 bytes versus 16,804,612 bytes for the originals (51.0% smaller). All 35 pairs were additionally decoded through Edge's Web Audio API at 32 kHz and verified to produce identical channel samples and durations. The runtime prefers FLAC and automatically falls back to the WAV on fetch/decode failure. Original pack README/manifest files and WAVs remain intact; regenerate compressed siblings when replacing source audio.
+
 The user supplied the WAV files under `public/assets/audio/`. Their bundled README/manifest files describe original procedural chiptune synthesis without third-party samples. The integrated files are 16-bit PCM at 32 kHz. Lobby, podium, and tides background loops are stereo; forest/inferno loops and all three victory stingers are mono. Every background loop is 30 seconds; victory stingers are 4.3 seconds for forest and 4.4 seconds for tides/inferno, measured from the WAV headers.
 
 | Scene | Full background loop | Stage-clear one-shot |

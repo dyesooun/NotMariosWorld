@@ -254,6 +254,8 @@ The notes below document the retained original art and legacy fixture. They do n
 
 ## Audio
 
+- Play the supplied audio through lossless sibling `<stem>.compressed.flac` copies, retaining all original WAV files. If compressed fetching or decoding fails, automatically try the original WAV and cache the result under the requested compressed source. Preserve exact samples, channel layout, sample rates, loop lengths, victory duration constants, gains, cue sequencing, mute/visibility behavior and deadline handling. Serve FLAC as `audio/flac`. Regenerate and verify compressed copies whenever original audio changes; do not add lossy encoding or remove originals without explicit user direction.
+
 - Background music **and sound effects are enabled by default**. Preserve the single speaker control that mutes/enables both.
 - Unlock playback on the first user click/key press to comply with browser autoplay behavior; do not silently change the default preference to muted.
 - Use the supplied WAV loops under `public/assets/audio`: `lobby/lobby_main_loop_30s.wav` for the lobby, the respective `forest`, `tide`, and `hell` `music/*_danger_full_loop_30s.wav` for race biomes, and `lobby/podium_main_loop_30s.wav` for the podium. Loop each complete file. Use each race biome's matching `*_victory_stinger.wav` once on its stage clear; do not layer the old synthesized music or clear/finish jingles over it. After the final stage's stinger, use the podium loop while waiting for the shared timer.

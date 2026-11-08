@@ -46,6 +46,15 @@ test('supplied background WAV files are served as audio',async t=>{
   assert.equal(response.headers.get('content-type'),'audio/wav');
   assert.equal(Buffer.from(await response.arrayBuffer()).subarray(0,4).toString(),'RIFF');
 });
+test('compressed FLAC audio is served with the original WAV still available',async t=>{
+  const f=await fixture(t);
+  const compressed=await fetch(f.origin+'/assets/audio/lobby/lobby_main_loop_30s.compressed.flac');
+  assert.equal(compressed.status,200);
+  assert.equal(compressed.headers.get('content-type'),'audio/flac');
+  assert.equal(Buffer.from(await compressed.arrayBuffer()).subarray(0,4).toString(),'fLaC');
+  const original=await fetch(f.origin+'/assets/audio/lobby/lobby_main_loop_30s.wav');
+  assert.equal(original.status,200);assert.equal(original.headers.get('content-type'),'audio/wav');
+});
 
 test('a victory hold reports its banked score and settles without entering the next world',async t=>{
   const f=await fixture(t,{settings:{worldOrder:[2,1]}});

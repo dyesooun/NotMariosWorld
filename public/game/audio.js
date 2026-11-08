@@ -1,8 +1,9 @@
-/* Shipped WAV music and shared one-shot sound effects. */
+/* Lossless music and shared one-shot effects, with original WAV fallback. */
 import { MUSIC_TRACKS, VICTORY_TRACKS } from './audio-tracks.js';
 export { MUSIC_TRACKS, VICTORY_TRACKS } from './audio-tracks.js';
 export const EFFECT_SOUNDS = Object.freeze({ coin: 'coin_pickup', death: 'death', clear: 'score_popup', start: 'countdown_go', jump: 'jump', finish: 'score_popup', respawn: 'respawn', checkpoint: 'checkpoint', broadcast: 'ui_select', countdown: 'countdown_tick', teleport: 'power_activate', stomp: 'enemy_defeat', powerup: 'powerup' });
-export const EFFECT_SFX = Object.freeze(Object.fromEntries([...new Set(Object.values(EFFECT_SOUNDS))].map(name => [name, `/assets/audio/sfx/${name}.wav`])));
+export const EFFECT_SFX = Object.freeze(Object.fromEntries([...new Set(Object.values(EFFECT_SOUNDS))].map(name => [name, `/assets/audio/sfx/${name}.compressed.flac`])));
+export const audioFallbackSource = src => typeof src === 'string' && src.endsWith('.compressed.flac') ? src.slice(0, -'.compressed.flac'.length) + '.wav' : null;
 
 export class GameAudio {
   constructor({ AudioContext, fetch: fetchImpl = globalThis.fetch, setTimeout: timeout = globalThis.setTimeout, clearTimeout: clearTimeoutImpl = globalThis.clearTimeout, clock = () => Date.now() } = {}) {
@@ -58,7 +59,22 @@ export class GameAudio {
   _canPlay() { return Boolean(!this._disposed && this.context && this.enabled && !this.hidden && (!this.context.state || this.context.state === 'running')); }
   _preloadScene(scene) { const loop = MUSIC_TRACKS[scene], victory = VICTORY_TRACKS[scene]; return Promise.all([this._loadBuffer(loop?.src), victory && this._loadBuffer(victory.src)]); }
   _preloadEffects() { return Promise.all(Object.values(EFFECT_SFX).map(src => this._loadBuffer(src))); }
-  _loadBuffer(src) { const context = this.context; if (!src || !context || !this._fetch || !context.decodeAudioData) return Promise.resolve(null); if (!this._bufferPromises.has(src)) this._bufferPromises.set(src, Promise.resolve().then(() => this._fetch(src)).then(r => { if (!r?.ok && r?.ok !== undefined) throw new Error('audio fetch failed'); return r.arrayBuffer(); }).then(data => context.decodeAudioData(data)).catch(() => null)); return this._bufferPromises.get(src); }
+  _loadBuffer(src) {
+    const context = this.context;
+    if (!src || !context || !this._fetch || !context.decodeAudioData) return Promise.resolve(null);
+    if (!this._bufferPromises.has(src)) {
+      const load = path => Promise.resolve().then(() => this._fetch(path)).then(response => {
+        if (!response?.ok && response?.ok !== undefined) throw new Error('audio fetch failed');
+        return response.arrayBuffer();
+      }).then(data => context.decodeAudioData(data));
+      this._bufferPromises.set(src, load(src).catch(() => {
+        const fallback = audioFallbackSource(src);
+        if (!fallback) return null;
+        return load(fallback).catch(() => null);
+      }));
+    }
+    return this._bufferPromises.get(src);
+  }
   _startMusic(scene) { if (!this._canPlay() || this._musicSource || this._victorySource || this._victoryRemaining > 0) return; const track = MUSIC_TRACKS[scene]; this._loadBuffer(track.src).then(buffer => { if (!buffer || this.scene !== scene || !this._canPlay() || this._musicSource || this._victorySource || this._victoryRemaining > 0) return; try { const source = this.context.createBufferSource(); source.buffer = buffer; source.loop = true; source.connect(this._musicGain || this._master); source.start(); this._musicSource = source; source.onended = () => { if (this._musicSource === source) this._musicSource = null; }; } catch (_) {} }); }
   _stopMusic() { const source = this._musicSource; this._musicSource = null; if (source) try { source.stop(); source.disconnect?.(); } catch (_) {} }
   _startVictorySource(track, token) {

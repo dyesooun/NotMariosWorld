@@ -16,7 +16,7 @@ import { PROTOCOL_VERSION, FINAL_REPORT_WINDOW_MS, emptyRunSummary, validateRunS
 const { WebSocketServer } = createRequire(import.meta.url)('ws');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MAX_PLAYERS = 25, MAX_ROOMS = 500, MAX_PAYLOAD = 16384, ROOM_TTL = 3600000;
-const MIME = { '.html':'text/html; charset=utf-8', '.js':'application/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.svg':'image/svg+xml', '.webp':'image/webp', '.ico':'image/x-icon', '.wav':'audio/wav' };
+const MIME = { '.html':'text/html; charset=utf-8', '.js':'application/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.svg':'image/svg+xml', '.webp':'image/webp', '.ico':'image/x-icon', '.wav':'audio/wav', '.flac':'audio/flac' };
 const clean = (value, length, fallback = '') => typeof value === 'string' ? value.trim().slice(0, length) || fallback : fallback;
 const clamp = (value, low, high) => Math.max(low, Math.min(high, Number.isFinite(Number(value)) ? Number(value) : low));
 const send = (ws, value) => ws?.readyState === 1 && ws.send(JSON.stringify(value));
