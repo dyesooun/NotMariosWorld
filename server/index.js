@@ -93,7 +93,15 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     announcement:room.announcement,
   });
   const sendPlayerState = (room, player) => send(player.ws,{type:'state',room:snapshot(room,{id:player.id}),you:player.id,serverTime:now()});
-  const broadcast = room => { for (const player of room.players.values()) sendPlayerState(room,player); send(room.hostWs,{type:'state',room:snapshot(room,{host:true}),you:null,serverTime:now()}); };
+  const leaderboardEntries = room => ranked(room).map((p,index)=>({id:p.id,score:p.score,rank:index+1,finishTime:p.finishTime,summary:{level:p.summary.level,finished:p.summary.finished}}));
+  const broadcast = room => {
+    for (const player of room.players.values()) sendPlayerState(room,player);
+    send(room.hostWs,{type:'state',room:snapshot(room,{host:true}),you:null,serverTime:now()});
+    // Every recipient now has this complete roster, including any intervening
+    // score rollback. Private single-player snapshots never move this baseline.
+    room.leaderboardBaseline=new Map(leaderboardEntries(room).map(entry=>[entry.id,entry]));
+    room.leaderboardDirty=false;
+  };
   const reportProgress = (room, player) => { send(room.hostWs,{type:'progress',players:[playerDTO(room,player,{host:true})],serverTime:now()}); room.leaderboardDirty=true; };
   const updatePlayerLocation = (room, player, msg, { lobbyOnly=false, reportAt=null } = {}) => {
     if (!Object.prototype.hasOwnProperty.call(msg || {}, 'location')) return null;
@@ -217,7 +225,7 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
   const start = room => {
     if (room.status!=='lobby') return;
     room.status='running'; room.roundId=randomUUID(); room.startedAt=now(); room.endsAt=room.startedAt+room.settings.durationMinutes*60000;
-    room.cutoffAt=null; room.settleEndsAt=null; room.results=null; room.resultEntries=[]; room.pendingFinal=new Set(); room.question=null; clearPowers(room);
+    room.cutoffAt=null; room.settleEndsAt=null; room.results=null; room.resultEntries=[]; room.pendingFinal=new Set(); room.question=null; room.leaderboardDirty=false; room.lastLeaderboardAt=now(); room.leaderboardBaseline=null; clearPowers(room);
     // Lobby players are already active; starting only changes their world/run.
     for (const player of room.players.values()) { resetPlayer(player,room.settings.worldOrder[0]); player.spawned=true; }
     broadcast(room);
@@ -225,7 +233,7 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
   const reset = room => {
     if (room.status!=='ended') return;
     clearPowers(room); room.status='lobby'; room.roundId=randomUUID(); room.startedAt=null; room.endsAt=null; room.cutoffAt=null; room.settleEndsAt=null;
-    room.results=null; room.resultEntries=[]; room.pendingFinal=new Set(); room.question=null; room.leaderboardDirty=false;
+    room.results=null; room.resultEntries=[]; room.pendingFinal=new Set(); room.question=null; room.leaderboardDirty=false; room.lastLeaderboardAt=now(); room.leaderboardBaseline=null;
     // Returning to the lobby must leave every connected player immediately playable.
     for (const player of room.players.values()) { resetPlayer(player); player.spawned=true; }
     broadcast(room);
@@ -357,7 +365,10 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     }
     send(ws,{type:'reportAck',runId:player.runId,seq:player.lastSeq,serverTime:time});
     reportProgress(room,player);
-    if (JSON.stringify([player.power,player.powerOffer,player.powerSlots])!==inventoryBefore || (player.coinAttack?.earned||0)!==coinEarnedBefore) sendPlayerState(room,player);
+    const inventoryChanged=JSON.stringify([player.power,player.powerOffer,player.powerSlots])!==inventoryBefore;
+    const coinChanged=(player.coinAttack?.earned||0)!==coinEarnedBefore;
+    if (inventoryChanged) sendPlayerState(room,player);
+    else if (coinChanged) send(ws,{type:'coinWallet',roundId:room.roundId,runId:player.runId,playerId:player.id,wallet:coinAttackView(player,now())});
     if (room.status==='settling'&&!room.pendingFinal.size) finish(room);
   };
   async function handle(ws, msg, session) {
@@ -366,7 +377,7 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
       if (session.room) return error(ws,'Already joined a room');
       if (rooms.size>=MAX_ROOMS) return error(ws,'Server is full','FULL');
       let code; do code=randomBytes(3).toString('hex').toUpperCase(); while (rooms.has(code));
-      const room={code,token:randomBytes(18).toString('hex'),hostWs:ws,status:'lobby',settings:settings(msg.settings),players:new Map(),results:null,createdAt:now(),roundId:randomUUID(),startedAt:null,endsAt:null,cutoffAt:null,settleEndsAt:null,question:null,announcement:null,announcementQueue:[],activePower:null,powerQueue:[],powerDuel:null,pendingFinal:new Set(),resultEntries:[],leaderboardDirty:false,lastLeaderboardAt:0};
+      const room={code,token:randomBytes(18).toString('hex'),hostWs:ws,status:'lobby',settings:settings(msg.settings),players:new Map(),results:null,createdAt:now(),roundId:randomUUID(),startedAt:null,endsAt:null,cutoffAt:null,settleEndsAt:null,question:null,announcement:null,announcementQueue:[],activePower:null,powerQueue:[],powerDuel:null,pendingFinal:new Set(),resultEntries:[],leaderboardDirty:false,lastLeaderboardAt:0,leaderboardBaseline:null};
       rooms.set(code,room); session.room=room; session.host=true;
       send(ws,{type:'created',code,token:room.token}); return broadcast(room);
     }
@@ -501,10 +512,15 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
         }
       }
       if (room.question&&!room.question.closed&&time>=room.question.endsAt) { room.question.closed=true; broadcast(room); }
-      if (room.leaderboardDirty&&room.status!=='ended'&&time-room.lastLeaderboardAt>=100) {
-        const players=ranked(room).map((p,index)=>({id:p.id,score:p.score,rank:index+1,finishTime:p.finishTime,summary:{level:p.summary.level,finished:p.summary.finished}}));
-        const message={type:'leaderboard',players,serverTime:time};
-        for (const p of room.players.values()) send(p.ws,message); send(room.hostWs,message);
+      if (room.leaderboardDirty&&room.status!=='ended'&&time-room.lastLeaderboardAt>=1000) {
+        const current=leaderboardEntries(room);
+        const previous=room.leaderboardBaseline;
+        const players=!previous ? current : current.filter(entry=>JSON.stringify(entry)!==JSON.stringify(previous.get(entry.id)));
+        if (players.length) {
+          const message={type:'leaderboard',roundId:room.roundId,players,serverTime:time};
+          for (const p of room.players.values()) send(p.ws,message); send(room.hostWs,message);
+        }
+        room.leaderboardBaseline=new Map(current.map(entry=>[entry.id,entry]));
         room.leaderboardDirty=false; room.lastLeaderboardAt=time;
       }
       if (time-room.createdAt>ROOM_TTL&&!['running','settling'].includes(room.status)&&!room.hostWs&&[...room.players.values()].every(p=>!p.ws)) rooms.delete(code);

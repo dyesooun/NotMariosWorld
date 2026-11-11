@@ -139,6 +139,7 @@ test('forest start and checkpoint banners use their authored foot anchors and la
   assert.ok(Number.isFinite(runtime.player.x) && Number.isFinite(runtime.player.y));
   assert.ok(runtime.getStates().length > 0);
   const banners = document.placements.filter(p => ['spawnpoint', 'checkpoint'].includes(p.gameplay?.role));
+  const unsafeLandings = [];
   for (const banner of banners) {
     const landingDocument = structuredClone(document);
     setLevelSpawn(landingDocument, banner.id);
@@ -147,8 +148,32 @@ test('forest start and checkpoint banners use their authored foot anchors and la
     const anchor = { x: banner.x + banner.width * foot[0] - landing.player.width / 2, y: banner.y + banner.height * foot[1] - landing.player.height };
     assert.deepEqual(landing.spawn, anchor);
     advanceFor(landing, 1);
-    assert.equal(landing.deaths, 0, `${banner.id} must not drop the player through the ground`);
-    assert.equal(landing.player.grounded, true, `${banner.id} must have safe support`);
+    if (landing.deaths || !landing.player.grounded) unsafeLandings.push({
+      id: banner.id, x: banner.x, deaths: landing.deaths,
+      cause: landing.deathCause, grounded: landing.player.grounded,
+    });
+  }
+  assert.deepEqual(unsafeLandings, [], 'Every authored start/checkpoint must land on safe support and survive; report all unsafe banners, including enemy attacks');
+});
+
+test('repaired forest checkpoints preserve source settings and remain safe after actual checkpoint respawn', () => {
+  const live = JSON.parse(fs.readFileSync(new URL('../../../public/assets/sprites/forest/tileset/WhimsicalForest.json', import.meta.url), 'utf8'));
+  const source = JSON.parse(fs.readFileSync(new URL('../levels/WhimsicalForest.json', import.meta.url), 'utf8'));
+  const checkpointIds = ['object-564547fe-3d81-4eaf-870e-7eb98657d00c', '535c3c08-9aea-4c4e-8cb2-c4b435ab0d88'];
+  const hogId = 'object-8f0213b1-6031-4106-9ddd-526b4a36324a';
+  assert.deepEqual(live.placements.find(p => p.id === hogId).settings, source.placements.find(p => p.id === hogId).settings);
+  for (const id of checkpointIds) {
+    const banner = live.placements.find(p => p.id === id);
+    assert.deepEqual(banner.gameplay.anchor, source.placements.find(p => p.id === id).gameplay.anchor);
+    const runtime = new LevelRuntime(live);
+    const [ax, ay] = banner.gameplay.anchor;
+    Object.assign(runtime.player, { x: banner.x + banner.width * ax - runtime.player.width / 2, y: banner.y + banner.height * ay - runtime.player.height });
+    runtime._roleContactStep(runtime.getStates());
+    assert.equal(runtime.checkpoint?.id, id, 'use the authored checkpoint role, not a replacement spawn');
+    runtime._respawn();
+    advanceFor(runtime, 10);
+    assert.equal(runtime.deaths, 0, `${id}: ${runtime.deathCause || 'unexpected death'} after checkpoint respawn`);
+    assert.equal(runtime.player.grounded, true, `${id} must retain safe support across multiple enemy attack cycles`);
   }
 });
 

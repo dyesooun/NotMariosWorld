@@ -42,7 +42,11 @@ test('25 players deliver host-only location patches without extra idle updates o
     assert.deepEqual(patch.players[0].location,{...location,at:f.now()});
     assert.equal(Object.hasOwn(patch.players[0].summary,'location'),false);
   }
-  await f.advance(100);
+  await f.advance(1000);
+  // Under parallel-suite CPU load, the server's timer and the socket delivery
+  // can outlast the fixture's short wall-clock pause. Drain the expected batch
+  // before asserting that the subsequent unchanged interval is silent.
+  await wait(()=>f.clients.every(ws=>ws.inbox.some(m=>m.type==='leaderboard'))&&f.host.inbox.some(m=>m.type==='leaderboard'));
   for(const ws of f.clients){assert.equal(JSON.stringify(ws.inbox).includes('"location"'),false);ws.inbox=[];}
   f.host.inbox=[];await f.advance(1000);
   assert.equal(f.host.inbox.length,0,'idle players generate no additional progress/position traffic');

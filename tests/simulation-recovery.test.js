@@ -27,7 +27,7 @@ function fixture({ running = false, endsAt = 600000 } = {}) {
   context = createContext({
     clock: 0, serverNow: () => context.clock, role: 'player', you: me.id,
     localRun: runtime, room: { players: [me], status: running ? 'running' : 'lobby', settings: {}, roundId: 'round', endsAt },
-    connected: true, runtimeError: null, finalSentRound: null, simulationCursor: 0,
+    connected: true, runtimeError: null, playerRecoveryFailed: false, finalSentRound: null, simulationCursor: 0,
     FIXED_STEP_SECONDS, MAX_CATCHUP_STEPS, activePowerEffects, isDuelFrozen,
     localFinalizing: false, performance: { now: () => 0 },
     sceneTransitionActive: false,
@@ -52,6 +52,20 @@ test('iris holds gameplay input and traversal while the authoritative cutoff sti
   assert.equal(runtime.finalCutoffAt,5000);
   assert.equal(context.finalSentRound,'round');
   assert.equal(runtime.state.x,startX);
+});
+
+test('an unrestored authenticated run remains paused until recovery succeeds', () => {
+  const { runtime, context, advance } = fixture({ running: true });
+  const before = { x: runtime.state.x, elapsed: runtime.state.elapsed };
+  runtime.setInput({ right: true });
+  context.playerRecoveryFailed = true;
+  advance(300000);
+  assert.equal(runtime.state.x, before.x);
+  assert.equal(runtime.state.elapsed, before.elapsed);
+  assert.equal(context.simulationCursor, 300000);
+  context.playerRecoveryFailed = false;
+  advance(300000 + 1000 / 60);
+  assert.ok(runtime.state.elapsed <= FIXED_STEP_SECONDS + 1e-9);
 });
 
 test('iris time is discarded instead of replayed after opening', () => {

@@ -40,13 +40,20 @@ test('resume replaces socket and preserves the same run state', async t => {
   player.power={itemId:'held-item',level:1,used:false,power:{type:'slow',name:'Sticky Boots'}};
   player.effects={slow:{type:'slow',startedAt:19_999_900,endsAt:20_000_999,strength:{speedPercent:25}}};
   player.coinAttack={earned:23,spent:4,reserved:2,cooldownEndsAt:20_000_987};
+  const previousServerSocket=player.ws;
   const oldClosed=new Promise(resolve=>first.once('close',resolve)), second=await open(f.url);
   send(second,'join',{code:f.code,resumeToken:joined.resumeToken,name:'Ignored'});
   const resumed=await take(second,m=>m.type==='joined'); await oldClosed;
   assert.equal(resumed.resumed,true); assert.equal(resumed.id,joined.id); assert.equal(resumed.runId,currentRunId); assert.equal(resumed.lastSeq,7); assert.equal(resumed.roundId,room.roundId);
-  assert.equal(room.players.get(joined.id).ws,second); assert.equal(player.score,42); assert.equal(player.summary.banked,19); assert.equal(player.summary.earnedCoins,23);
+  const resumedServerSocket=room.players.get(joined.id).ws;
+  assert.notEqual(resumedServerSocket,previousServerSocket);
+  assert.equal(f.server.wss.clients.has(resumedServerSocket),true);
+  assert.equal(resumedServerSocket._socket.remotePort,second._socket.localPort);
+  assert.equal(player.connected,true); assert.equal(player.score,42); assert.equal(player.summary.banked,19); assert.equal(player.summary.earnedCoins,23);
   assert.equal(player.powerSlots[1].itemId,'held-item'); assert.equal(player.effects.slow.endsAt,20_000_999); assert.equal(player.coinAttack.earned,23); assert.equal(player.coinAttack.spent,4); assert.equal(player.coinAttack.cooldownEndsAt,20_000_987);
   const state=second.messages.find(m=>m.type==='state'); assert.equal(JSON.stringify(state).includes('resumeToken'),false);
+  send(second,'timeSync',{clientTime:123});
+  assert.equal((await take(second,m=>m.type==='timeSync')).clientTime,123);
   second.close();
 });
 

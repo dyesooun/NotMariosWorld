@@ -16,6 +16,8 @@ test('lobby location initializes once per run and existing player actions piggyb
     room:{roundId:'r1',status:'lobby',settings:{},players:[me]},role:'player',you:'p',
     localRun:null,lobbyLocationRunKey:null,profile:{name:'Runner',avatar:'cat',color:'#ffb4df'},
     localFinalizing:false,finalPending:false,finalSentRound:null,simulationCursor:null,
+    playerSession:null,playerResumeInfo:null,playerRecoveryFailed:false,
+    restoredVictoryEndsAt:null,checkedRuntime:'test-build',
     LocalRunRuntime,locationFromState,serverNow:()=>1000,
     cancelStageVictory(){},activePowerEffects:()=>({}),sendRaw(type,data){sent.push({type,...data});},
     playTone(){},playStageVictory(){},sceneForLevel(){},toast(){},DEFAULTS:{},

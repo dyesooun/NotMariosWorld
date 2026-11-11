@@ -123,11 +123,57 @@ test('reports update only host detail and compact rankings, with no simulation p
   assert.equal((await f.report(0,{coins:2,current:20,distanceMax:65,progress:.05})).type,'reportAck');
   const progress=await receive(f.host,m=>m.type==='progress');assert.equal(progress.players.length,1);const p=progress.players[0];
   assert.equal(p.score,22);assert.equal(p.summary.coins,2);assert.equal(p.runId,f.players[0].runId);assert.equal('state'in p,false);
+  await f.advance(1000);
   const compact=await receive(f.clients[1],m=>m.type==='leaderboard');assert.equal(compact.players.find(p=>p.id===f.players[0].id).score,22);
   assert.equal(JSON.stringify(compact).includes('checkpoint'),false);assert.equal(JSON.stringify(compact).includes('runId'),false);
   assert.equal(f.clients[1].inbox.some(m=>m.type==='progress'),false);
   assert.equal(f.host.inbox.some(m=>m.type==='state'),false);
   for(const field of ['enemies','projectiles','collected','"vx"','"x"'])assert.equal(JSON.stringify(progress).includes(field),false);
+});
+
+test('coin-only earnings use a private wallet patch and preserve spend/cooldown state',async t=>{
+  const f=await fixture(t,{count:2}); await f.start();
+  f.clients.forEach(ws=>ws.inbox=[]); f.host.inbox=[];
+  const player=f.players[0]; player.coinAttack.spent=12; player.coinAttack.cooldownEndsAt=123456;
+  assert.equal((await f.report(0,{earnedCoins:50,coins:5,current:50})).type,'reportAck');
+  const wallet=await receive(f.clients[0],m=>m.type==='coinWallet');
+  assert.equal(wallet.roundId,f.room.roundId); assert.equal(wallet.runId,player.runId); assert.equal(wallet.playerId,player.id);
+  assert.deepEqual(wallet.wallet,{earned:50,spent:12,reserved:0,available:38,cooldownEndsAt:123456,queued:false,queuePosition:null});
+  assert.equal(f.clients[0].inbox.some(m=>m.type==='state'),false);
+  assert.equal(f.clients[1].inbox.some(m=>m.type==='coinWallet'||m.type==='state'),false);
+  assert.equal(f.host.inbox.some(m=>m.type==='coinWallet'),false);
+});
+
+test('leaderboards are throttled and omit unchanged entries while including rank changes',async t=>{
+  const f=await fixture(t,{count:2}); await f.start(); f.clients.forEach(ws=>ws.inbox=[]); f.host.inbox=[];
+  await f.report(0,{current:20}); await f.advance(500);
+  assert.equal(f.clients[1].inbox.some(m=>m.type==='leaderboard'),false);
+  await f.advance(500); const initial=await receive(f.clients[1],m=>m.type==='leaderboard');
+  assert.equal(initial.roundId,f.room.roundId); assert.equal(initial.players.length,1);
+  assert.equal(initial.players[0].id,f.players[0].id,'unchanged second place is omitted');
+  f.clients.forEach(ws=>ws.inbox=[]); f.host.inbox=[];
+  await f.report(0,{current:20}); await f.advance(1000);
+  assert.equal(f.clients[1].inbox.some(m=>m.type==='leaderboard'),false,'unchanged summaries do not rebroadcast');
+  await f.report(1,{current:50}); await f.advance(1000);
+  const changed=await receive(f.clients[1],m=>m.type==='leaderboard');
+  assert.deepEqual(changed.players.map(p=>p.id).sort(),[f.players[0].id,f.players[1].id].sort());
+  assert.equal(changed.players.find(p=>p.id===f.players[1].id).rank,1);
+  assert.equal(changed.players.find(p=>p.id===f.players[0].id).rank,2);
+});
+
+test('full coordinator broadcasts refresh the delta baseline before a score rollback',async t=>{
+  const f=await fixture(t,{count:2}); await f.start();
+  await f.report(0,{current:20}); await f.advance(1000);
+  await receive(f.clients[1],m=>m.type==='leaderboard');
+  await f.report(0,{current:40});
+  const late=await f.join('Late arrival');
+  const full=await receive(late.ws,m=>m.type==='state');
+  assert.equal(full.room.players.find(p=>p.id===f.players[0].id).score,40);
+  f.clients[1].inbox=[];
+  await f.report(0,{current:20}); await f.advance(1000);
+  const rollback=await receive(f.clients[1],m=>m.type==='leaderboard');
+  assert.equal(rollback.players.find(p=>p.id===f.players[0].id).score,20);
+  assert.equal(rollback.players.some(p=>p.id===late.player.id),false);
 });
 
 test('idle rooms emit no gameplay snapshots or input traffic and ignore legacy movement inputs',async t=>{

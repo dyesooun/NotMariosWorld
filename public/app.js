@@ -226,6 +226,12 @@ function onMessage(msg) {
     }
   }
   if(msg.type==='reportAck'){if(msg.runId===localRun?.runId&&msg.seq===localRun?.lastReport?.seq&&localRun.lastReport.final)finalPending=false;return;}
+  if(msg.type==='coinWallet'){
+    const me=room?.players.find(p=>p.id===you);
+    if(role!=='player'||!me||msg.roundId!==room.roundId||msg.playerId!==you||msg.runId!==me.runId||!msg.wallet)return;
+    me.coinAttack={...(me.coinAttack||{}),...msg.wallet};
+    renderRoom(); return;
+  }
   if(msg.type==='error'&&msg.transactionId){const q=room?.players.find(p=>p.id===you)?.powerQuiz;if(q&&q.transactionId===msg.transactionId&&q.id===msg.challengeId){playerQuizControls?.resetSubmission();syncPlayerQuiz();}}
   if(msg.type==='powerAnswerResult'){toast(msg.correct?(msg.role==='attack'?(room?.powerDuel?.source==='coin'?'Correct! Your selected opponent must defend.':'Correct! Your opponents must defend.'):'Correct! You blocked this attack.'):(msg.role==='attack'?'Incorrect. Your power backfires on you.':'Incorrect. The power will affect you.'));return;}
   if(msg.type==='powerQueued'){toast(`${msg.name||'Your power'} queued${msg.position?` (#${msg.position})`:''}. It will activate in turn.`);return;}
@@ -234,6 +240,7 @@ function onMessage(msg) {
   if(msg.type==='hostAttackCancelled'){toast(`${msg.name||'Host challenge'} skipped: no active players remain.`);return;}
   if(msg.type==='powerCancelled'){toast(msg.reason==='NO_TARGET'?'No opponents are ready. Your unused power is kept.':`${msg.name||'Your queued power'} could not start. Your unused power is kept.`);return;}
   if (msg.type === 'progress' || msg.type === 'leaderboard') {
+    if (msg.type === 'leaderboard' && (!room || msg.roundId !== room.roundId)) return;
     if (room && Array.isArray(msg.players)) for (const patch of msg.players) {
       const player = room.players.find(p => p.id === patch.id);
       if (player) Object.assign(player,mergePlayerPatch(player,patch));
