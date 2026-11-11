@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { GameAudio, MUSIC_TRACKS, VICTORY_TRACKS, EFFECT_SOUNDS, EFFECT_SFX } from '../public/game/audio.js';
+import { GameAudio, MUSIC_TRACKS, VICTORY_TRACKS, EFFECT_SOUNDS, EFFECT_SFX, normalizeDecodedAudioBuffer, AUDIO_MASTER_GAIN, AUDIO_TARGET_RMS } from '../public/game/audio.js';
 
 class Param { constructor(value = 0) { this.value = value; } setValueAtTime(v) { this.value = v; } linearRampToValueAtTime(v) { this.value = v; } exponentialRampToValueAtTime(v) { this.value = v; } cancelScheduledValues() {} }
-class Node { constructor() { this.gain = new Param(); this.frequency = new Param(); this.started = false; this.stopped = false; } connect() {} disconnect() {} start(when=0,offset=0) { this.started = true; this.offset=offset; } stop(when) { if(when!=null)return;this.stopped = true; this.onended?.(); } }
+class Node { constructor() { this.gain = new Param(); this.frequency = new Param(); this.started = false; this.stopped = false; } connect(destination) { this.destination = destination; } disconnect() {} start(when=0,offset=0) { this.started = true; this.offset=offset; } stop(when) { if(when!=null)return;this.stopped = true; this.onended?.(); } }
 class BufferSource extends Node { constructor() { super(); this.loop = false; this.buffer = null; } }
 class Context { static instances = []; constructor() { this.state = 'suspended'; this.currentTime = 0; this.destination = new Node(); this.sources = []; this.oscillators=[];Context.instances.push(this); } createGain() { return new Node(); } createBufferSource() { const n = new BufferSource(); this.sources.push(n); return n; } createOscillator(){const node=new Node();this.oscillators.push(node);return node;} decodeAudioData() { return Promise.resolve({ duration: 30 }); } async resume() { this.state = 'running'; } close() { this.state = 'closed'; } }
 const fakeFetch = async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) });
@@ -23,9 +23,83 @@ test('all compressed audio copies preserve exact stream metadata', () => {
   walk('public/assets/audio'); assert.equal(files.length,35);
   for(const file of files){const relative=file.slice('public'.length);const original=relative.replace('.compressed.flac','.wav'); assert.deepEqual(flacStreamInfo(relative),wavStreamInfo(original),relative);}
 });
+test('decoded buffers are matched after their role bus and remain peak-safe', () => {
+  const channel = Float32Array.from([.02, -.04, .08, -.12, .2, -.3]);
+  const buffer = { numberOfChannels: 1, length: channel.length, getChannelData: () => channel };
+  normalizeDecodedAudioBuffer(buffer, .62);
+  const rms = Math.sqrt(channel.reduce((sum, value) => sum + value * value, 0) / channel.length);
+  assert.ok(Math.abs(rms * .62 * AUDIO_MASTER_GAIN - AUDIO_TARGET_RMS) < .001);
+  assert.ok(Math.max(...channel.map(Math.abs)) * .62 * AUDIO_MASTER_GAIN <= .98);
+});
+test('silence-gated normalization leaves silent decoded buffers untouched', () => {
+  const channel = new Float32Array([0, .0001, -.0002, 0]);
+  const before = [...channel];
+  const buffer = { numberOfChannels: 1, length: channel.length, getChannelData: () => channel };
+  normalizeDecodedAudioBuffer(buffer, .3);
+  assert.deepEqual([...channel], before);
+});
+test('transient-heavy buffers hit the peak-safe cap instead of clipping', () => {
+  const channel = Float32Array.from([...Array(999).fill(.0035), 1]);
+  const buffer = { numberOfChannels: 1, length: channel.length, getChannelData: () => channel };
+  normalizeDecodedAudioBuffer(buffer, .62);
+  const peak = Math.max(...channel.map(Math.abs));
+  const rms = Math.sqrt(channel.reduce((sum, value) => sum + value * value, 0) / channel.length);
+  assert.ok(Math.abs(peak * .62 * AUDIO_MASTER_GAIN - .98) < .001);
+  assert.ok(rms * .62 * AUDIO_MASTER_GAIN < AUDIO_TARGET_RMS);
+});
+test('music and effects buses produce the same post-bus RMS for the same input', () => {
+  const values = Float32Array.from([.04, -.08, .12, -.16, .2, -.24]);
+  const makeBuffer = () => {
+    const channel = new Float32Array(values);
+    return { channel, buffer: { numberOfChannels: 1, length: channel.length, getChannelData: () => channel } };
+  };
+  const music = makeBuffer(); const effects = makeBuffer();
+  normalizeDecodedAudioBuffer(music.buffer, .62); normalizeDecodedAudioBuffer(effects.buffer, .3);
+  const rms = channel => Math.sqrt(channel.reduce((sum, value) => sum + value * value, 0) / channel.length);
+  assert.ok(Math.abs(rms(music.channel) * .62 * AUDIO_MASTER_GAIN - rms(effects.channel) * .3 * AUDIO_MASTER_GAIN) < .001);
+});
+test('stereo normalization preserves the channel ratio', () => {
+  const left = Float32Array.from([.04, -.08, .12]); const right = Float32Array.from([.02, -.04, .06]);
+  const before = left.map((value, index) => value / right[index]);
+  const buffer = { numberOfChannels: 2, length: left.length, getChannelData: channel => channel ? right : left };
+  normalizeDecodedAudioBuffer(buffer, .62);
+  assert.deepEqual(left.map((value, index) => value / right[index]), before);
+});
+test('fallback buffer is decoded and normalized once across repeated requests', async () => {
+  let compressedFetches = 0; let wavFetches = 0; let decodes = 0;
+  const channel = Float32Array.from([.04, -.08, .12, -.16]);
+  const context = new Context();
+  context.decodeAudioData = async () => { decodes++; return { numberOfChannels: 1, length: channel.length, getChannelData: () => channel }; };
+  const audio = new GameAudio({ AudioContext: Context, fetch: async src => {
+    if (src.endsWith('.compressed.flac')) { compressedFetches++; throw new Error('compressed unavailable'); }
+    wavFetches++; return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
+  }, ...timers() });
+  audio.context = context;
+  const first = await audio._loadBuffer(MUSIC_TRACKS.lobby.src, .62);
+  const afterFirst = [...channel];
+  const second = await audio._loadBuffer(MUSIC_TRACKS.lobby.src, .62);
+  assert.equal(first, second); assert.deepEqual([...channel], afterFirst);
+  assert.equal(compressedFetches, 1); assert.equal(wavFetches, 1); assert.equal(decodes, 1);
+  audio.dispose();
+});
 test('unlock starts one looping compressed source and repeated unlock does not duplicate', async () => {
   const audio = new GameAudio({ AudioContext: Context, fetch: fakeFetch, ...timers() }); assert.equal(await audio.unlock(), true); await flush(); await flush();
   assert.equal(Context.instances.at(-1).sources.length, 1); assert.equal(Context.instances.at(-1).sources[0].loop, true); await audio.unlock(); await Promise.resolve(); assert.equal(Context.instances.at(-1).sources.length, 1); audio.dispose();
+});
+
+test('background loops play at fifty percent after normalization while victory and effects retain their mix',async t=>{
+  const {audio}=fixture(t);await audio.unlock();await flush();
+  assert.equal(audio._backgroundGain.gain.value,.5);
+  assert.equal(audio._backgroundGain.destination,audio._musicGain);
+  for(const scene of Object.keys(MUSIC_TRACKS)){
+    audio.setScene(scene);await flush();
+    assert.equal(audio._musicSource.destination,audio._backgroundGain);
+  }
+  const done=audio.playVictory('forest');await flush();
+  assert.equal(audio._victorySource.destination,audio._musicGain);
+  audio._victorySource.onended();await done;
+  audio.playEffect('coin');await flush();
+  assert.equal([...audio._fxVoices][0].destination,audio._fxGain);
 });
 test('victory stops background, resolves on source end, and does not duplicate loads', async () => {
   const audio = new GameAudio({ AudioContext: Context, fetch: fakeFetch, ...timers() }); await audio.unlock(); await flush(); await flush(); const promise = audio.playVictory('forest');
@@ -170,6 +244,18 @@ test('default-on audio stays lazy and shared FX stop on mute and hide',async t=>
   assert.equal(audio._fxVoices.size,0);assert.equal(audio.playEffect('jump','forest'),false);
 });
 
+test('volume API clamps, works before unlock, and restores independently of mute', async t => {
+  const { audio } = fixture(t);
+  assert.equal(audio.getVolume(), 1);
+  assert.equal(audio.setVolume(2), 1); assert.equal(audio.getVolume(), 1);
+  assert.equal(audio.setVolume(-1), 0); assert.equal(audio.setVolume(Number.NaN), 0); assert.equal(audio.setVolume(Number.POSITIVE_INFINITY), 0);
+  assert.equal(audio.setVolume(.4), .4);
+  await audio.unlock();
+  assert.equal(audio._master.gain.value, .72 * .4);
+  audio.setEnabled(false); assert.equal(audio._master.gain.value, 0); assert.equal(audio.getVolume(), .4);
+  audio.setEnabled(true); assert.equal(audio._master.gain.value, .72 * .4);
+  audio.setVolume(0); assert.equal(audio._master.gain.value, 0);
+});
 test('all themes reuse cached WAV buffers and one-shots clean up independently',async t=>{
   const {audio,loads}=fixture(t);await audio.unlock();await flush();
   const buffer=await audio._bufferPromises.get(EFFECT_SFX.coin_pickup);

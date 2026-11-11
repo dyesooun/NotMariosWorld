@@ -32,7 +32,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 - Keep biome identity separate from race position. Stage numbers, progress indicators, and the host dashboard follow the selected sequence; artwork, music, chests, checkpoint IDs, and escape broadcasts follow the actual biome. Finish only after the last world in the selected sequence, even if it is the forest or ocean. Do not reorder the global `LEVELS` array to implement this setting.
 - Scoring settings default to **10 points per coin** and **1 point per 32-pixel distance tile**; the current supported range for each weight is 0–1000.
 - Coin-funded attacks default to **30 coins** and a **60-second per-player cooldown**. The host can configure the cost (1–1000 coins) and cooldown (1–3600 seconds) in lobby Game settings. These are separate from score weights and shared power/quiz durations.
-- The host can separately configure **power duration**, **attack-answer window**, and **defense-answer window** in the lobby, each from **1–60 seconds**. Defaults are **5**, **10**, and **10 seconds**, respectively. The server owns these deadlines; quiz progress and result broadcasts must use the configured values.
+- The host can separately configure **power duration**, **attack-answer window**, and **defense-answer window** in the lobby, each from **1–60 seconds**. Defaults are **8**, **15**, and **15 seconds**, respectively. The server owns these deadlines; quiz progress and result broadcasts must use the configured values.
 - The host can also configure every power's strength: Sticky Boots speed (10–90% of normal, default 25%), Wrong Way speed while reversed (50–200%, default 100%), Ice Skates speed (110–250%, default 170%), Ice Skates braking grip (2–50% of normal, default 12%), and Ink Cloud darkness (0–95%, default 88%). Lower ice grip preserves more momentum. The server latches strength when the turn begins; local physics and rendering use those issued values consistently.
 - Late arrivals are allowed during a running round. They start the first world in the selected sequence and have only the room's remaining time, with no personal timer extension.
 - Refreshing/rejoining a player during an unfinished round resets their run: location, score, banked points, checkpoints, inventory, and collected coins. It is not a saved-game recovery feature.
@@ -69,7 +69,7 @@ This file records the agreed requirements for the company's Game Day Thursday ga
 
 ## Race worlds and presentation
 
-- Scene changes use a viewport-centered cartoon iris wipe: a pure-black cover closes around a live circular opening, the scene switches only at full black, then the circle opens past all four corners. Each direction defaults to 500 ms and is configurable in the reusable transition controller. Keep circles round through resize/fullscreen, cover viewport UI, clear/block player input, and serialize transitions. Preserve victory-stinger holds and authoritative room cutoffs/final reports; the wipe grants no extra playtime.
+- Scene changes use a viewport-centered cartoon iris wipe: a pure-black cover closes around a live circular opening, the scene switches only at full black, then the circle opens past all four corners. Each direction defaults to 500 ms and is configurable in the reusable transition controller. Keep circles round through resize/fullscreen, cover viewport UI, clear/block player input, and serialize transitions. Attack/defense coordinator updates arriving during a victory hold or iris wipe must retain their quiz state without skipping the pending world advance. Reconcile buffered updates before the guarded scene switch; round cutoff, lobby reset and replacement runs still take precedence. Preserve victory-stinger holds and authoritative room cutoffs/final reports; the wipe grants no extra playtime.
 
 | World ID | World | Required theme |
 | --- | --- | --- |
@@ -141,6 +141,7 @@ The notes below document the retained original art and legacy fixture. They do n
 - Completing the last world in the selected sequence banks the final level and waits for the shared room timer and ceremony; it does not immediately end the round for everyone.
 - At time expiry, include **banked points plus current unbanked points** in the final result.
 - Highest score wins. Ties favor earlier full-course completion measured from the **room's start**, then join order for remaining ties. An unfinished player has no completion time.
+- The podium displays cosmetic **Respawn Royalty** (most deaths) and **Coin Goblin** (most cumulative run-earned coins, including banked/spent coins) callouts from immutable final results. Show all tied winners; zero totals use neutral messages. Keep ranks and scoring unchanged. Cards use crisp HTML pixel panels beside the podium and stay aligned in fullscreen.
 - Freeze final scores and ranks at round end. Disconnects, refreshes, reconnects, and new spectators must not change podium placements.
 
 ## Critters and projectiles
@@ -178,10 +179,10 @@ The notes below document the retained original art and legacy fixture. They do n
 
 | Power | Effect | Duration |
 | --- | --- | --- |
-| Sticky Boots | Slower movement | Host setting; default 5 seconds |
-| Wrong Way | Reversed movement controls | Host setting; default 5 seconds |
-| Ice Skates | Faster slippery movement (default 170% speed, 12% braking grip) | Host setting; default 5 seconds |
-| Ink Cloud | Dark fog over the affected player's view | Host setting; default 5 seconds |
+| Sticky Boots | Slower movement | Host setting; default 8 seconds |
+| Wrong Way | Reversed movement controls | Host setting; default 8 seconds |
+| Ice Skates | Faster slippery movement (default 170% speed, 12% braking grip) | Host setting; default 8 seconds |
+| Ink Cloud | Dark fog over the affected player's view | Host setting; default 8 seconds |
 
 - Successful chest attacks **challenge every eligible opponent**, excluding the caster. Coin-funded attacks challenge only the selected opponent. Correct defenders block individually; wrong or unanswered defenses are affected. Attack-quiz failure applies the effect to the caster alone. Random-single-opponent scope is not used.
 - Ink Cloud defaults to **95% darker than its original fog appearance**, with host-configurable darkness. Apply the additional darkening before drawing readable HUDs, broadcasts, and quiz controls.
@@ -209,7 +210,7 @@ The notes below document the retained original art and legacy fixture. They do n
 - Queued requests survive the caster's death and level changes. Disconnecting/refreshing cancels pending requests; ending or resetting the round clears requests, quizzes, and effects.
 - A request consumes its exact chest item when its attack quiz begins. It remains spent whether the attack succeeds, fails, times out, or is blocked; later unclaimed chests can still grant powers. Reservations must retain their item/run identity so a stale request cannot consume a replacement.
 - A caster disconnecting during their attack quiz cancels that turn. Once a successful attack has committed its defense phase, the turn may finish without the caster. Invalid/disconnected/refreshed/finished defenders must be skipped without affecting a new run.
-- Do not overlap power effects. Start the effect when its result broadcast starts, after defenses resolve. Keep that broadcast visible for the **full configured power duration** (default 5 seconds).
+- Do not overlap power effects. Start the effect when its result broadcast starts, after defenses resolve. Keep that broadcast visible for the **full configured power duration** (default 8 seconds).
 - If all defenders block, show the blocked result for the same configured duration, with no applied effects, before advancing the queue.
 - Every level escape is broadcast to everyone **inside the game viewport**, including a host view.
 - Level-escape broadcasts display one at a time, for at most **2 seconds each**, in the same ordered announcement queue as power turns. A level announcement must not replace an active quiz or truncate a power's result banner.
@@ -218,10 +219,11 @@ The notes below document the retained original art and legacy fixture. They do n
 ## Attack and defense quizzes
 
 - Activating a power requires a random **general-knowledge** question from a server-owned pool. This pool is separate from configurable lobby icebreakers; it currently contains 102 questions, with 50% drawn from Philippines trivia.
-- Attacker: the configured attack window (**10 seconds by default**), **one attempt**. Wrong or unanswered means the power applies to the attacker for the configured power duration, without a defender quiz.
-- Correct attack: every eligible opponent for a chest attack, or only the chosen opponent for a coin-funded attack, receives a private defense question with the configured defense window (**10 seconds by default**) and **one attempt**.
+- Attacker: the configured attack window (**15 seconds by default**), **one attempt**. Wrong or unanswered means the power applies to the attacker for the configured power duration, without a defender quiz.
+- Correct attack: every eligible opponent for a chest attack, or only the chosen opponent for a coin-funded attack, receives a private defense question with the configured defense window (**15 seconds by default**) and **one attempt**.
 - Defense happens **before the effect starts**. Correct defense blocks that player's effect; incorrect/unanswered defense leaves that player affected. One player's success must not protect others automatically.
 - Resolve early when all applicable answers are in. Otherwise resolve at the authoritative deadline, then give affected players the full configured effect duration.
+- Defenders resume movement as soon as their own answer is accepted, whether correct or incorrect. The attacker stays frozen until all applicable defenders answer or the defense deadline resolves. Apply this to targeted coin attacks and global chest powers; host-challenge defenders also resume individually after answering. The attacker’s waiting-for-defenders card explains that movement is paused and resumes once all defenders answer or time runs out.
 - Answers are **case-insensitive**. Preserve Unicode normalization, trimming, repeated-whitespace normalization, and the accepted aliases in the server question bank.
 - Keep answer keys and accepted aliases on the server. Never expose them in static public files, snapshots, host previews, or client-side validation. Players receive only their own question; the host may view question previews without answer keys.
 - Validate the socket's participant, current run, transaction ID, challenge ID, phase, deadline, and one-attempt state on every answer. Reject stale, duplicate, forged, or other players' submissions.
@@ -256,7 +258,9 @@ The notes below document the retained original art and legacy fixture. They do n
 
 - Play the supplied audio through lossless sibling `<stem>.compressed.flac` copies, retaining all original WAV files. If compressed fetching or decoding fails, automatically try the original WAV and cache the result under the requested compressed source. Preserve exact samples, channel layout, sample rates, loop lengths, victory duration constants, gains, cue sequencing, mute/visibility behavior and deadline handling. Serve FLAC as `audio/flac`. Regenerate and verify compressed copies whenever original audio changes; do not add lossy encoding or remove originals without explicit user direction.
 
-- Background music **and sound effects are enabled by default**. Preserve the single speaker control that mutes/enables both.
+- Match music, victory cues and sound effects to a common playback volume using one cached, silence-gated RMS adjustment per decoded buffer, accounting for role/master bus gains. Bound amplification and individual output peaks. Preserve source WAV/FLAC samples and timing; only in-memory playback amplitude changes. This is volume matching, without bass/treble EQ. Apply an additional 0.5 gain to background loops after normalization (50% volume); victory cues and effects keep their matched levels.
+
+- Background music **and sound effects are enabled by default**. Preserve the single speaker control that mutes/enables both. Hovering or keyboard-focusing that control reveals a 0–100% master-volume slider with a live percentage. The selected volume survives page-section changes and mute/unmute within the loaded page; it does not change normalization or music/effect balance.
 - Unlock playback on the first user click/key press to comply with browser autoplay behavior; do not silently change the default preference to muted.
 - Use the supplied WAV loops under `public/assets/audio`: `lobby/lobby_main_loop_30s.wav` for the lobby, the respective `forest`, `tide`, and `hell` `music/*_danger_full_loop_30s.wav` for race biomes, and `lobby/podium_main_loop_30s.wav` for the podium. Loop each complete file. Use each race biome's matching `*_victory_stinger.wav` once on its stage clear; do not layer the old synthesized music or clear/finish jingles over it. After the final stage's stinger, use the podium loop while waiting for the shared timer.
 - Use the supplied theme-neutral WAV effects under `public/assets/audio/sfx/` for every level, the lobby, and podium. Replace runtime-composed effects with these shared files; do not apply biome overrides or synthesized fallbacks. Play effects at 30% gain. Music and victory stingers retain their biome identity.

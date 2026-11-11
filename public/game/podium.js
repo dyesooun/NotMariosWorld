@@ -14,6 +14,29 @@ const rect = (c, color, x, y, w, h) => { c.fillStyle = color; c.fillRect(Math.ro
 const text = (c, value, x, y, size = 14, color = '#e5efd7', align = 'center') => { c.font = `bold ${size}px monospace`; c.fillStyle = color; c.textAlign = align; c.fillText(String(value), Math.round(x), Math.round(y)); c.textAlign = 'left'; };
 const short = (s, n) => Array.from(String(s)).length > n ? Array.from(String(s)).slice(0, n - 1).join('') + '…' : s;
 
+// Awards are derived only from the immutable settlement results. Keep the
+// result order for joint winners so the ceremony never invents a new tie-break.
+export function podiumAwards(results) {
+  const source = Array.isArray(results) ? results : [];
+  const max = (field) => source.reduce((best, player) => Math.max(best, Number(player?.summary?.[field]) || 0), 0);
+  const award = (field, title, emptyMessage, noun) => {
+    const value = max(field);
+    const winners = value > 0 ? source.filter(player => (Number(player?.summary?.[field]) || 0) === value) : [];
+    return Object.freeze({
+      title,
+      value,
+      winners,
+      // `players` is a readable alias for consumers that render lists.
+      players: winners,
+      message: winners.length ? `${winners.map(player => player?.name || 'Unknown runner').join(', ')} · ${value.toLocaleString()} ${noun}` : emptyMessage,
+    });
+  };
+  return Object.freeze({
+    deaths: award('deaths', 'RESPAWN ROYALTY', 'No deaths this round', 'deaths'),
+    earnedCoins: award('earnedCoins', 'COIN GOBLIN', 'No coins collected.', 'coins collected'),
+  });
+}
+
 export function podiumSlots(results) {
   return results.map((player, index) => {
     const rank = player.rank || index + 1;

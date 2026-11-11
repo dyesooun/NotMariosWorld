@@ -57,6 +57,9 @@ export function worldUIModel(room,{now=Date.now(),viewerId=null,isHost=false}={}
   const announcementRight=countdown!==null?740:isHost?900:946;
   const announcementY=!isHost&&room?.status==='running'?POWER_HUD_RECT.y:18;
   const announcement=!question&&a&&a.endsAt>now?{...a,remainingSeconds:Math.max(0,Math.ceil((a.endsAt-now)/1000)),queuedPowerCount:room.powerQueue?.length||0,rect:isHost?box(6,6,948,528):box(announcementX,announcementY,announcementRight-announcementX,68)}:null;
+  if(announcement?.kind==='power-quiz'&&!isHost&&room.powerDuel?.phase==='defense'&&room.powerDuel.casterId===viewerId){
+    announcement.text='Movement paused while defenders answer. Resume when all answer or time runs out.';
+  }
   return {question,announcement,countdown};
 }
 const rect=(ctx,color,x,y,w,h)=>{ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
@@ -126,7 +129,7 @@ export function renderWorldUI(canvasOrContext,room,options={}) {
     if(a.kind==='power'||a.kind==='power-quiz'){
       text(ctx,`${a.remainingSeconds}s${a.queuedPowerCount?` / ${a.queuedPowerCount} QUEUED`:''}`,r.x+r.w-(host?(model.countdown!==null?232:32):16),r.y+(host?48:20),host?20:10,'#8ce4ee','right');
       rect(ctx,'#355449',r.x+16,r.y+r.h-6,r.w-32,3);
-      rect(ctx,'#b7ef51',r.x+16,r.y+r.h-6,(r.w-32)*Math.max(0,Math.min(1,(a.endsAt-(options.now??Date.now()))/(a.durationMs||5000))),3);
+      rect(ctx,'#b7ef51',r.x+16,r.y+r.h-6,(r.w-32)*Math.max(0,Math.min(1,(a.endsAt-(options.now??Date.now()))/(a.durationMs||8000))),3);
     }
     const messageSize=host?32:14,lineHeight=host?44:16;
     const messageLines=lines(a.text,Math.floor((r.w-(host?64:32))/(messageSize*.6)));

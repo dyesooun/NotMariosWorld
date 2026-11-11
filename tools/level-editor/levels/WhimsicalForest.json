@@ -21702,7 +21702,7 @@
     {
       "id": "object-564547fe-3d81-4eaf-870e-7eb98657d00c",
       "definitionId": "whimsical-forest-props-1-atlas:cut-15",
-      "x": 2615,
+      "x": 2120,
       "y": 400,
       "width": 60,
       "height": 150,
@@ -22052,7 +22052,7 @@
       "id": "object-12e4aae8-2cae-4958-a062-68d3981d8562",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 2775,
-      "y": 230,
+      "y": 195,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -22082,7 +22082,7 @@
       "id": "e8ff3fae-849d-4ff7-864a-6fdf1ae98e82",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 2815,
-      "y": 230,
+      "y": 195,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -22112,7 +22112,7 @@
       "id": "240ded09-28a7-4497-a3e8-ea3ec7e740d1",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
       "x": 2855,
-      "y": 230,
+      "y": 195,
       "width": 25,
       "height": 25,
       "layer": -5,
@@ -22291,7 +22291,7 @@
     {
       "id": "object-42559822-fff6-4c28-ac21-1d6d53fbb1fd",
       "definitionId": "whimsical-forest-props-1-atlas:cut-12",
-      "x": 3115,
+      "x": 3095,
       "y": 505,
       "width": 25,
       "height": 25,
@@ -24507,7 +24507,7 @@
     {
       "id": "object-3ab55775-ab21-494e-b2d9-1b1d5c5ca877",
       "definitionId": "whimsical-forest-props-1-atlas:cut-24",
-      "x": 2610,
+      "x": 2550,
       "y": 520,
       "width": 41.03766196219385,
       "height": 31.103977338844743,
@@ -25299,6 +25299,36 @@
       "settings": {
         "detectRange": 250,
         "fireIntervalMs": 1000
+      }
+    },
+    {
+      "id": "535c3c08-9aea-4c4e-8cb2-c4b435ab0d88",
+      "definitionId": "whimsical-forest-props-1-atlas:cut-15",
+      "x": 3125,
+      "y": 400,
+      "width": 60,
+      "height": 150,
+      "layer": 1,
+      "flipX": false,
+      "rotation": 0,
+      "settings": {},
+      "gameplay": {
+        "role": "checkpoint",
+        "triggerVolume": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "anchor": [
+          0.5,
+          1
+        ],
+        "tags": [],
+        "coinValue": 1,
+        "priority": 0,
+        "decoyKind": "spikes",
+        "nonblocking": true
       }
     }
   ]

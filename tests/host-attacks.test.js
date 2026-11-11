@@ -20,7 +20,8 @@ async function fixture(t, count = 3, settings = {}) {
   const server = createGameServer({ port: 0, host: '127.0.0.1', tickMs: 2, now: () => clock });
   await server.listen(); t.after(() => server.close());
   const url = `ws://127.0.0.1:${server.httpServer.address().port}`;
-  const host = await open(url); send(host, 'create', { settings });
+  const host = await open(url); // Keep historical timing scenarios explicit; new defaults are covered in server.test.js.
+  send(host, 'create', {settings:{powerDurationSeconds:5,attackWindowSeconds:10,defendWindowSeconds:10,...settings}});
   const created = await take(host, m => m.type === 'created');
   const room = server.rooms.get(created.code), clients = [], players = [];
   for (let i = 0; i < count; i++) {

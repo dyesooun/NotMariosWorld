@@ -49,6 +49,25 @@ test('quiz broadcasts distinguish participants, answered players, and untargeted
   room.players[0].powerQuiz.answered=true;
   assert.equal(powerQuizNotice(room,'target'),'DEFENSE ANSWER LOCKED');
 });
+
+test('targeted and global attackers see why movement is paused throughout defense',()=>{
+  for(const source of ['coin','player']){
+    const announcement={id:'duel',kind:'power-quiz',phase:'defense',text:'Other runners must defend!',endsAt:9000};
+    const room={status:'running',endsAt:10000,players:[],announcement,powerDuel:{id:'duel',source,phase:'defense',casterId:'attacker',targetIds:['defender']}};
+    const options={now:1000,viewerId:'attacker'};
+    const waiting=worldUIModel(room,options).announcement;
+    assert.match(waiting.text,/Movement paused while defenders answer/);
+    assert.match(waiting.text,/Resume when all answer or time runs out/);
+    assert.equal(waiting.remainingSeconds,8);
+    assert.equal(worldUIModel(room,{...options,viewerId:'defender'}).announcement.text,announcement.text);
+    assert.equal(worldUIModel(room,{...options,viewerId:'bystander'}).announcement.text,announcement.text);
+    assert.equal(worldUIModel(room,{...options,isHost:true}).announcement.text,announcement.text);
+    assert.equal(announcement.text,'Other runners must defend!');
+    assert.equal(worldUIModel(room,{...options,now:9000}).announcement,null);
+    room.powerDuel.phase='effect';room.announcement={...announcement,kind:'power',text:'Power active!'};
+    assert.equal(worldUIModel(room,options).announcement.text,'Power active!');
+  }
+});
 test('the podium gives all 25 ranked avatars unique visible positions and highlights the top three',()=>{
   const results=Array.from({length:25},(_,i)=>({id:`p${i}`,rank:i+1,name:`Player ${i}`,score:100-i}));
   const slots=podiumSlots(results);

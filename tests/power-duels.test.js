@@ -24,6 +24,22 @@ test('attack correct creates private defense quiz and early defense completion',
   assert.equal(duelView(room).phase, 'effect');
 });
 
+test('default quizzes allow fifteen seconds per phase and default powers last eight seconds', () => {
+  const room = makeRoom();
+  // A current inventory item carries the default eight-second duration.
+  room.caster.powerSlots[1].power.durationMs = 8000;
+  beginPowerDuel(room, { id:'power-1', caster:room.caster, level:1, power:room.caster.powerSlots[1].power }, { now:100 });
+  const duel = room.powerDuel;
+  assert.equal(duel.endsAt,15100);
+  assert.equal(privateDuelQuiz(room,room.caster).durationMs,15000);
+  answerPowerDuel(room,room.caster,{transactionId:duel.id,challengeId:duel.attackQuestion.id,answer:duel.attackQuestion.answers[0],now:200});
+  assert.equal(duel.endsAt,15200);
+  assert.equal(privateDuelQuiz(room,room.defender).durationMs,15000);
+  assert.equal(advancePowerDuel(room,{now:15199}),false);
+  assert.equal(advancePowerDuel(room,{now:15200}),true);
+  assert.equal(duel.endsAt,23200);
+});
+
 test('wrong attack becomes self-effect outcome and timeout advances', () => {
   const room = makeRoom();
   beginPowerDuel(room, { id: 'power-1', caster: room.caster, level: 1, power: room.caster.powerSlots[1].power }, { now: 0 });
@@ -32,7 +48,7 @@ test('wrong attack becomes self-effect outcome and timeout advances', () => {
   assert.equal(wrong.correct, false);
   assert.equal(room.powerDuel.outcome, 'attackerFailed');
   const room2 = makeRoom(); beginPowerDuel(room2, { id: 'power-1', caster: room2.caster, level: 1, power: room2.caster.powerSlots[1].power }, { now: 0 });
-  assert.equal(advancePowerDuel(room2, { now: 10000 }), true);
+  assert.equal(advancePowerDuel(room2, { now: 15000 }), true);
   assert.equal(room2.powerDuel.outcome, 'attackerFailed');
 });
 

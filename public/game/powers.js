@@ -1,10 +1,10 @@
 // Server-authoritative power chest rules. This module intentionally has no DOM dependencies.
 import { LEVELS } from './levels.js';
 export const POWER_DEFINITIONS = Object.freeze([
-  Object.freeze({ type: 'slow', name: 'Sticky Boots', durationMs: 5000 }),
-  Object.freeze({ type: 'reverse', name: 'Wrong Way', durationMs: 5000 }),
-  Object.freeze({ type: 'slippery', name: 'Ice Skates', durationMs: 5000 }),
-  Object.freeze({ type: 'fog', name: 'Ink Cloud', durationMs: 5000 })
+  Object.freeze({ type: 'slow', name: 'Sticky Boots', durationMs: 8000 }),
+  Object.freeze({ type: 'reverse', name: 'Wrong Way', durationMs: 8000 }),
+  Object.freeze({ type: 'slippery', name: 'Ice Skates', durationMs: 8000 }),
+  Object.freeze({ type: 'fog', name: 'Ink Cloud', durationMs: 8000 })
 ]);
 export const POWER_STRENGTH_DEFAULTS = Object.freeze({ slowSpeedPercent: 25, reverseSpeedPercent: 100, slipperySpeedPercent: 170, slipperyGripPercent: 12, inkDarknessPercent: 88 });
 export const COIN_ATTACK_DEFAULTS = Object.freeze({ attackCoinCost: 30, attackCooldownSeconds: 60 });
@@ -36,7 +36,7 @@ export function powerEffects(player, now = Date.now()) {
   return active;
 }
 
-export function chestPower(player, level, chestId, random = Math.random, durationMs = 5000) {
+export function chestPower(player, level, chestId, random = Math.random, durationMs = 8000) {
   if (!LEVELS[level]?.powerChests?.some(chest => chest.id === chestId)) return null;
   const slot = slotFor(player, level);
   slot.chests ||= {};
@@ -48,7 +48,7 @@ export function chestPower(player, level, chestId, random = Math.random, duratio
   return { ...record.power };
 }
 
-export function collectPower(player, level = player?.state?.level, random = Math.random, chestId = null, { durationMs = 5000 } = {}) {
+export function collectPower(player, level = player?.state?.level, random = Math.random, chestId = null, { durationMs = 8000 } = {}) {
   if (!player || !Number.isFinite(level)) return null;
   const slot = slotFor(player, level);
   if (!player.state || player.state.finished || player.state.deadUntil > 0) return null;
@@ -83,7 +83,7 @@ export function reservePower(room, caster, { now = Date.now(), random = Math.ran
   if (!eligibleTargets(room, caster).length) return { ok: false, code: 'NO_TARGET' };
   const id = `${caster.id}-${level}-${now}-${Math.floor((Number(random()) || 0) * 1000000)}`;
   slot.reserved = id;
-  return { ok: true, id, caster, runId: caster.runId, level, itemId: held.itemId, chestId: held.chestId, power: { ...slot.power, target: 'all', durationMs: Number(room.settings?.powerDurationSeconds || 5) * 1000 } };
+  return { ok: true, id, caster, runId: caster.runId, level, itemId: held.itemId, chestId: held.chestId, power: { ...slot.power, target: 'all', durationMs: Number(room.settings?.powerDurationSeconds || 8) * 1000 } };
 }
 
 export function activatePower(room, caster, { now = Date.now(), random = Math.random, force = false, reservation = null } = {}) {

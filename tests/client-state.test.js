@@ -1,9 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergePlayerPatch, runtimeMismatch, worldProgressModel } from '../public/game/client-state.js';
+import { isDuelFrozen, mergePlayerPatch, runtimeMismatch, worldProgressModel } from '../public/game/client-state.js';
 import { DEFAULT_QUESTIONS } from '../public/game/default-questions.js';
 import { powerUIModel, activePowerEffects, renderPowerUI } from '../public/game/power-ui.js';
 import { powerChestOfferModel } from '../public/game/power-chest-ui.js';
+
+for(const source of ['coin','player','host']){
+  test(`${source} defenses unlock individually after either accepted answer while the attacker waits`,()=>{
+    const duel={id:'turn',source,phase:'defense',casterId:source==='host'?null:'attacker',targetIds:['defender','waiting']};
+    assert.equal(isDuelFrozen(duel,'defender',{transactionId:'turn',answered:false}),true);
+    for(const result of ['correct','incorrect']){
+      const quiz={transactionId:'turn',role:'defense',answered:true,result};
+      assert.equal(isDuelFrozen(duel,'defender',quiz),false);
+      assert.equal(isDuelFrozen(duel,'waiting'),true);
+      assert.equal(isDuelFrozen(duel,'attacker'),source!=='host');
+    }
+    assert.equal(isDuelFrozen(duel,'defender',{transactionId:'old-turn',answered:true}),true);
+    assert.equal(isDuelFrozen(duel,'bystander'),false);
+    duel.phase='effect';
+    assert.equal(isDuelFrozen(duel,'attacker'),false);
+    assert.equal(isDuelFrozen(duel,'waiting'),false);
+  });
+}
 
 test('compact leaderboard patches preserve host detail and the active local checkpoint', () => {
   const state={x:7142,checkpoint:{id:'forest-checkpoint-2',coins:2,current:20}};

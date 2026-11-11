@@ -27,8 +27,8 @@ export function beginPowerDuel(room, entry, { now = Date.now(), random = Math.ra
   const targets = eligibleTarget(room, entry, hostAttack ? null : caster);
   if (!targets.length) return { ok:false, code:'NO_TARGET' };
   if (!hostAttack && entry.source !== 'coin') { slot.used = true; slot.reserved = null; }
-  const attackMs = Math.max(1000, Number(room.settings?.attackWindowSeconds ?? 10) * 1000);
-  const defendMs = Math.max(1000, Number(room.settings?.defendWindowSeconds ?? 10) * 1000);
+  const attackMs = Math.max(1000, Number(room.settings?.attackWindowSeconds ?? 15) * 1000);
+  const defendMs = Math.max(1000, Number(room.settings?.defendWindowSeconds ?? 15) * 1000);
   const durationMs = Math.max(1000, Number(room.settings?.powerDurationSeconds ?? (entry.power.durationMs / 1000)) * 1000);
   entry.power = { ...entry.power, target: entry.source === 'coin' ? 'player' : 'all', durationMs, strength: powerStrength(room.settings, entry.power.type) };
   const duel = { id:randomUUID(),entry,caster,casterRunId:caster?.runId,random,attackMs,defendMs,phase:hostAttack?'defense':'attack',startedAt:now,endsAt:now+(hostAttack?defendMs:attackMs),attackQuestion:hostAttack?null:choosePowerQuestion({random}),attackAnswered:hostAttack?{correct:true,result:'host'}:null,defenses:new Map(),targets, outcome:null,affectedIds:[] };
@@ -91,7 +91,7 @@ export function isDuelFrozen(room, player) {
   if (duel.caster === player && player.runId === duel.casterRunId) return true;
   if (duel.phase !== 'defense') return false;
   const defense = duel.defenses.get(player.id);
-  return !!defense && defense.player === player && defense.runId === player.runId;
+  return !!defense && defense.player === player && defense.runId === player.runId && !defense.answered;
 }
 export function duelView(room){
   const duel=room?.powerDuel;if(!duel)return null;

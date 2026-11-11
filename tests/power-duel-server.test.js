@@ -5,7 +5,7 @@ import { createGameServer } from '../server/index.js';
 import { collectPower,powerEffects } from '../public/game/powers.js';
 import { LocalRunRuntime } from '../public/game/local-run.js';
 import { isDuelFrozen } from '../public/game/client-state.js';
-import { duelView } from '../server/power-duels.js';
+import { duelView, privateDuelQuiz, isDuelFrozen as serverDuelFrozen } from '../server/power-duels.js';
 import { LEVELS } from '../public/game/levels.js';
 
 // Legacy power-duel fixtures require chest-backed inventory; use ocean in the
@@ -22,7 +22,7 @@ async function fixture(t,count=3){
   let time=20000000;
   const server=createGameServer({port:0,host:'127.0.0.1',tickMs:2,now:()=>time});await server.listen();t.after(()=>server.close());
   const origin=`http://127.0.0.1:${server.httpServer.address().port}`,url=origin.replace('http:','ws:'),host=await socket(url);
-  send(host,'create');const made=await receive(host,m=>m.type==='created'),room=server.rooms.get(made.code),clients=[],players=[];
+  send(host,'create',{settings:{powerDurationSeconds:5,attackWindowSeconds:10,defendWindowSeconds:10}});const made=await receive(host,m=>m.type==='created'),room=server.rooms.get(made.code),clients=[],players=[];
   for(let i=0;i<count;i++){const ws=await socket(url);send(ws,'join',{code:made.code,name:`Quiz player ${i}`});const joined=await receive(ws,m=>m.type==='joined');send(ws,'spawn');clients.push(ws);players.push(room.players.get(joined.id));ws.player=players.at(-1);ws.room=room;}
   await waitFor(()=>players.every(p=>p.spawned));send(host,'start');await receive(host,m=>m.room?.status==='running');
   for(let i=0;i<count;i++){collectPower(players[i],1,()=>i/4);players[i].powerSlots[1].power.target='all';players[i].power.power.target='all';}
@@ -59,7 +59,16 @@ test('duel phase freeze is represented by coordinator metadata and local runtime
   const f=await fixture(t);await f.use();assert.equal(isDuelFrozen(duelView(f.room),f.players[0].id),true);
   const local=new LocalRunRuntime({roundId:'r',runId:'u',profile:{name:'local'},settings:{worldOrder:[1,2]}});local.begin([1,2]);local.setInput({right:true});local.tick(.2);const x=local.state.x;local.setFrozen(true);local.tick(.2);assert.equal(local.state.x,x);assert.equal(local.state.vx,0);
   await f.answer(0);assert.equal(isDuelFrozen(duelView(f.room),f.players[0].id),true);assert.equal(isDuelFrozen(duelView(f.room),f.players[1].id),true);
-  await f.answer(1);await f.answer(2,false);assert.equal(f.room.powerDuel.phase,'effect');
+  await f.answer(1);
+  for(const [i,frozen] of [[0,true],[1,false],[2,true]]){
+    const player=f.players[i];
+    assert.equal(isDuelFrozen(duelView(f.room),player.id,privateDuelQuiz(f.room,player)),frozen);
+    assert.equal(serverDuelFrozen(f.room,player),frozen);
+  }
+  local.setFrozen(isDuelFrozen(duelView(f.room),f.players[1].id,privateDuelQuiz(f.room,f.players[1])));
+  local.setInput({right:true});local.tick(.2);assert.ok(local.state.x>x);
+  await f.answer(2,false);assert.equal(f.room.powerDuel.phase,'effect');
+  assert.equal(isDuelFrozen(duelView(f.room),f.players[0].id),false);
 });
 
 test('wrong attacker answer backfires on self with no defense phase',async t=>{

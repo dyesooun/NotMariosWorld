@@ -19,13 +19,13 @@ test('collects one deterministic power per level and preserves it until use', ()
   assert.equal(collectPower(p, 1, () => .9), null);
 });
 
-test('activation excludes caster, supports random/all, and expires at five seconds', () => {
+test('activation excludes caster, supports random/all, and expires at eight seconds', () => {
   const caster = player('caster'), target = player('target'), room = { status: 'running', players: new Map([[caster.id, caster], [target.id, target]]) };
   collectPower(caster, 1, () => 0); // type slow, then random target
   assert.equal(activatePower(room, caster, { now: 100, random: () => .1 }).ok, true);
-  assert.equal(target.effects.slow.endsAt, 5100);
-  assert.equal(powerEffects(target, 5099).slow.type, 'slow');
-  assert.equal(powerEffects(target, 5100).slow, undefined);
+  assert.equal(target.effects.slow.endsAt, 8100);
+  assert.equal(powerEffects(target, 8099).slow.type, 'slow');
+  assert.equal(powerEffects(target, 8100).slow, undefined);
   assert.equal(caster.effects.slow, undefined);
 });
 
@@ -62,15 +62,15 @@ test('next level gets a fresh slot while the prior slot remains used', () => {
   assert.equal(p.powerSlots[2].claimed, true);
 });
 
-test('all powers last five seconds and direct activation cannot overlap an active power',()=>{
-  assert.ok(POWER_DEFINITIONS.every(power=>power.durationMs===5000));
+test('all powers last eight seconds and direct activation cannot overlap an active power',()=>{
+  assert.ok(POWER_DEFINITIONS.every(power=>power.durationMs===8000));
   const first=player('first'),second=player('second'),room={status:'running',players:new Map([[first.id,first],[second.id,second]])};
   collectPower(first,1,()=>0);collectPower(second,1,()=>.25);
   assert.equal(activatePower(room,first,{now:100}).ok,true);
-  assert.equal(activatePower(room,second,{now:5099}).ok,false);
+  assert.equal(activatePower(room,second,{now:8099}).ok,false);
   assert.equal(second.powerSlots[1].used,false);
-  assert.equal(activatePower(room,second,{now:5100}).ok,true);
-  assert.equal(room.activePower.endsAt,10100);
+  assert.equal(activatePower(room,second,{now:8100}).ok,true);
+  assert.equal(room.activePower.endsAt,16100);
 });
 
 test('one reservation blocks new-world pickup until the original item is consumed',()=>{

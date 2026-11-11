@@ -5,6 +5,7 @@ import { createGameServer } from '../server/index.js';
 import { emptyRunSummary, PROTOCOL_VERSION } from '../public/game/run-protocol.js';
 import { LEVELS } from '../public/game/levels.js';
 import { COLORS } from '../public/game/engine.js';
+import { podiumAwards } from '../public/game/podium.js';
 
 const sleep = ms => new Promise(resolve=>setTimeout(resolve,ms));
 async function wait(check) { for(let i=0;i<400;i++){const found=check();if(found)return found;await sleep(5);}throw new Error('Condition timed out'); }
@@ -36,6 +37,9 @@ test('health, cache protection, defaults, and explicitly disabled icebreakers',a
   assert.equal(f.room.settings.inkDarknessPercent,88);
   assert.equal(f.room.settings.slowSpeedPercent,25);
   assert.equal(f.room.settings.durationMinutes,15);
+  assert.equal(f.room.settings.powerDurationSeconds,8);
+  assert.equal(f.room.settings.attackWindowSeconds,15);
+  assert.equal(f.room.settings.defendWindowSeconds,15);
   assert.equal((await fetch(f.origin+'/app.js')).headers.get('cache-control'),'no-store');assert.equal(f.room.settings.questions.length,5);
   send(f.host,'settings',{settings:{questions:[]}});await wait(()=>f.room.settings.questions.length===0);
   for(const endpoint of ['/server/power-questions.js','/../server/power-questions.js'])assert.equal((await fetch(f.origin+endpoint)).status,404);
@@ -185,11 +189,17 @@ test('missing final reports fall back after two seconds and resetting waits for 
 });
 
 test('settlement protects captured runs, and ended refreshes and spectators cannot rerank results',async t=>{
-  const f=await fixture(t);await f.start();await f.report(0,{current:30});await f.end();
+  const f=await fixture(t);await f.start();await f.report(0,{current:30,coins:2,earnedCoins:120,deaths:7,banked:200});
+  f.players[0].coinAttack.spent=60;
+  await f.end();
   const waiting=await open(f.url);send(waiting,'join',{code:f.room.code,name:'Too late'});assert.equal((await receive(waiting,m=>m.type==='error')).code,'ROUND_FINALIZING');waiting.close();
   await f.report(0,{},{final:true});await wait(()=>f.room.status==='ended');const frozen=JSON.stringify(f.room.results),runId=f.players[0].runId;
+  const awards=podiumAwards(f.room.results);
+  assert.equal(awards.deaths.value,7);
+  assert.equal(awards.earnedCoins.value,120,'coin award counts all collected coins, including banked and spent coins');
   f.clients[0].close();await wait(()=>!f.players[0].connected);const restored=await f.join(f.players[0].name);assert.equal(restored.player.runId,runId);
   const spectator=await f.join('Spectator');assert.equal(spectator.player.spawned,false);assert.equal(JSON.stringify(f.room.results),frozen);
+  assert.deepEqual(podiumAwards(f.room.results),awards);
   const state=await receive(spectator.ws,m=>m.type==='state');assert.equal(state.room.players.find(p=>p.id===spectator.player.id).rank,null);
 });
 

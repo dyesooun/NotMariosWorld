@@ -5,7 +5,7 @@ export function powerQuizModel(player,{now=Date.now(),isHost=false}={}){
   const quiz=player?.powerQuiz;if(!quiz||quiz.answered&&!isHost)return null;
   const promptLines=wrap(quiz.prompt),h=186+promptLines.length*22,panel={x:180,y:Math.round((540-h)/2),w:600,h};
   const inputY=panel.y+76+promptLines.length*22;
-  const durationMs=Number(quiz.durationMs)>0?Number(quiz.durationMs):10000;
+  const durationMs=Number(quiz.durationMs)>0?Number(quiz.durationMs):15000;
   return {...quiz,promptLines,panel,durationMs,progress:Math.max(0,Math.min(1,(quiz.endsAt-now)/durationMs)),remaining:Math.max(0,Math.ceil((quiz.endsAt-now)/1000)),
     canAnswer:!isHost&&!quiz.answered&&now<quiz.endsAt,
     input:{x:panel.x+24,y:inputY,w:424,h:42},submit:{x:panel.x+464,y:inputY,w:112,h:42},

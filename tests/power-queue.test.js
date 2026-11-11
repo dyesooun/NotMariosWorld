@@ -18,7 +18,7 @@ async function fixture(t,count=3){
   let clock=10000000;
   const server=createGameServer({port:0,host:'127.0.0.1',tickMs:2,now:()=>clock});await server.listen();t.after(()=>server.close());
   const url=`ws://127.0.0.1:${server.httpServer.address().port}`,host=await socket(url);
-  send(host,'create');const made=await receive(host,m=>m.type==='created'),room=server.rooms.get(made.code),clients=[],players=[];
+  send(host,'create',{settings:{powerDurationSeconds:5,attackWindowSeconds:10,defendWindowSeconds:10}});const made=await receive(host,m=>m.type==='created'),room=server.rooms.get(made.code),clients=[],players=[];
   for(let i=0;i<count;i++){
     const ws=await socket(url);send(ws,'join',{code:made.code,name:`Caster ${i+1}`});const joined=await receive(ws,m=>m.type==='joined');
     send(ws,'spawn');clients.push(ws);players.push(room.players.get(joined.id));ws.player=players.at(-1);ws.room=room;

@@ -8,11 +8,11 @@ export function mergePlayerPatch(player,patch){
   const {state:ignored,summary,...metadata}=patch;
   return {...player,...metadata,summary:{...player.summary,...summary}};
 }
-// Attackers and defenders hold still for the whole quiz, not just their own answered question.
-export function isDuelFrozen(duel,playerId){
+// Attackers wait for all defenses; defenders resume after their own accepted answer.
+export function isDuelFrozen(duel,playerId,quiz){
   if(!duel||!playerId||duel.phase==='effect')return false;
   if(duel.casterId===playerId)return true;
-  return duel.phase==='defense'&&!!duel.targetIds?.includes(playerId);
+  return duel.phase==='defense'&&!!duel.targetIds?.includes(playerId)&&!(quiz?.transactionId===duel.id&&quiz.answered);
 }
 export function runtimeMismatch(health,loadedVersion=null){
   if(!health?.runtimeVersion)return 'This server is running an older game build. Restart the game server and refresh this page.';

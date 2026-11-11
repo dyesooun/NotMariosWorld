@@ -69,6 +69,12 @@ Paths in this table are relative to `public/assets/audio/`. Each entire loop rep
 
 The user-supplied **Game Day Universal SFX** pack under `public/assets/audio/sfx/` contains 28 mono, 16-bit PCM WAV effects at 32 kHz. Its README and manifest describe original programmatic 8/16-bit-inspired synthesis. The game plays these files directly for all levels, including the lobby and podium, without theme overrides or runtime synthesis. Existing cues use the corresponding coin pickup, jump, death, respawn, checkpoint, enemy defeat, UI select, countdown tick/go, score popup, and power activation files; claiming a chest power uses `powerup.wav`. Unused pack sounds remain available assets and do not introduce new gameplay mechanics. Music and victory stingers remain as listed above.
 
+Background loops receive an additional 0.5 playback gain after normalization (50% volume). Victory stingers and effects retain their normalized levels. This mix adjustment does not rewrite source assets.
+
+### Runtime playback level matching
+
+After Web Audio decodes a track, the runtime performs a one-time, cached normalization on that in-memory `AudioBuffer`; source WAV and FLAC files are never rewritten. RMS is calculated only from samples at or above `0.003` absolute amplitude so encoded/digital silence does not request excessive gain. The buffer is scaled toward a common `0.1` RMS target measured after the master gain (`0.72`) and the role bus (`0.62` music/stingers, `0.30` effects), so music and effects reach comparable output levels despite their intentionally separate buses. The applied gain is capped at `8×` and at a post-bus/master peak of `0.98` to avoid clipping. Fully silent or unsupported test buffers are left unchanged. This is amplitude-only matching: no EQ, compression, limiter, or per-frame processing is introduced, and the first decoded result is reused for subsequent playback and preload requests.
+
 ## Shared avatar and creature atlas
 
 `public/assets/sprites.png` was created with the built-in imagegen tool, using a transparent background. No external game art or Nintendo assets are used. The final asset is copied into this repository and does not depend on the generation output folder.

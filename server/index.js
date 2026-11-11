@@ -27,7 +27,7 @@ function settings(input = {}) {
   const result = { worldOrder:normalizeWorldOrder(input.worldOrder) };
   for (const [key, fallback, low, high] of [
     ['durationMinutes',15,1,60], ['coinPoints',10,0,1000], ['distancePoints',1,0,1000],
-    ['powerDurationSeconds',5,1,60], ['attackWindowSeconds',10,1,60], ['defendWindowSeconds',10,1,60],
+    ['powerDurationSeconds',8,1,60], ['attackWindowSeconds',15,1,60], ['defendWindowSeconds',15,1,60],
     ['attackCoinCost',30,1,1000], ['attackCooldownSeconds',60,1,3600],
     ['slowSpeedPercent',25,10,90], ['reverseSpeedPercent',100,50,200], ['slipperySpeedPercent',170,110,250],
     ['slipperyGripPercent',12,2,50], ['inkDarknessPercent',88,0,95],

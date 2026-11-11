@@ -21695,20 +21695,8 @@
     {
       "id": "d73a6e48-97fd-4434-bf2f-41f17957e777",
       "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-24",
-      "x": 2290,
+      "x": 2250,
       "y": 515,
-      "width": 42.303052082559134,
-      "height": 45.64860800250739,
-      "layer": -5,
-      "flipX": false,
-      "rotation": 0,
-      "settings": {}
-    },
-    {
-      "id": "8bbf7a15-164a-465e-b30a-a374be50a4f0",
-      "definitionId": "troubled-tides-treasure-chest-atlas-atlas:cut-24",
-      "x": 2195,
-      "y": 510,
       "width": 42.303052082559134,
       "height": 45.64860800250739,
       "layer": -5,
