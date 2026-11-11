@@ -7,12 +7,12 @@ import { createContext, runInContext } from 'node:vm';
 // and its identity/cutoff guards without loading the DOM, renderer, or audio.
 const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const playStageVictory = app.slice(
-  app.indexOf('function playStageVictory(level) {'),
+  app.indexOf('function playStageVictory(level,'),
   app.indexOf('\nfunction updateMusicScene()'),
 );
 const transitionViewport = app.slice(
   app.indexOf('async function transitionViewport(changeScene){'),
-  app.indexOf('\nfunction playStageVictory(level) {'),
+  app.indexOf('\nfunction playStageVictory(level,'),
 );
 
 function fixture({ packet, packetTiming = 'closing', replacement = false } = {}) {

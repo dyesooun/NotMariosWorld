@@ -22,7 +22,7 @@ export function createState({ avatar = 'explorer', color = '#b7ef51', name = '',
   return { avatar, color, name, level, worldOrder: normalizeWorldOrder(worldOrder), completedWorlds: [...new Set(completedWorlds.filter(v => Number.isInteger(v) && normalizeWorldOrder(worldOrder).includes(v)))], x: 90, y: 500, vx: 0, vy: 0, grounded: true, coyote: 0, jumpBuffer: 0, elapsed: 0, banked: 0, current: 0, coins: 0, earnedCoins: 0, collected: [], progress: 0, distanceMax: 0, checkpoint: null, deaths: 0, deadUntil: 0, respawnRemaining: 0, finished: false, started: false, stageTransition: null, deathCause: null, reveal: null, events: [], enemies: [], projectiles: [], enemyKills: 0, _levelTime: 0, _enemyPhase: 0, _jumpHeld: false, _standingPlatform: null, _platformX: 0, _platformY: 0, _particles: [] };
 }
 function authoredLevel(s) { return LEVELS[s.level]?.authored ? LEVELS[s.level] : null; }
-function initializeAuthored(s, config = {}) {
+function initializeAuthored(s, config = {}, savedRuntime = null) {
   JSON_RUNTIMES.delete(s);
   const level = authoredLevel(s);
   if (!level) return;
@@ -36,8 +36,9 @@ function initializeAuthored(s, config = {}) {
   runtime._deathOffset = s.deaths;
   runtime.distanceOriginX = runtime.spawn.x;
   runtime.progressEndX = level.endX;
+  if (savedRuntime) runtime.restoreSession(savedRuntime);
   JSON_RUNTIMES.set(s, runtime);
-  syncJsonRuntime(s, runtime, config);
+  if (!savedRuntime) syncJsonRuntime(s, runtime, config);
 }
 function syncJsonRuntime(s, runtime, config = {}) {
   const weight = config.coinPoints ?? DEFAULT.coinPoints;
@@ -59,6 +60,38 @@ function syncJsonRuntime(s, runtime, config = {}) {
     collected: [...cp.collected], progress: cp.progress, distanceMax: cp.farthestX } : null;
 }
 export function getJsonRuntime(state) { return state ? JSON_RUNTIMES.get(state) || null : null; }
+export function exportEngineSession(state) {
+  return { state: clone(state), runtime: getJsonRuntime(state)?.exportSession() || null };
+}
+export function restoreEngineSession(saved, config = {}) {
+  const state = clone(saved?.state);
+  const numbers = (value, keys) => value && keys.every(key => Number.isFinite(value[key]));
+  const ids = value => Array.isArray(value) && value.every(id => typeof id === 'string');
+  if (!state || !Number.isInteger(state.level) || !LEVELS[state.level]
+    || !numbers(state, ['x', 'y', 'vx', 'vy', 'elapsed', 'banked', 'current', 'coins', 'earnedCoins', 'deaths', 'distanceMax', 'progress', 'deadUntil', 'respawnRemaining', 'coyote', 'jumpBuffer', '_levelTime', '_enemyPhase', '_platformX', '_platformY', 'enemyKills'])
+    || !ids(state.collected) || !Array.isArray(state.completedWorlds) || !Array.isArray(state.worldOrder)
+    || !state.worldOrder.length || state.worldOrder.some(id => !Number.isInteger(id) || id <= 0 || !LEVELS[id])
+    || new Set(state.worldOrder).size !== state.worldOrder.length
+    || state.completedWorlds.some(id => !state.worldOrder.includes(id))
+    || (state.level !== 0 && !state.worldOrder.includes(state.level))
+    || !Array.isArray(state.enemies) || !Array.isArray(state.projectiles)
+    || !Array.isArray(state._particles) || state._particles.some(p => !numbers(p, ['x', 'y', 'vx', 'vy', 'life']))
+    || state.enemies.some(e => !numbers(e, ['x', 'y', 'w', 'h', 'platformIndex', 'cooldown', 'speed']))
+    || state.projectiles.some(p => !numbers(p, ['x', 'y', 'vx', 'vy', 'life', 'w', 'h']))
+    || !(state._standingPlatform === null || Number.isInteger(state._standingPlatform))
+    || typeof state.grounded !== 'boolean' || typeof state.started !== 'boolean' || typeof state.finished !== 'boolean') throw new Error('Invalid engine session.');
+  const checkpoint = state.checkpoint, transition = state.stageTransition;
+  if (checkpoint !== null && (!numbers(checkpoint, ['x', 'y', 'current', 'coins', 'progress', 'distanceMax'])
+    || typeof checkpoint.id !== 'string' || !ids(checkpoint.collected))) throw new Error('Invalid checkpoint session.');
+  if (transition !== null && (!transition || state.finished || transition.from !== state.level
+    || !LEVELS[transition.to] || transition.to !== state.worldOrder[state.worldOrder.indexOf(state.level) + 1])) throw new Error('Invalid stage transition session.');
+  state._jumpHeld = false; state.events = [];
+  if (authoredLevel(state)) {
+    if (!saved.runtime) throw new Error('Missing authored runtime session.');
+    initializeAuthored(state, config, saved.runtime);
+  } else if (saved.runtime) throw new Error('Unexpected authored runtime session.');
+  return state;
+}
 function completeLevel(s, config, events) {
   const completedLevel = s.level;
   const clearScore = s.current + Math.floor(s.distanceMax / 32) * config.distancePoints;

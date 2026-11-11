@@ -1,4 +1,4 @@
-import { createState, startRun, step, advanceStage, getJsonRuntime } from './engine.js';
+import { createState, startRun, step, advanceStage, getJsonRuntime, exportEngineSession, restoreEngineSession } from './engine.js';
 import { LEVELS } from './levels.js';
 import { summarizeRun, locationFromState } from './run-protocol.js';
 
@@ -237,6 +237,50 @@ export class LocalRunRuntime {
   }
 
   snapshot() { return copy(this.state); }
+
+  exportSession() {
+    const fields = ['seq', 'finishedAt', 'lastProgressBucket', 'lastChestId', 'lastReport', 'history',
+      'historyBaseline', 'lastLocalUpdateAt', 'pendingCoinDirtyAt', 'respawnWallDeadline',
+      'finalReportValue', 'finalCutoffAt', 'finalSummary', 'finalChestId'];
+    const metadata = Object.fromEntries(fields.map(key => [key, this[key]]));
+    return JSON.parse(JSON.stringify({ version: 1, roundId: this.roundId, runId: this.runId,
+      engine: exportEngineSession(this.state), metadata }));
+  }
+
+  restoreSession(snapshot, { minimumSeq = 0, serverNow = this.now() } = {}) {
+    try {
+      if (snapshot?.version !== 1 || snapshot.roundId !== this.roundId || snapshot.runId !== this.runId
+        || !Number.isFinite(serverNow) || !Number.isSafeInteger(minimumSeq) || minimumSeq < 0) return false;
+      const saved = JSON.parse(JSON.stringify(snapshot)), metadata = saved.metadata;
+      if (!metadata || !Number.isSafeInteger(metadata.seq) || metadata.seq < 0
+        || !Number.isFinite(metadata.lastLocalUpdateAt) || !Array.isArray(metadata.history)
+        || !metadata.historyBaseline?.summary || !Number.isFinite(metadata.historyBaseline.at)
+        || metadata.history.some(entry => !Number.isFinite(entry?.at) || !entry.summary)
+        || ![metadata.finishedAt, metadata.respawnWallDeadline, metadata.finalCutoffAt, metadata.pendingCoinDirtyAt].every(value => value === null || Number.isFinite(value))) return false;
+      const state = restoreEngineSession(saved.engine, this.settings);
+      const keys = ['seq', 'finishedAt', 'lastProgressBucket', 'lastChestId', 'lastReport', 'history',
+        'historyBaseline', 'lastLocalUpdateAt', 'pendingCoinDirtyAt', 'respawnWallDeadline',
+        'finalReportValue', 'finalCutoffAt', 'finalSummary', 'finalChestId'];
+      this.state = state;
+      for (const key of keys) this[key] = metadata[key];
+      this.seq = Math.max(this.seq, minimumSeq);
+      this.input = { left: false, right: false, jump: false };
+      this.accumulator = 0; this.paused = false; this.frozen = false; this.lastReportAt = -Infinity;
+      // Only death deadlines advance while absent. Terrain, actors and velocity
+      // resume from the snapshot without replaying the disconnected interval.
+      if (state.deadUntil > 0 && this.respawnWallDeadline != null) {
+        const remaining = Math.max(0, (this.respawnWallDeadline - serverNow) / 1000);
+        const elapsedDeath = Math.max(0, state.respawnRemaining - remaining);
+        if (elapsedDeath > 0) {
+          const runtime = getJsonRuntime(state);
+          if (runtime && remaining > 0) runtime.deadRemainingMs = Math.min(runtime.deadRemainingMs, remaining * 1000);
+          this.advanceLifecycle(elapsedDeath, { serverNow });
+        }
+        if (!remaining) this.respawnWallDeadline = null;
+      }
+      return true;
+    } catch { return false; }
+  }
 }
 
 export function createLocalRun(options) { return new LocalRunRuntime(options); }

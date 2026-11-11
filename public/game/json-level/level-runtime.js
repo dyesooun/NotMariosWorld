@@ -110,6 +110,76 @@ export class LevelRuntime {
 
   get spawn() { return { ...this._spawn }; }
 
+  /** Save only per-run data; authored documents and image data stay external. */
+  exportSession() {
+    const fields = ['player', 'timeMs', 'deaths', 'deadRemainingMs', 'deathCause', 'coins', 'checkpoint',
+      'farthestX', 'progress', 'finished', '_motionEpochMs', '_coyoteMs', '_jumpBufferRemainingMs',
+      '_deathOffset', 'distanceOriginX', 'progressEndX', '_spawn'];
+    const maps = ['triggerTimes', 'collectedAtMs', 'claimedChests', 'checkpointReachedAtMs', '_entities'];
+    const sets = ['permanentGone', '_vanishInside', '_vanishRestored', '_vanishEmitted',
+      '_activeInteractions', 'collected', 'reachedCheckpoints', '_roleContacts'];
+    const data = { version: 1, values: {}, maps: {}, sets: {}, actors: [], projectiles: [], sequence: this._actorSimulation.sequence };
+    for (const key of fields) if (this[key] !== undefined) data.values[key] = this[key];
+    for (const key of maps) data.maps[key] = [...this[key]];
+    for (const key of sets) data.sets[key] = [...this[key]];
+    for (const [id, actor] of this._actors) {
+      const { placement, definition, behavior, ...dynamic } = actor;
+      data.actors.push([id, dynamic]);
+    }
+    for (const [id, shot] of this._projectiles) {
+      const { definition, ...dynamic } = shot;
+      data.projectiles.push([id, dynamic]);
+    }
+    return JSON.parse(JSON.stringify(data));
+  }
+
+  restoreSession(data) {
+    if (data?.version !== 1 || !validPoint(data.values?.player) || !finite(data.values?.timeMs)
+      || !['width', 'height', 'vx', 'vy'].every(key => finite(data.values.player[key]))
+      || !['deaths', 'deadRemainingMs', 'coins', 'farthestX', 'progress', '_motionEpochMs', '_coyoteMs', '_jumpBufferRemainingMs'].every(key => finite(data.values[key]))
+      || !validPoint(data.values._spawn) || typeof data.values.finished !== 'boolean'
+      || !Array.isArray(data.actors) || !Array.isArray(data.projectiles)
+      || !Number.isSafeInteger(data.sequence) || data.sequence < 0) throw new Error('Invalid level session.');
+    const checkpoint = data.values.checkpoint;
+    if (checkpoint !== null && (!validPoint(checkpoint) || typeof checkpoint.id !== 'string'
+      || !['order', 'coins', 'farthestX', 'progress'].every(key => finite(checkpoint[key]))
+      || !Array.isArray(checkpoint.collected) || checkpoint.collected.some(id => typeof id !== 'string'))) throw new Error('Invalid level checkpoint session.');
+    const template = this.exportSession();
+    for (const key of Object.keys(template.values)) {
+      if (!(key in data.values)) throw new Error('Incomplete level session.');
+      this[key] = data.values[key];
+    }
+    for (const key of Object.keys(template.maps)) {
+      if (!Array.isArray(data.maps?.[key]) || data.maps[key].some(entry => !Array.isArray(entry) || entry.length !== 2
+        || typeof entry[0] !== 'string' || (key === '_entities'
+          ? !entry[1] || typeof entry[1].stateName !== 'string' || !finite(entry[1].animationStartMs)
+          : !finite(entry[1]))) || new Set(data.maps[key].map(entry => entry[0])).size !== data.maps[key].length) throw new Error('Invalid session map.');
+      this[key] = new Map(data.maps[key]);
+    }
+    for (const key of Object.keys(template.sets)) {
+      if (!Array.isArray(data.sets?.[key]) || data.sets[key].some(id => typeof id !== 'string')) throw new Error('Invalid session set.');
+      this[key] = new Set(data.sets[key]);
+    }
+    if (data.actors.length !== this._actors.size) throw new Error('Incompatible actor session.');
+    const restoredActors = new Map();
+    for (const [id, dynamic] of data.actors) {
+      const actor = this._actors.get(id);
+      if (!actor || !validPoint(dynamic) || dynamic.id !== id || restoredActors.has(id)) throw new Error('Invalid actor session.');
+      const { placement, definition, behavior } = actor;
+      restoredActors.set(id, { ...dynamic, placement, definition, behavior });
+    }
+    this._actors = restoredActors;
+    this._projectiles = new Map();
+    for (const [id, dynamic] of data.projectiles) {
+      const definition = this.document.definitions[dynamic?.definitionId];
+      if (!definition || definition.kind !== 'projectile' || !validPoint(dynamic) || dynamic.id !== id || this._projectiles.has(id)) throw new Error('Invalid projectile session.');
+      this._projectiles.set(id, { ...dynamic, definition });
+    }
+    this._actorSimulation.sequence = data.sequence;
+    this._accumulator = 0; this._jumpHeld = false; this.events = [];
+    this._previousStates = new Map(this.getStates().map(entry => [entry.placement.id, entry]));
+  }
+
   setSpawn(spawn) {
     if (!validPoint(spawn)) throw new Error('Spawn must contain finite x and y coordinates.');
     this._spawn = { x: spawn.x, y: spawn.y };

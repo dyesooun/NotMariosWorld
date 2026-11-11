@@ -48,6 +48,10 @@ try { profile = JSON.parse(localStorage.getItem('nmw-profile') || '{}'); } catch
 profile = { name:String(profile.name || '').slice(0,24), avatar:AVATARS.includes(profile.avatar) ? profile.avatar : AVATARS[0], color:COLORS.includes(profile.color) ? profile.color : COLORS[0] };
 let hostSession;
 try { hostSession = JSON.parse(sessionStorage.getItem('nmw-host') || 'null'); } catch { hostSession = null; }
+let playerSession;
+try { playerSession = JSON.parse(sessionStorage.getItem('nmw-player') || 'null'); } catch { playerSession = null; }
+if (!playerSession || typeof playerSession.code !== 'string' || typeof playerSession.resumeToken !== 'string') playerSession=null;
+let playerResumeInfo=null,playerRecoveryFailed=false,playerStorageWarning=false;
 let ws, room = null, you = null, role = null, screen = 'entry', entryTab = 'join', pending = false;
 let connected = false, reconnectTimer, reconnectAttempts = 0, intentionalClose = false;
 let checkedRuntime = null, runtimeError = null;
@@ -59,6 +63,7 @@ let localRun = null, input = {left:false,right:false,jump:false};
 let localFinalizing = false, simulationCursor = null, finalPending = false;
 const audio = new GameAudio();
 let stageVictory = null;
+let restoredVictoryEndsAt=null;
 let irisTransition = null;
 let sceneTransitionActive=false, sceneTransitionApplying=false, pendingRoomState=null;
 const SCENE_TRANSITION_DURATION=500;
@@ -77,8 +82,33 @@ function toast(message, error = false) {
   $('#toasts').append(el); setTimeout(() => el.remove(), 4500);
 }
 function persistProfile() { localStorage.setItem('nmw-profile', JSON.stringify(profile)); }
+function savePlayerSession() {
+  if (!playerSession) return;
+  try {
+    if(role==='player'&&room?.code===playerSession.code&&localRun&&!playerRecoveryFailed&&['lobby','running'].includes(room.status)) {
+      playerSession={...playerSession,runtimeVersion:checkedRuntime,roundId:localRun.roundId,runId:localRun.runId,snapshot:localRun.exportSession(),victoryEndsAt:localRun.state.stageTransition?(stageVictory?.resumeEndsAt??restoredVictoryEndsAt??serverNow()+audio.victoryRemainingMs()):null};
+    }
+    sessionStorage.setItem('nmw-player',JSON.stringify(playerSession));
+  } catch {
+    if(!playerStorageWarning){playerStorageWarning=true;toast('Browser storage is unavailable or full. Refresh recovery could not be saved.',true);}
+  }
+}
+function clearPlayerSession() {
+  playerSession=null;playerResumeInfo=null;playerRecoveryFailed=false;
+  try { sessionStorage.removeItem('nmw-player'); } catch {}
+}
+function joinPlayer(code,{fresh=false}={}) {
+  const resume=!fresh&&playerSession?.code===code?playerSession.resumeToken:null;
+  return send('join',{code,...profile,...(resume?{resumeToken:resume}:{})});
+}
+function showPlayerRecoveryFailure() {
+  playerRecoveryFailed=true;localRun?.pause(true);zeroInput();
+  const banner=$('#connection-banner');
+  if(banner){banner.hidden=false;banner.innerHTML='The local save could not be restored. Your previous score is still on the server. <button class="button small" data-action="restart-run">Start a new run with the remaining time</button>';}
+}
 function send(type, data = {}) {
   if (ws?.readyState !== WebSocket.OPEN) return false;
+  if(playerRecoveryFailed&&role==='player'&&!['join','leave','timeSync'].includes(type))return false;
   // Reports are ordered before actions that consume a chest or start a duel.
   if (localRun && room?.status==='running' && ['usePower','powerChestChoice','powerAnswer','coinAttack'].includes(type)) localRun.report('before-action', true, serverNow());
   const me = room?.players?.find(p => p.id === you);
@@ -92,6 +122,8 @@ function ensureLocalRun(me) {
   const roundId = room?.roundId || null, runId = me.runId || null;
   if (!localRun || localRun.roundId !== roundId || localRun.runId !== runId) {
     cancelStageVictory();
+    playerRecoveryFailed=false;
+    restoredVictoryEndsAt=null;
     localFinalizing=false; finalPending=false; finalSentRound=null; simulationCursor=serverNow();
     localRun = new LocalRunRuntime({ profile:{name:me.name,avatar:me.avatar,color:me.color}, settings: room?.settings || DEFAULTS, roundId, runId, now:serverNow, deferStageTransition:true,
       sendReport: report => sendRaw('runReport', report),
@@ -102,11 +134,19 @@ function ensureLocalRun(me) {
         if(tone)playTone(tone,scene);
         if(event.type==='checkpoint')toast('Checkpoint saved! Your respawn position and distance are protected.');
       } });
+    const saved=playerSession?.snapshot;
+    const matchingSave=playerResumeInfo?.resumed&&playerSession?.id===me.id&&playerSession?.code===room.code&&playerSession?.runtimeVersion===checkedRuntime&&saved?.roundId===roundId&&saved?.runId===runId;
+    if(matchingSave&&!localRun.restoreSession(saved,{minimumSeq:playerResumeInfo.lastSeq,serverNow:serverNow()}))playerRecoveryFailed=true;
+    else if(playerResumeInfo?.resumed&&!matchingSave&&(
+      room.status==='settling'||(room.status==='running'&&(!playerSession?.roundId||!playerSession?.runId||(playerSession.roundId===roundId&&playerSession.runId===runId)))
+    ))playerRecoveryFailed=true;
+    if(matchingSave&&!playerRecoveryFailed&&localRun.state.stageTransition)restoredVictoryEndsAt=Number.isFinite(playerSession.victoryEndsAt)?playerSession.victoryEndsAt:serverNow();
     lobbyLocationRunKey = null;
   }
+  if(playerResumeInfo?.runId===runId)localRun.seq=Math.max(localRun.seq,playerResumeInfo.lastSeq||0);
   localRun.settings = {...room.settings,powerEffects:activePowerEffects(me,serverNow())};
   Object.assign(localRun.state,room.status==='lobby'?{...profile,name:profile.name.trim()||'Player'}:{name:me.name,avatar:me.avatar,color:me.color});
-  if (room?.status === 'running' && me.spawned && !localRun.state.started) localRun.begin(room.settings?.worldOrder);
+  if (room?.status === 'running' && me.spawned && !localRun.state.started&&!playerRecoveryFailed) localRun.begin(room.settings?.worldOrder);
   me.state=localRun.state;
   const locationRunKey = `${roundId}:${runId}`;
   if (room?.status === 'lobby' && lobbyLocationRunKey !== locationRunKey && locationFromState(localRun.state)) {
@@ -117,12 +157,13 @@ function ensureLocalRun(me) {
 const serverNow=()=>Date.now()+clockOffset;
 const ceremony=()=>localFinalizing||room?.status==='settling'||room?.status==='ended';
 function finalizeLocal(cutoffAt){
-  if(!localRun||!room?.players.find(p=>p.id===you)?.spawned)return;
+  if(playerRecoveryFailed||!localRun||!room?.players.find(p=>p.id===you)?.spawned)return;
   cancelStageVictory();
   localRun.pause(true);localFinalizing=true;zeroInput();
   if(finalSentRound!==room.roundId){const retry=!!localRun.finalReportValue;finalSentRound=room.roundId;finalPending=true;localRun.finalReport(cutoffAt,{retry});}
 }
 function sendRaw(type, data = {}) {
+  if(type==='runReport'&&playerRecoveryFailed)return false;
   if(type==='runReport'&&!data.final&&(room?.status!=='running'||serverNow()>=room.endsAt))return false;
   // A fresh clock sample can trail the start packet by a few milliseconds.
   if(type==='runReport')data={...data,at:Math.max(room.startedAt,data.at)};
@@ -145,8 +186,12 @@ async function connect() {
   await checkRuntime();
   intentionalClose = false;
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`);
+  const socket=ws;
   ws.addEventListener('message', e => { try { onMessage(JSON.parse(e.data)); } catch (err) { console.error('Room update failed', err); toast('A room update could not be displayed.',true); } });
   ws.addEventListener('close', () => {
+    if(ws!==socket)return;
+    savePlayerSession();
+    restoredVictoryEndsAt=playerSession?.victoryEndsAt??null;
     cancelStageVictory();
     connected = false; pending = false; localRun?.pause(true); coinAttackControls?.close(); zeroInput(); updateConnection();
     if (intentionalClose || screen === 'entry') return;
@@ -154,7 +199,7 @@ async function connect() {
       clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(async () => { try { await connect(); send('hostJoin',hostSession); } catch { scheduleReconnect(); } }, Math.min(1000 * 2 ** reconnectAttempts++, 10000));
     } else {
-      const banner = $('#connection-banner'); if (banner) { banner.hidden = false; banner.innerHTML = `Connection lost. Rejoin to start again with the remaining time. <button class="button small" data-action="rejoin">Rejoin room ${esc(room?.code)}</button>`; }
+      const banner = $('#connection-banner'); if (banner) { banner.hidden = false; banner.innerHTML = `Connection lost. Resume your saved run with the remaining time. <button class="button small" data-action="rejoin">Resume room ${esc(room?.code)}</button>`; }
     }
   });
   return new Promise((resolve,reject) => {
@@ -166,6 +211,7 @@ async function connect() {
 function scheduleReconnect() { if (role === 'host' && hostSession) { clearTimeout(reconnectTimer); reconnectTimer = setTimeout(async () => { try { await connect(); send('hostJoin',hostSession); } catch { scheduleReconnect(); } },3000); } }
 function updateConnection() { $$('.connection').forEach(el => { el.classList.toggle('offline',!connected); el.innerHTML = `<i class="dot"></i>${connected ? 'Connected' : 'Reconnecting'}`; }); }
 function onMessage(msg) {
+  if(msg.type==='error'&&['RESUME_INVALID','ROOM'].includes(msg.code)&&playerSession){clearPlayerSession();pending=false;role=null;toast('This player session is no longer available. Join a room to play.',true);renderEntry();return;}
   if(msg.type==='state'&&!sceneTransitionApplying&&room&&$('.world-screen')){
     const sceneKey=r=>['settling','ended'].includes(r?.status)?'podium':r?.status;
     if(sceneTransitionActive||sceneKey(room)!==sceneKey(msg.room)){
@@ -202,7 +248,12 @@ function onMessage(msg) {
     hostSession = {code:msg.code,token:msg.token}; sessionStorage.setItem('nmw-host',JSON.stringify(hostSession));
     role='host'; room={code:msg.code,status:'lobby',settings:{...DEFAULTS},players:[],question:null}; you=null; pending=false; renderRoom(true);
   }
-  if (msg.type === 'joined') { you=msg.id; role='player'; pending=false;send('timeSync',{clientTime:Date.now()}); }
+  if (msg.type === 'joined') {
+    you=msg.id;role='player';pending=false;playerRecoveryFailed=false;
+    playerResumeInfo={resumed:!!msg.resumed,lastSeq:Number(msg.lastSeq)||0,roundId:msg.roundId,runId:msg.runId};
+    if(msg.resumeToken){playerSession={...(msg.resumed?playerSession:{}),code:msg.code,id:msg.id,resumeToken:msg.resumeToken};savePlayerSession();}
+    send('timeSync',{clientTime:Date.now()});
+  }
   if (msg.type !== 'state') return;
   if(msg.room.runtimeVersion!==checkedRuntime){showRuntimeWarning('The game server changed. Refresh this page before playing.');return;}
   if(!clockOffsetReady){clockOffset=msg.serverTime-Date.now();clockOffsetReady=true;}
@@ -211,7 +262,7 @@ function onMessage(msg) {
   if (role==='player' && metaMe && (previous?.players.find(p=>p.id===you)==null || room.status!=='lobby')) {
     profile={name:metaMe.name,avatar:metaMe.avatar,color:metaMe.color};persistProfile();
   }
-  if (role === 'player' && metaMe && ['lobby','running'].includes(room.status)) ensureLocalRun(metaMe);
+  if (role === 'player' && metaMe && (['lobby','running'].includes(room.status)||(room.status==='settling'&&playerResumeInfo?.resumed))) ensureLocalRun(metaMe);
   if(room.status==='settling'&&role==='player')finalizeLocal(room.cutoffAt??room.endsAt);
   if(ceremony()&&!['settling','ended'].includes(previous?.status)){podiumArrivedAt=performance.now();closeModal();coinAttackControls?.close();zeroInput();playTone('teleport','results');}
   if (room.status !== lastStatus) { lastStatus=room.status; coinAttackControls?.close(); zeroInput(); $$('.player-world-panel').forEach(panel=>panel.open=false); }
@@ -221,6 +272,7 @@ function onMessage(msg) {
   if(me?.power?.claimed&&me.power.itemId!==previousMe?.power?.itemId){playTone('powerup',sceneForLevel(localRun?.state.level));toast(`${me.power.power.name} found! Press F or USE to unleash it.`);}
   if (role === 'player' && localRun) me.state = localRun.state;
   renderRoom();
+  if(playerRecoveryFailed)showPlayerRecoveryFailure();else savePlayerSession();
   if (previous?.status === 'lobby' && room.status === 'running') { closeModal(); toast('The race is on. Good luck out there!'); playTone('start',sceneForLevel(normalizeWorldOrder(room.settings.worldOrder)[0])); }
 }
 function header(content = '') {
@@ -673,7 +725,7 @@ function showHelp() {
     <div class="help-block"><h3>01 / LEARN THE MOVES</h3><p>Use <kbd>A</kbd> / <kbd>D</kbd> or <kbd>←</kbd> / <kbd>→</kbd> to move. Jump with <kbd>SPACE</kbd>, <kbd>W</kbd>, or <kbd>↑</kbd>; release the jump key before jumping again. Joining puts you straight into the playable lobby when the room is waiting; a late join enters the first race world. Change your name, circular avatar portrait, or color inside the world while you practice; choices lock when your host starts the race. This game is made for a desktop keyboard.</p></div>
     <div class="help-block"><h3>02 / MAKE IT COUNT</h3><p>Coins and distance add to your score. Find the checkpoint markers authored in each world. Collected coins and their points are protected immediately and never respawn on death. Claimed treasure chests disappear with sparkles and stay spent; decoys remain. Pass each new flag to save your location and distance progress. Reached flags stay gold, and only a later flag replaces your save. Death restores your saved position and distance after 3 seconds. Before the checkpoint, death resets distance progress and sends you to the world start. Your coins and coin points remain safe in both cases. Reach the exit to bank the full world score. There are unlimited respawns.</p></div>
   <div class="help-block"><h3>03 / TRUST YOUR INSTINCTS. MAYBE.</h3><p>Moving platforms move. Vanishing platforms vanish. Spikes, projectiles, and authored melee attacks are lethal; creature body contact is harmless. Watch what’s revealed when you die. Critters chase only when you stand on their platform; some shoot. Power chests and decoys appear where authored in each world. Hold one power at a time. At another chest, choose Attack with your current power or Replace it with the new one.</p><p>Press <kbd>F</kbd> or USE to answer a power-chest challenge and attack everyone else. Coin attacks use <kbd>Q</kbd> to choose one of the four powers and an eligible runner; their cost and cooldown are set by the host. You have ${room?.settings.attackWindowSeconds??15} seconds and one attempt for a chest challenge; a wrong or unanswered chest attack hits you. After a correct chest attack, everyone else gets ${room?.settings.defendWindowSeconds??15} seconds and one attempt to defend. Correct defenders block; wrong or missing answers are affected. Defenders can move again once their answer is accepted. The attacker waits until all defenders answer or their time runs out, for both coin attacks and global chest powers. Answers ignore case. The slow, reverse, slippery, or dark ink effect and its broadcast last ${room?.settings.powerDurationSeconds??8} seconds after defenses resolve. Unused powers survive death; opened chests stay spent. Power turns run one at a time across the room in request order. Every player gets the same layout and their own run.</p></div>
-    <div class="help-block"><h3>04 / EARN THE BRAGGING RIGHTS</h3><p>The highest score wins, with the fastest full completion breaking ties. When the timer ends, banked points and your current points count. Late arrivals use the remaining room time. Refreshing resets your game, including checkpoints; rejoin with the same name to replace your disconnected entry.</p></div>`);
+    <div class="help-block"><h3>04 / EARN THE BRAGGING RIGHTS</h3><p>The highest score wins, with the fastest full completion breaking ties. When the timer ends, banked points and your current points count. Late arrivals use the remaining room time. Refreshing in this browser tab resumes your saved run while the room exists. The room timer and respawn deadlines keep counting down. Home/leave clears your recovery; new rounds start fresh, and server restarts clear rooms.</p></div>`);
 }
 function worldOrderSettings(settings){
   const order=normalizeWorldOrder(settings.worldOrder);
@@ -722,10 +774,10 @@ async function transitionViewport(changeScene){
   }
   return true;
 }
-function playStageVictory(level) {
+function playStageVictory(level, {resumeEndsAt=null}={}) {
   cancelStageVictory();
   zeroInput();
-  const token={run:localRun,level};
+  const token={run:localRun,level,resumeEndsAt};
   stageVictory=token;
   const scene=sceneForLevel(level);
   audio.setScene(scene);
@@ -757,7 +809,10 @@ function playStageVictory(level) {
     });
     updateMusicScene();
   };
-  void audio.playVictory(scene).then(complete,complete);
+  // A refreshed tab observes only the remaining hold; it cannot replay the
+  // entire stinger and delay a world advance a second time.
+  const hold=resumeEndsAt==null?audio.playVictory(scene):audio.playVictory(scene,{remainingMs:Math.max(0,resumeEndsAt-serverNow())});
+  void hold.then(complete,complete);
 }
 function updateMusicScene() {
   if(screen==='entry'||!room){audio.setScene('lobby');return;}
@@ -792,7 +847,7 @@ document.addEventListener('submit',async e=>{
   if(e.target.id==='join-form'){
     e.preventDefault();if(pending)return;pending=true;$('.entry-submit').disabled=true;
     profile.name=$('#player-name').value.trim();persistProfile();
-    try{await connect();send('join',{code:$('#room-code').value.trim().toUpperCase(),...profile});}catch(err){pending=false;$('.entry-submit').disabled=false;toast(err.message,true);}
+    try{await connect();joinPlayer($('#room-code').value.trim().toUpperCase());}catch(err){pending=false;$('.entry-submit').disabled=false;toast(err.message,true);}
   }
   if(e.target.id==='settings-form'){
     e.preventDefault();const f=e.target;
@@ -810,6 +865,7 @@ document.addEventListener('click',async e=>{
   if(action==='host-tab'||action==='join-tab'){entryTab=action==='host-tab'?'host':'join';renderEntry();}
   if(action==='create'){
     if(pending)return;pending=true;b.disabled=true;
+    clearPlayerSession();
     try{if(ws?.readyState===WebSocket.OPEN){intentionalClose=true;ws.close();ws=null;}await connect();send('create',{settings:DEFAULTS});}catch(err){pending=false;b.disabled=false;toast(err.message,true);}
   }
   if(action==='resume'){try{await connect();role='host';send('hostJoin',hostSession);}catch(err){toast(err.message,true);}}
@@ -838,9 +894,16 @@ document.addEventListener('click',async e=>{
   if(action==='fullscreen'){const el=$('.game-shell');try{if(!document.fullscreenElement)await el.requestFullscreen();else await document.exitFullscreen();}catch{toast('Full screen is unavailable in this browser.',true);}}
   if(action==='add-question'){const list=$('#question-editors');if(list.children.length>=5){toast('Five questions is the maximum.');return;}list.insertAdjacentHTML('beforeend',questionEditor(undefined,list.children.length));$('[data-q-prompt]',list.lastElementChild).focus();}
   if(action==='remove-question'){b.closest('.question-editor').remove();$$('.question-index').forEach((el,i)=>el.textContent=i+1);}
-  if(action==='home'){intentionalClose=true;send('leave');ws?.close();ws=null;room=null;you=null;renderEntry();}
+  if(action==='home'){clearPlayerSession();intentionalClose=true;send('leave');ws?.close();ws=null;room=null;you=null;localRun=null;renderEntry();}
   if(action==='rejoin'){
-    try{await connect();send('join',{code:room.code,...profile});$('#connection-banner').hidden=true;}catch(err){toast(err.message,true);}
+    try{await connect();joinPlayer(room.code);const banner=$('#connection-banner');if(banner)banner.hidden=true;}catch(err){toast(err.message,true);}
+  }
+  if(action==='restart-run'){
+    const code=room.code;clearPlayerSession();intentionalClose=true;send('leave');
+    const previous=ws;
+    if(previous&&previous.readyState!==WebSocket.CLOSED)await new Promise(resolve=>{previous.addEventListener('close',resolve,{once:true});previous.close();});
+    ws=null;localRun=null;
+    try{await connect();joinPlayer(code,{fresh:true});}catch(err){toast(err.message,true);}
   }
   if(action==='export'){
     const rows=[['Rank','Player','Score','Finish seconds'],...(room.results||room.players).map(p=>[p.rank,p.name,p.score,p.finishTime==null?'':p.finishTime.toFixed(2)])];
@@ -878,15 +941,17 @@ document.addEventListener('keydown',e=>keyboard(e,true));document.addEventListen
 window.addEventListener('blur',zeroInput);document.addEventListener('visibilitychange',()=>{
   if(document.hidden){zeroInput();}
   advanceLocalSimulation();
+  if(document.hidden)savePlayerSession();
   if(!document.hidden)syncPlayerQuiz({focus:true});
   audio.setHidden(document.hidden);
 });
-window.addEventListener('pagehide',event=>{if(role==='player'&&room?.status!=='ended')send('leave');audio.setHidden(true);if(!event.persisted)audio.dispose();});
+window.addEventListener('pagehide',event=>{savePlayerSession();zeroInput();audio.setHidden(true);if(!event.persisted)audio.dispose();});
 window.addEventListener('pageshow',()=>{audio.setHidden(document.hidden);syncPlayerQuiz({focus:true});});
 window.addEventListener('resize',()=>{syncLobbyProfile();syncPlayerQuiz();syncPlayerChest();});
 document.addEventListener('fullscreenchange',()=>{syncLobbyProfile();syncPlayerQuiz();syncPlayerChest();});
 setInterval(()=>{if(document.hidden)advanceLocalSimulation();syncLobbyProfile();syncPlayerQuiz();syncPlayerChest();},100);
 setInterval(()=>{if(connected)send('timeSync',{clientTime:Date.now()});},10000);
+setInterval(savePlayerSession,1000);
 audio.setHidden(document.hidden);
 modal.addEventListener('click',e=>{if(e.target===modal){const r=modal.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal();}});
 modal.addEventListener('close',()=>{updateMusicScene();});
@@ -894,7 +959,8 @@ modal.addEventListener('close',()=>{updateMusicScene();});
 let lastHostDraw=0,lastUiDraw=0;
 function advanceLocalSimulation(){
   const now=serverNow(),me=room?.players.find(p=>p.id===you);
-  if(role!=='player'||!localRun||!me?.spawned||!connected||runtimeError||!['lobby','running'].includes(room?.status)){simulationCursor=now;return;}
+  if(role!=='player'||!localRun||!me?.spawned||!connected||runtimeError||playerRecoveryFailed||!['lobby','running'].includes(room?.status)){simulationCursor=now;return;}
+  if(localRun.state.stageTransition&&!stageVictory&&!sceneTransitionActive){const resumeEndsAt=restoredVictoryEndsAt;restoredVictoryEndsAt=null;playStageVictory(localRun.state.stageTransition.from,{resumeEndsAt});}
   if(room.status==='running'&&finalSentRound===room.roundId)return;
   simulationCursor??=now;
   const target=room.status==='running'?Math.min(now,room.endsAt):now;
@@ -956,4 +1022,7 @@ function frame(time){
 }
 renderEntry();requestAnimationFrame(frame);
 void checkRuntime().catch(()=>{});
-if(hostSession&&!new URLSearchParams(location.search).has('room')){role='host';connect().then(()=>send('hostJoin',hostSession)).catch(err=>{role=null;toast(err.message,true);});}
+const requestedRoom=new URLSearchParams(location.search).get('room')?.trim().toUpperCase();
+if(playerSession&&(!requestedRoom||requestedRoom===playerSession.code)){
+  pending=true;connect().then(()=>joinPlayer(playerSession.code)).catch(err=>{pending=false;toast(err.message,true);});
+}else if(hostSession&&!requestedRoom){role='host';connect().then(()=>send('hostJoin',hostSession)).catch(err=>{role=null;toast(err.message,true);});}

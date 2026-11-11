@@ -233,12 +233,14 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
   const addPlayer = (room, msg, ws) => {
     const info=profile(msg), old=[...room.players.values()].find(p=>!p.ws&&p.name===info.name);
     if (old) {
-      Object.assign(old,{ws,connected:true});
+      // A name-based replacement is a new run and must invalidate the old
+      // browser credential before it can be used to resume anything.
+      Object.assign(old,{ws,connected:true,resumeToken:randomBytes(32).toString('hex')});
       if (room.status!=='ended') { Object.assign(old,info); resetPlayer(old,room.status==='running'?room.settings.worldOrder[0]:0); old.spawned=true; }
       return old;
     }
     if (room.players.size>=MAX_PLAYERS) return null;
-    const player={id:randomUUID(),...info,room,ws,connected:true,joinedAt:now()};
+    const player={id:randomUUID(),...info,room,ws,connected:true,joinedAt:now(),resumeToken:randomBytes(32).toString('hex')};
     resetPlayer(player,room.status==='running'?room.settings.worldOrder[0]:0);
     // New lobby/running joins enter as active players. Ended-room arrivals remain spectators.
     player.spawned=room.status!=='ended';
@@ -379,10 +381,24 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
       const room=rooms.get(clean(msg.code,6).toUpperCase());
       if (!room) return error(ws,'Room not found','ROOM');
       if (room.status==='running'&&now()>=room.endsAt) settle(room,room.endsAt);
+      const wantsResume=typeof msg.resumeToken==='string'&&msg.resumeToken.length>0;
+      if (wantsResume) {
+        const player=[...room.players.values()].find(candidate=>candidate.resumeToken===msg.resumeToken);
+        if (!player) return error(ws,'Resume credential is invalid','RESUME_INVALID');
+        // Install the new socket before closing the old one. Its close event
+        // must not disconnect the replacement session.
+        const previous=player.ws;
+        player.ws=ws; player.connected=true;
+        if (previous&&previous!==ws) previous.close();
+        session.room=room; session.player=player;
+        syncPower(room,player); tryCollect(room,player); syncPower(room,player);
+        send(ws,{type:'joined',id:player.id,code:room.code,runId:player.runId,resumeToken:player.resumeToken,resumed:true,lastSeq:player.lastSeq,roundId:room.roundId});
+        return broadcast(room);
+      }
       if (room.status==='settling') return error(ws,'Scores are finalizing. Rejoin in a moment.','ROUND_FINALIZING');
       const player=addPlayer(room,msg,ws); if (!player) return error(ws,'Room is full','FULL');
       session.room=room; session.player=player;
-      send(ws,{type:'joined',id:player.id,code:room.code,runId:player.runId}); return broadcast(room);
+      send(ws,{type:'joined',id:player.id,code:room.code,runId:player.runId,resumeToken:player.resumeToken,resumed:false,lastSeq:player.lastSeq,roundId:room.roundId}); return broadcast(room);
     }
     const room=session.room, player=session.player;
     if (!room) return error(ws,'Join a room first');

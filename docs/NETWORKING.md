@@ -33,11 +33,13 @@ This records the approved three-milestone change. It preserves the game rules wh
 
 Use `npm run dev` for watched local development or restart `npm start` after updating server/shared protocol code. Refresh every player/host tab. Restarts clear rooms; deploy between sessions. Mixed runtime versions remain blocked by `/health` guards.
 
-Player refresh/rejoin resets the run as before. Disconnect stops local controls/gameplay; reconnecting is not saved-game recovery. The host can resume with its existing tab credential. Keep Render at one server instance because rooms and result summaries remain in memory.
+Player refresh/rejoin in the same browser tab resumes the existing run using a private player credential and a versioned `sessionStorage` save. The server returns the same player/run identity and its report sequence floor; the client hydrates its matching local engine/runtime before sending reports. Position, coins, checkpoint saves, banked points, actors, projectiles and platform cycles stay local and survive refresh. Inventory, spent currency, cooldowns and effect deadlines remain server-owned. Shared time and respawn deadlines continue while away, without replaying missed physics. Refresh during a victory hold resumes its remaining duration. Actual disconnects still cancel queued attacks and prune active quizzes under the existing rules. A missing/corrupt local save blocks gameplay and offers an explicit fresh run instead of overwriting the server's previous totals. New rounds invalidate old run saves; explicit Home/leave clears the tab credential. Closing the tab, changing devices or restarting the server is not durable recovery. The host uses its separate existing tab credential. Keep Render at one server instance because rooms and results remain in memory.
 
 Heartbeats and low-frequency clock synchronization are connection maintenance, not gameplay updates. Unchanged idle runs should produce no gameplay traffic. Browser background throttling and network failure still require rehearsal: the room and quiz deadlines continue while tabs are hidden, and delivery after a deadline does not extend a shared phase.
 
 ## Verification record
+
+Refresh-persistence follow-up: server token resumption, tab-local runtime hydration, report sequencing, death deadlines, and remaining victory holds have regression tests added. JavaScript syntax checks pass; these new tests and browser refresh scenarios have not been executed in this change. The historical verification entries below predate this follow-up.
 
 All three implementation milestones are delivered. A local browser check or automated capacity check does not establish readiness on the event's actual networks and devices.
 

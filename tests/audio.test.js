@@ -13,6 +13,19 @@ const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 const flacStreamInfo = path => { const data = fs.readFileSync(`public${path}`); assert.equal(data.subarray(0,4).toString(), 'fLaC'); const blockLength=data.readUIntBE(5,3); assert.ok(blockLength>=34); const stream=data.subarray(8,8+blockLength); const packed=BigInt('0x'+stream.subarray(10,18).toString('hex')); return { sampleRate:Number(packed>>44n), channels:Number((packed>>41n)&7n)+1, bitsPerSample:Number((packed>>36n)&31n)+1, totalSamples:Number(packed&0xfffffffffn) }; };
 const wavStreamInfo = path => { const data=fs.readFileSync(`public${path}`); assert.equal(data.subarray(0,4).toString(),'RIFF'); const sampleRate=data.readUInt32LE(24), channels=data.readUInt16LE(22), bitsPerSample=data.readUInt16LE(34), dataBytes=data.readUInt32LE(40); return {sampleRate,channels,bitsPerSample,totalSamples:dataBytes/(channels*bitsPerSample/8)}; };
 
+test('a refreshed victory resumes only its remaining duration and audio offset',async()=>{
+  let now=1000;
+  const audio=new GameAudio({AudioContext:Context,fetch:fakeFetch,clock:()=>now,...timers()});
+  await audio.unlock();
+  const done=audio.playVictory('forest',{remainingMs:1200});
+  await flush();await flush();
+  assert.equal(audio.victoryRemainingMs(),1200);
+  assert.equal(audio._victorySource.offset,VICTORY_TRACKS.forest.durationSeconds-1.2);
+  now+=500;
+  assert.equal(audio.victoryRemainingMs(),700);
+  audio.cancelVictory();await done;audio.dispose();
+});
+
 test('shipped compressed tracks preserve exact WAV stream metadata', () => {
   assert.deepEqual(Object.keys(MUSIC_TRACKS), ['lobby', 'forest', 'ocean', 'hell', 'results']);
   assert.equal(VICTORY_TRACKS.forest.durationSeconds, 4.3); assert.equal(VICTORY_TRACKS.ocean.durationSeconds, 4.4); assert.equal(VICTORY_TRACKS.hell.durationSeconds, 4.4);

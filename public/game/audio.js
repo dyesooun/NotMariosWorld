@@ -74,13 +74,17 @@ export class GameAudio {
     if (this.scene === scene) { if (!this._victoryResolve && !this._musicSource) this._startMusic(scene); return true; }
     this.scene = scene; this.cancelVictory(); this._stopMusic(); this._startMusic(scene); this._preloadScene(scene); return true;
   }
-  playVictory(scene = this.scene) {
+  playVictory(scene = this.scene, { remainingMs = null } = {}) {
     const track = VICTORY_TRACKS[scene]; if (!track || this._disposed) return Promise.resolve(false);
-    this.cancelVictory(); this._stopMusic(); const token = ++this._victoryToken; this._victoryScene = scene; this._victoryDeadline = this._clock() + track.durationSeconds * 1000; this._victoryRemaining = track.durationSeconds; this._victoryHasStarted = false; this._victorySilent = !this._canPlay();
+    const resuming=Number.isFinite(remainingMs),durationMs=resuming?Math.max(0,Math.min(track.durationSeconds*1000,remainingMs)):track.durationSeconds*1000;
+    this.cancelVictory(); this._stopMusic();
+    if(!durationMs)return Promise.resolve(false);
+    const token = ++this._victoryToken; this._victoryScene = scene; this._victoryDeadline = this._clock() + durationMs; this._victoryRemaining = durationMs/1000; this._victoryHasStarted = resuming; this._victorySilent = !this._canPlay();
     const done = new Promise(resolve => { this._victoryResolve = resolve; });
     this._loadBuffer(track.src, this._musicGain?.gain?.value).then(() => { if (token === this._victoryToken) this._startVictorySource(track, token); }).catch(() => { if (token === this._victoryToken) this._armVictoryFallback(token); });
     this._armVictoryFallback(token); return done;
   }
+  victoryRemainingMs() { return Math.max(0, this._victoryDeadline - this._clock()); }
   cancelVictory() { if (!this._victoryResolve && !this._victorySource && this._victoryTimer === null) return; const resolve = this._victoryResolve; this._victoryToken++; this._stopVictorySource(); this._clearVictoryTimer(); this._victoryResolve = null; this._victoryRemaining = 0; this._victoryDeadline = 0; this._victoryScene = null; resolve?.(false); }
   playEffect(name, _scene = this.scene) {
     const stem = EFFECT_SOUNDS[name] || (Object.hasOwn(EFFECT_SFX, name) ? name : null);
