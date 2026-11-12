@@ -40,7 +40,7 @@ test('health, cache protection, defaults, and explicitly disabled icebreakers',a
   assert.equal(f.room.settings.powerDurationSeconds,8);
   assert.equal(f.room.settings.attackWindowSeconds,15);
   assert.equal(f.room.settings.defendWindowSeconds,15);
-  assert.equal((await fetch(f.origin+'/app.js')).headers.get('cache-control'),'no-store');assert.equal(f.room.settings.questions.length,5);
+  const appResponse=await fetch(f.origin+'/app.js'); assert.match(appResponse.headers.get('cache-control'),/must-revalidate/); assert.match(appResponse.headers.get('etag'),/^"[a-f0-9]{64}"$/); assert.equal(f.room.settings.questions.length,5);
   send(f.host,'settings',{settings:{questions:[]}});await wait(()=>f.room.settings.questions.length===0);
   for(const endpoint of ['/server/power-questions.js','/../server/power-questions.js'])assert.equal((await fetch(f.origin+endpoint)).status,404);
 });

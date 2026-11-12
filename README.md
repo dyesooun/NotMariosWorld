@@ -103,6 +103,8 @@ To test a particular world first, open **Game settings → World order**, select
 
 This is a **Node Web Service**, not a static site. HTTP and WebSockets share the same port. The browser uses `wss://` automatically on HTTPS.
 
+Browsers store static game files and revalidate them with content-hash ETags. Unchanged files return a bodyless 304 instead of downloading again; changed artwork, audio, code and level JSON load fresh even when filenames stay the same. Entry HTML and health/version checks remain uncached. Larger multiplayer JSON messages use negotiated WebSocket compression; clients without compression still work. First visits still download the asset bundle. Bandwidth checks run only on isolated localhost servers, never the deployed Render game.
+
 1. Put this directory in a Git repository and push it to your Git provider.
 2. In Render, create a **Blueprint** from the repository to use [render.yaml](render.yaml), or create a **Web Service** with:
 

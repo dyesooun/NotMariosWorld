@@ -39,6 +39,10 @@ Player refresh/rejoin in the same browser tab resumes the existing run using a p
 
 Heartbeats and low-frequency clock synchronization are connection maintenance, not gameplay updates. Unchanged idle runs should produce no gameplay traffic. Browser background throttling and network failure still require rehearsal: the room and quiz deadlines continue while tabs are hidden, and delivery after a deadline does not extend a shared phase.
 
+Static files use content-hash ETags and browser revalidation caching. Repeat requests for unchanged JavaScript, CSS, level JSON, images and audio return 304 without retransmitting their bodies. Changed bytes receive a new ETag and a full response, including when a filename stays the same. Entry HTML and health/version checks remain uncached. First visits and cleared caches still download assets; normal reloads can reuse stored bodies after validation.
+
+WebSocket clients negotiate per-message deflate for JSON messages of at least 1024 bytes. Compression uses level 3, at most four concurrent zlib operations, and no context takeover in either direction. Clients that do not negotiate compression continue to use the same protocol. Test bandwidth and regression behavior only with isolated localhost servers; do not target the deployed Render game.
+
 ## Verification record
 
 Refresh-persistence follow-up: server token resumption, tab-local runtime hydration, report sequencing, death deadlines, and remaining victory holds have regression tests added. JavaScript syntax checks pass; these new tests and browser refresh scenarios have not been executed in this change. The historical verification entries below predate this follow-up.

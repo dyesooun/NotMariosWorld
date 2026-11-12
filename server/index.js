@@ -38,7 +38,7 @@ function settings(input = {}) {
   return result;
 }
 
-export function createGameServer({ port=Number(process.env.PORT)||10000, host='0.0.0.0', staticRoot=path.join(ROOT,'public'), now=()=>Date.now(), tickMs=50 } = {}) {
+export function createGameServer({ port=Number(process.env.PORT)||10000, host='0.0.0.0', staticRoot=path.join(ROOT,'public'), now=()=>Date.now(), tickMs=50, perMessageDeflate=true } = {}) {
   const versionFiles = ['server/index.js','server/power-duels.js','server/power-questions.js','public/app.js','public/game/audio.js','public/game/audio-tracks.js','public/game/engine.js','public/game/local-run.js','public/game/run-protocol.js','public/game/client-state.js','public/game/levels.js','public/game/world-order.js','public/game/projectiles.js','public/game/powers.js','public/game/default-questions.js'];
   const fingerprint = () => {
     const hash=createHash('sha256');
@@ -63,6 +63,16 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     return hash.digest('hex');
   };
   const runtimeVersion = fingerprint(), rooms = new Map();
+  const assetEtags = new Map();
+  const assetHeaders = file => {
+    const stat=statSync(file), key=`${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+    let cached=assetEtags.get(file);
+    if(!cached||cached.key!==key){
+      cached={key,etag:`"${createHash('sha256').update(readFileSync(file)).digest('hex')}"`};
+      assetEtags.set(file,cached);
+    }
+    return cached;
+  };
   const ranked = room => [...room.players.values()].sort((a,b) => b.score-a.score || (a.finishTime??Infinity)-(b.finishTime??Infinity) || a.joinedAt-b.joinedAt);
   const playerDTO = (room, player, viewer = {}) => {
     const privileged = viewer.host || viewer.id === player.id;
@@ -481,11 +491,18 @@ export function createGameServer({ port=Number(process.env.PORT)||10000, host='0
     const headers={'cache-control':'no-store'};
     if (req.url==='/health') { const diskVersion=fingerprint(); res.writeHead(200,{'content-type':'application/json',...headers}); return res.end(JSON.stringify({ok:true,rooms:rooms.size,runtimeVersion,diskVersion,needsRestart:diskVersion!==runtimeVersion,protocolVersion:PROTOCOL_VERSION})); }
     let file;
-    try { const url=new URL(req.url,'http://localhost'); file=path.resolve(root,`.${decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname)}`); } catch { return res.writeHead(400).end('Bad request'); }
-    if (!(file===root||file.startsWith(root+path.sep))||!existsSync(file)||statSync(file).isDirectory()) return res.writeHead(404).end('Not found');
-    res.writeHead(200,{'content-type':MIME[path.extname(file).toLowerCase()]||'application/octet-stream',...headers}); res.end(readFileSync(file));
+    try { const url=new URL(req.url,'http://localhost'); file=path.resolve(root,`.${decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname)}`); } catch { return res.writeHead(400,headers).end('Bad request'); }
+    if (req.method!=='GET'&&req.method!=='HEAD') return res.writeHead(405,{allow:'GET, HEAD',...headers}).end('Method not allowed');
+    if (!(file===root||file.startsWith(root+path.sep))||!existsSync(file)||statSync(file).isDirectory()) return res.writeHead(404,headers).end('Not found');
+    const contentType=MIME[path.extname(file).toLowerCase()]||'application/octet-stream';
+    // The HTML shell is never stored so deployments take effect promptly.
+    // Other static files use strong validators while remaining update-safe.
+    const cacheHeaders=path.extname(file).toLowerCase()==='.html' ? headers : {'cache-control':'public, max-age=0, must-revalidate',etag:assetHeaders(file).etag};
+    const responseHeaders={'content-type':contentType,...cacheHeaders};
+    if(cacheHeaders.etag&&req.headers['if-none-match']&&((req.headers['if-none-match'].trim()==='*')||req.headers['if-none-match'].split(',').map(value=>value.trim().replace(/^W\//,'')).includes(cacheHeaders.etag))) return res.writeHead(304,responseHeaders).end();
+    res.writeHead(200,responseHeaders); if(req.method==='HEAD') return res.end(); res.end(readFileSync(file));
   });
-  const wss=new WebSocketServer({server,maxPayload:MAX_PAYLOAD});
+  const wss=new WebSocketServer({server,maxPayload:MAX_PAYLOAD,perMessageDeflate:perMessageDeflate===false?false:{serverNoContextTakeover:true,clientNoContextTakeover:true,threshold:1024,concurrencyLimit:4,zlibDeflateOptions:{level:3}}});
   wss.on('connection',ws=>{
     const session={room:null,player:null,host:false,alive:true,windowAt:now(),messageCount:0}; ws._session=session;
     ws.on('pong',()=>{session.alive=true;});
